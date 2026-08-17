@@ -1,0 +1,33 @@
+-- Seed script: populates your Supabase `products` table with all 20
+-- products from your live Meesho shop (meesho.com/h6z4l).
+-- Run this ONCE in Supabase SQL Editor. Safe to re-run -- it skips any
+-- row whose id already exists rather than erroring or duplicating.
+--
+-- Photos are intentionally left blank (NULL) here -- the app shows a
+-- designed placeholder for those until you add real photos through the
+-- admin panel (Admin Dashboard -> pencil icon -> tap the photo box).
+
+insert into products
+  (id, title, subtitle, price, currency, category, rating, "ratingLabel", "meeshoUrl", image, material, "isNewArrival", "isBestSeller", "isFeatured", "isAvailable")
+values
+  ('7743x5', 'Trendy Jewellery Set', '+1 More', 274, 'INR', 'jewellery-sets', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/oxidized-multi-coloured-ethnic-jewellery-set-intricate-design-for-women-and-girls/p/7743x5', NULL, 'Oxidized metal', false, false, true, true),
+  ('7byjs7', 'Trendy Pendants & Lockets', NULL, 227, 'INR', 'pendants', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/stylish-gold-and-silver-plated-chain-necklaces-with-charm-pendants-for-women-girls-adjustable-skin-friendly-perfect-gift-idea-set-of-2/p/7byjs7', NULL, 'Gold & silver plated', false, false, false, true),
+  ('7bzp86', 'Latest Earrings & Studs', NULL, 217, 'INR', 'earrings', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/antique-floral-oxidized-silver-plated-jhumka-earrings-for-women-girls-vintage-charm-set-of-2/p/7bzp86', NULL, 'Oxidized silver plated', true, false, false, true),
+  ('7bzl95', 'Unique Earrings & Studs', NULL, 151, 'INR', 'earrings', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/white-pearl-earrings-with-geometric-top-design-stylish-and-sophisticated-statement-jewelry-for-women/p/7bzl95', NULL, 'Pearl', false, false, false, true),
+  ('bz4b12', 'Necklaces & Chains', '+2 More', 464, 'INR', 'necklaces', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/red-heart-pendant-necklace-for-women-girls-crystal-love-charm-with-chain-elegant-party-daily-gift-wear-jewelry/p/bz4b12', NULL, 'Crystal', false, true, false, true),
+  ('bz69xo', 'Allure Graceful Women Necklaces & Chains', NULL, 461, 'INR', 'necklaces', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/red-heart-pendant-necklace-for-women-girls-crystal-love-charm-with-chain-elegant-party-daily-gift-wear-jewelry/p/bz69xo', NULL, 'Crystal', false, false, false, true),
+  ('bneayj', 'Modern Earrings & Studs', '+2 More', 157, 'INR', 'earrings', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/rhinestone-leaf-flower-stud-earrings-for-women-girls-rose-gold-finish-pearl-crystal-earrings-lightweight-party-wedding-festive-wear-jewelry/p/bneayj', NULL, 'Rose gold finish', false, false, true, true),
+  ('773lq8', 'Styles Earrings & Studs', NULL, 156, 'INR', 'earrings', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/oxidized-silver-jhumka-earrings-combo-set-of-2-traditional-indian-earrings-for-women-and-girls/p/773lq8', NULL, 'Oxidized silver', false, false, false, true),
+  ('brssy2', 'Fashionable Earrings & Studs', '+6 More', 157, 'INR', 'earrings', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/rhinestone-heart-bow-drop-earrings-for-women-girls-gold-finish-crystal-designer-earrings-stylish-party-festive-casual-wear-jewelry/p/brssy2', NULL, 'Gold finish crystal', false, true, false, true),
+  ('773m1h', 'Fancy Earrings & Studs', NULL, 233, 'INR', 'earrings', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/oxidized-silver-bali-earrings-traditional-indian-hoop-earrings-for-women-and-girls/p/773m1h', NULL, 'Oxidized silver', false, false, false, true),
+  ('773jph', 'New Earrings & Studs', NULL, 242, 'INR', 'earrings', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/ethnic-jhumka-earrings-with-gemstones-and-pearl-danglers-stylish-traditional-jewelry-for-women/p/773jph', NULL, 'Gemstone & pearl', true, false, false, true),
+  ('7744td', 'Trendy Jewellery Set', NULL, 273, 'INR', 'jewellery-sets', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/fashion-jewellery-set-antique-oxidized-metal-necklace-with-matching-earrings-for-women-girls/p/7744td', NULL, 'Antique oxidized metal', false, false, false, true),
+  ('7bzwev', 'Allure Elegant Bracelet & Bangles', '+5 More', 208, 'INR', 'bracelets', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/elegant-sliver-bracelet-for-women-girls-delicate-and-stylish-wrist-accessory-perfect-for-everyday-wear-or-special-occasions/p/7bzwev', NULL, 'Silver', false, false, true, true),
+  ('7byn0s', 'Trendy Pendants & Lockets', NULL, 234, 'INR', 'pendants', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/stylish-gold-and-silver-plated-chain-necklaces-with-charm-pendants-for-women-girls-adjustable-skin-friendly-perfect-gift-idea-set-of-2/p/7byn0s', NULL, 'Gold & silver plated', false, false, false, true),
+  ('773lu5', 'Fancy Earrings & Studs', NULL, 233, 'INR', 'earrings', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/traditional-kundan-polki-jhumka-earrings-golden-color-with-sparkling-crystals-for-women/p/773lu5', NULL, 'Kundan polki, golden', false, false, false, true),
+  ('bz6753', 'Pendants & Lockets', NULL, 464, 'INR', 'pendants', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/pearl-sea-shell-pendant-necklace-for-women-girls-ocean-inspired-shell-charm-with-chain-elegant-casual-party-beach-wear-jewelry/p/bz6753', NULL, 'Pearl, shell charm', false, false, false, true),
+  ('7c333d', 'Trendy Women Hair Clips & Hair Pins', NULL, 271, 'INR', 'hair-accessories', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/strong-grip-hair-clature-for-thick-hair-ideal-for-women-and-girls-durable-and-non-slip-clutcher-for-all-hair-types-set-of-3-pcs/p/7c333d', NULL, 'Set of 3', false, false, false, true),
+  ('bz62ie', 'Elite Charming Women Necklaces & Chains', NULL, 462, 'INR', 'necklaces', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/black-zircon-butterfly-pendant-necklace-for-women-girls-sparkling-crystal-designer-butterfly-charm-with-chain-lightweight-party-daily-gift-wear-jewelry/p/bz62ie', NULL, 'Zircon, crystal', true, false, false, true),
+  ('773lsu', 'Trendy Earrings & Studs', NULL, 149, 'INR', 'earrings', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/oxidised-silver-jhumka-earrings-with-pearl-accents-vintage-style-traditional-earing-for-women/p/773lsu', NULL, 'Oxidised silver, pearl', false, false, false, true),
+  ('7bzpbg', 'Stylo Earrings & Studs', NULL, 140, 'INR', 'earrings', 3.1, '3.1 Star Supplier', 'https://www.meesho.com/rose-gold-plated-stud-earrings-with-cubic-zirconia-stones-dangle-circle-design-for-women/p/7bzpbg', NULL, 'Rose gold plated, zirconia', false, false, false, true)
+on conflict (id) do nothing;

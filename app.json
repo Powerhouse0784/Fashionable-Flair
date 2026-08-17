@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Fashionable Flair",
+    "slug": "fashionable-flair",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fashionableflair.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "backgroundColor": "#FFF8F3"
+      },
+      "package": "com.fashionableflair.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./src/assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Fashionable Flair uses your photos to let the store admin add product images."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFF8F3"
+        }
+      ]
+    ]
+  }
+}
