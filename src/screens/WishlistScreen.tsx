@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, typography, spacing } from '@/theme';
+import { typography, spacing, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useProducts } from '@/context/ProductsContext';
 import { useWishlist } from '@/context/WishlistContext';
@@ -12,7 +13,9 @@ import EmptyState from '@/components/EmptyState';
 import Container from '@/components/Container';
 
 export default function WishlistScreen() {
-  const { products } = useProducts();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
+  const { products, refreshing, refresh } = useProducts();
   const { wishlistIds, clearWishlist } = useWishlist();
   const wishlistedProducts = products.filter((p) => wishlistIds.includes(p.id));
   const columns = useColumns();
@@ -38,6 +41,7 @@ export default function WishlistScreen() {
           numColumns={columns}
           columnWrapperStyle={{ gap: GRID_GAP }}
           contentContainerStyle={{ gap: GRID_GAP, paddingBottom: spacing.xxl }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
           ListEmptyComponent={
             <EmptyState
               icon="heart-outline"
@@ -52,14 +56,16 @@ export default function WishlistScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-  title: { ...typography.h2, color: colors.textPrimary },
-  clear: { ...typography.bodySmall, color: colors.danger, fontFamily: fonts.bodySemiBold },
-});
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+    },
+    title: { ...typography.h2, color: colors.textPrimary },
+    clear: { ...typography.bodySmall, color: colors.danger, fontFamily: fonts.bodySemiBold },
+  });
+}

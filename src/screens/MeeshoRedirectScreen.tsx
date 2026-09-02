@@ -4,13 +4,16 @@ import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, typography, spacing } from '@/theme';
+import { typography, spacing, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { RootStackParamList } from '@/types/navigation';
 
 type RedirectRoute = RouteProp<RootStackParamList, 'MeeshoRedirect'>;
 
 export default function MeeshoRedirectScreen() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const navigation = useNavigation();
   const route = useRoute<RedirectRoute>();
   const { url, productTitle } = route.params;
@@ -62,7 +65,8 @@ export default function MeeshoRedirectScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
@@ -89,4 +93,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   loadingText: { ...typography.body, color: colors.textSecondary, marginTop: spacing.md },
-});
+  });
+}

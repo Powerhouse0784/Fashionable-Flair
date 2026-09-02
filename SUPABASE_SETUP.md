@@ -33,6 +33,14 @@ This is a one-time, ~10 minute setup.
 > alter table products add column if not exists "isAvailable" boolean default true;
 > ```
 >
+> **Also already set up and want multiple photos per product?** Run this:
+> ```sql
+> alter table products add column if not exists images text[];
+> ```
+> The app already falls back gracefully — existing products with only the
+> old single `image` field keep working exactly as before, no data migration
+> needed.
+>
 > Otherwise, continue below for the full first-time setup.
 
 In the Supabase dashboard: **SQL Editor → New query**, paste and run:
@@ -55,6 +63,7 @@ create table products (
   "isBestSeller" boolean default false,
   "isFeatured" boolean default false,
   "isAvailable" boolean default true,
+  images text[],
   "createdAt" timestamptz default now()
 );
 
@@ -195,7 +204,8 @@ tap gesture every time).
 
 ## 8. Using it day-to-day
 
-- **Add a product:** Admin Dashboard → **Add New Product** → fill in the form → tap the photo box to upload a picture from your library → Save.
+- **Add a product:** Admin Dashboard → **Add New Product** → fill in the form → tap the photo strip to add up to 6 photos (first one is the cover photo shown on cards) → Save.
+- **Reorder photos:** remove and re-add in the order you want — the first photo in the strip is always the cover. (Drag-to-reorder isn't built yet.)
 - **Edit:** tap the pencil icon on any product row.
 - **Mark sold out without deleting:** open the product, turn off "In Stock" — it shows an "Out of Stock" badge to shoppers and disables its Buy Now button, but stays in the catalog.
 - **Delete:** trash icon, with a confirmation prompt.

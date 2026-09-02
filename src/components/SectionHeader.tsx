@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors, typography, spacing } from '@/theme';
+import { typography, spacing, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
 // Container, which already supplies the page gutter. Adding padding here
 // too was one of the double-gutter bugs.
 export default function SectionHeader({ title, actionLabel, onActionPress }: Props) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   return (
     <View style={styles.row}>
       <Text style={styles.title}>{title}</Text>
@@ -25,14 +28,16 @@ export default function SectionHeader({ title, actionLabel, onActionPress }: Pro
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  title: { ...typography.h3, color: colors.textPrimary },
-  action: { ...typography.bodySmall, color: colors.primary, fontFamily: fonts.bodySemiBold },
-});
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: spacing.lg,
+      marginBottom: spacing.sm,
+    },
+    title: { ...typography.h3, color: colors.textPrimary },
+    action: { ...typography.bodySmall, color: colors.primary, fontFamily: fonts.bodySemiBold },
+  });
+}

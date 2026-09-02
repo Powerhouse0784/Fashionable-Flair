@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { colors, typography, spacing, radius } from '@/theme';
+import { View, Text, StyleSheet, Platform } from 'react-native';
+import { typography, spacing, radius, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { fonts } from '@/hooks/useAppFonts';
 
 interface Props {
   label: string;
@@ -8,10 +10,12 @@ interface Props {
 }
 
 export default function Badge({ label, variant = 'primary' }: Props) {
+  const { colors } = useTheme();
   const bg =
-    variant === 'gold' ? colors.goldLight : variant === 'success' ? '#DCF0E2' : colors.primaryLight;
+    variant === 'gold' ? colors.goldLight : variant === 'success' ? colors.successLight : colors.primaryLight;
   const fg =
     variant === 'gold' ? colors.primaryDark : variant === 'success' ? colors.success : colors.primaryDark;
+  const styles = makeStyles(colors);
 
   return (
     <View style={[styles.badge, { backgroundColor: bg }]}>
@@ -20,12 +24,23 @@ export default function Badge({ label, variant = 'primary' }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-    alignSelf: 'flex-start',
-  },
-  text: { ...typography.caption, textTransform: 'uppercase' },
-});
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    badge: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: radius.pill,
+      alignSelf: 'flex-start',
+      ...(Platform.OS === 'web'
+        ? ({ boxShadow: `0 1px 3px ${colors.shadow}` } as any)
+        : {
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.3,
+            shadowRadius: 3,
+            elevation: 1,
+          }),
+    },
+    text: { ...typography.caption, fontFamily: fonts.bodyBold, textTransform: 'uppercase', letterSpacing: 0.5 },
+  });
+}

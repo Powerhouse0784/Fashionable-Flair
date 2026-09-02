@@ -5,7 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, typography, spacing, radius } from '@/theme';
+import { typography, spacing, radius, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { categories } from '@/data/categories';
 import { useProducts } from '@/context/ProductsContext';
 import { useRecentlyViewed } from '@/context/RecentlyViewedContext';
@@ -31,7 +32,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 function ProductRow({ items, isWide }: { items: Product[]; isWide: boolean }) {
   if (isWide) {
     return (
-      <View style={[styles.grid, { gap: GRID_GAP }]}>
+      <View style={[{ flexDirection: 'row', flexWrap: 'wrap' }, { gap: GRID_GAP }]}>
         {items.map((item) => (
           <ProductCard key={item.id} product={item} />
         ))}
@@ -52,6 +53,8 @@ function ProductRow({ items, isWide }: { items: Product[]; isWide: boolean }) {
 
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const { products, refreshing, refresh } = useProducts();
   const { recentlyViewedIds } = useRecentlyViewed();
   const featured = getFeaturedProducts(products);
@@ -84,10 +87,10 @@ export default function HomeScreen() {
             end={{ x: 1, y: 1 }}
             style={[styles.hero, isWide && styles.heroWide]}
           >
-            <View style={styles.heroDecorOuter} pointerEvents="none" />
-            <View style={styles.heroDecorInner} pointerEvents="none" />
+            <View style={[styles.heroDecorOuter, { pointerEvents: 'none' }]} />
+            <View style={[styles.heroDecorInner, { pointerEvents: 'none' }]} />
             {isWide && (
-              <View style={styles.heroIconCluster} pointerEvents="none">
+              <View style={[styles.heroIconCluster, { pointerEvents: 'none' }]}>
                 <Ionicons name="diamond" size={64} color="rgba(255,255,255,0.14)" style={styles.heroIcon1} />
                 <Ionicons name="heart" size={44} color="rgba(255,255,255,0.14)" style={styles.heroIcon2} />
                 <Ionicons name="sparkles" size={52} color="rgba(255,255,255,0.14)" style={styles.heroIcon3} />
@@ -206,90 +209,92 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-  },
-  brand: { ...typography.h1, color: colors.textPrimary },
-  tagline: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
-  hero: {
-    marginTop: spacing.md,
-    backgroundColor: colors.primary,
-    borderRadius: radius.lg,
-    padding: spacing.xl,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  heroWide: {
-    marginTop: spacing.xl,
-    paddingVertical: spacing.xxl,
-    paddingHorizontal: spacing.xxl,
-  },
-  heroDecorOuter: {
-    position: 'absolute',
-    top: -60,
-    right: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  heroDecorInner: {
-    position: 'absolute',
-    bottom: -80,
-    right: 60,
-    width: 160,
-    height: 160,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  // Fills the otherwise-empty right side of the hero on wide screens with
-  // a loose icon cluster — cheap, free, no real photography needed, and
-  // reads as intentional brand texture rather than dead space.
-  heroIconCluster: {
-    position: 'absolute',
-    right: '8%',
-    top: 0,
-    bottom: 0,
-    width: 320,
-  },
-  heroIcon1: { position: 'absolute', top: '18%', left: '40%' },
-  heroIcon2: { position: 'absolute', top: '50%', left: '10%' },
-  heroIcon3: { position: 'absolute', top: '65%', left: '55%' },
-  heroIcon4: { position: 'absolute', top: '30%', left: '75%' },
-  heroContent: { maxWidth: 560 },
-  heroBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.pill,
-    marginBottom: spacing.sm,
-  },
-  heroBadgeText: { ...typography.caption, color: colors.textInverse, letterSpacing: 1 },
-  heroTitle: { ...typography.h2, color: colors.textInverse },
-  heroTitleWide: { fontSize: 38 },
-  heroSubtitle: { ...typography.body, color: colors.primaryLight, marginTop: spacing.xs },
-  heroCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.textInverse,
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: radius.pill,
-    marginTop: spacing.lg,
-  },
-  heroCtaText: { ...typography.button, color: colors.primary },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-});
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    header: {
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.md,
+    },
+    brand: { ...typography.h1, color: colors.textPrimary },
+    tagline: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+    hero: {
+      marginTop: spacing.md,
+      backgroundColor: colors.primary,
+      borderRadius: radius.lg,
+      padding: spacing.xl,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    heroWide: {
+      marginTop: spacing.xl,
+      paddingVertical: spacing.xxl,
+      paddingHorizontal: spacing.xxl,
+    },
+    heroDecorOuter: {
+      position: 'absolute',
+      top: -60,
+      right: -60,
+      width: 220,
+      height: 220,
+      borderRadius: 999,
+      backgroundColor: 'rgba(255,255,255,0.08)',
+    },
+    heroDecorInner: {
+      position: 'absolute',
+      bottom: -80,
+      right: 60,
+      width: 160,
+      height: 160,
+      borderRadius: 999,
+      backgroundColor: 'rgba(255,255,255,0.06)',
+    },
+    // Fills the otherwise-empty right side of the hero on wide screens with
+    // a loose icon cluster — cheap, free, no real photography needed, and
+    // reads as intentional brand texture rather than dead space.
+    heroIconCluster: {
+      position: 'absolute',
+      right: '8%',
+      top: 0,
+      bottom: 0,
+      width: 320,
+    },
+    heroIcon1: { position: 'absolute', top: '18%', left: '40%' },
+    heroIcon2: { position: 'absolute', top: '50%', left: '10%' },
+    heroIcon3: { position: 'absolute', top: '65%', left: '55%' },
+    heroIcon4: { position: 'absolute', top: '30%', left: '75%' },
+    heroContent: { maxWidth: 560 },
+    heroBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: radius.pill,
+      marginBottom: spacing.sm,
+    },
+    heroBadgeText: { ...typography.caption, color: colors.textInverse, letterSpacing: 1 },
+    heroTitle: { ...typography.h2, color: colors.textInverse },
+    heroTitleWide: { fontSize: 38 },
+    heroSubtitle: { ...typography.body, color: colors.primaryLight, marginTop: spacing.xs },
+    heroCta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      backgroundColor: colors.textInverse,
+      alignSelf: 'flex-start',
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm + 2,
+      borderRadius: radius.pill,
+      marginTop: spacing.lg,
+    },
+    heroCtaText: { ...typography.button, color: colors.primary },
+    categoryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+  });
+}

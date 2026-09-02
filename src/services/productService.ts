@@ -80,16 +80,23 @@ function slugify(text: string): string {
  * Uploads a locally-picked image (from expo-image-picker) to the
  * product-images storage bucket and returns its public URL.
  *
- * Uses fetch().arrayBuffer() on both web and native — this is the current
- * recommended approach for Supabase Storage + Expo (the older
- * expo-file-system base64 pattern broke in SDK 54's rewritten
- * expo-file-system API, which is what caused the "Cannot read property
- * Base64 of undefined" crash).
+ * `mimeType` should come from the picker's own result (expo-image-picker
+ * returns `assets[0].mimeType`) rather than being guessed from the file
+ * URI — on web the picker returns a `blob:` URL with no real file
+ * extension in it (e.g. `blob:http://localhost:8081/550e8400-...`), so
+ * parsing "the bit after the last dot" grabbed garbage text and produced
+ * an invalid Content-Type header, which the browser rejected outright.
+ * Native URIs usually do have a real extension, but trusting the picker's
+ * mimeType works reliably on both platforms, so it's the default now.
  */
-export async function uploadProductImage(localUri: string, productId: string): Promise<string> {
-  const fileExt = (localUri.split('.').pop() || 'jpg').split('?')[0];
+export async function uploadProductImage(
+  localUri: string,
+  productId: string,
+  mimeType?: string
+): Promise<string> {
+  const contentType = mimeType || guessContentTypeFromUri(localUri);
+  const fileExt = contentType.split('/')[1] || 'jpg';
   const filePath = `${productId}-${Date.now()}.${fileExt}`;
-  const contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
 
   const response = await fetch(localUri);
   const arrayBuffer = await response.arrayBuffer();
@@ -109,4 +116,20 @@ export async function uploadProductImage(localUri: string, productId: string): P
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
   return data.publicUrl;
+}
+
+// Fallback only used if a caller doesn't pass mimeType (shouldn't happen
+// from the admin form, but keeps this function safe to call from anywhere).
+function guessContentTypeFromUri(uri: string): string {
+  const cleanUri = uri.split('?')[0];
+  const ext = cleanUri.includes('.') ? cleanUri.split('.').pop()?.toLowerCase() : null;
+  const known: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    heic: 'image/heic',
+  };
+  return (ext && known[ext]) || 'image/jpeg';
 }

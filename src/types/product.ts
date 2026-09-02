@@ -16,7 +16,8 @@ export interface Product {
   rating: number;
   ratingLabel?: string;       // e.g. "3.1 Star Supplier"
   meeshoUrl: string;
-  image: string;              // remote image URL
+  image?: string;              // primary/first photo — kept for backward compatibility
+  images?: string[];           // full photo gallery, in display order. image is images[0] once set.
   description?: string;
   material?: string;
   isNewArrival?: boolean;

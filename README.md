@@ -75,6 +75,8 @@ codebase to keep in sync.
 - Swap placeholder images in `src/data/products.ts` for real photos (export from your Meesho Supplier Panel → Catalog → Products, or your own photos)
 - Add the remaining 3 products from page 2 of your shop the same way
 - ~~Build an admin panel so products don't need code changes~~ — **done**, see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md). Real sign-in, add/edit/delete products with photo upload, instant sync to every device — all on Supabase's free tier.
+- ~~Add an AI assistant scoped to the app/store~~ — **done**, see [CHATBOT_SETUP.md](./CHATBOT_SETUP.md). Gemini-powered, proxied through a Supabase Edge Function so the API key never reaches the client.
+- ~~Working contact form + newsletter signup~~ — **done**, see [BREVO_SETUP.md](./BREVO_SETUP.md). Real email delivery via Brevo, same secure Edge Function pattern.
 - Push notifications, dark mode, and the rest of the roadmap are additive on top of this structure — nothing here needs to be rebuilt for them
 
 ## Folder structure

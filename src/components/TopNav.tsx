@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
-import { colors, typography, spacing, radius } from '@/theme';
+import { typography, spacing, radius, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useWishlist } from '@/context/WishlistContext';
 import { useContentMetrics } from '@/hooks/useResponsive';
@@ -21,6 +22,8 @@ const NAV_ITEMS: { label: string; tab: 'Home' | 'Search' | 'Wishlist' | 'Profile
  */
 export default function TopNav() {
   const navigation = useNavigation<any>();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const { wishlistIds } = useWishlist();
   const { sidePadding } = useContentMetrics();
 
@@ -69,44 +72,48 @@ export default function TopNav() {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    width: '100%',
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    ...(Platform.OS === 'web' ? ({ position: 'sticky', top: 0, zIndex: 20 } as any) : {}),
-  },
-  inner: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-  },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logoDot: {
-    width: 30,
-    height: 30,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brand: { ...typography.h3, color: colors.textPrimary },
-  links: { flexDirection: 'row', alignItems: 'center', gap: spacing.xl },
-  link: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, position: 'relative' },
-  linkText: { ...typography.bodySmall, color: colors.textSecondary, fontFamily: fonts.bodySemiBold },
-  linkTextActive: { color: colors.primary },
-  badge: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    minWidth: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-    marginLeft: 2,
-  },
-  badgeText: { color: colors.textInverse, fontSize: 9, fontFamily: fonts.bodyBold },
-});
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    wrap: {
+      width: '100%',
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      ...(Platform.OS === 'web'
+        ? ({ position: 'sticky', top: 0, zIndex: 20, boxShadow: `0 2px 12px ${colors.shadow}` } as any)
+        : {}),
+    },
+    inner: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.md,
+    },
+    brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    logoDot: {
+      width: 30,
+      height: 30,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    brand: { ...typography.h3, color: colors.textPrimary },
+    links: { flexDirection: 'row', alignItems: 'center', gap: spacing.xl },
+    link: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, position: 'relative' },
+    linkText: { ...typography.bodySmall, color: colors.textSecondary, fontFamily: fonts.bodySemiBold },
+    linkTextActive: { color: colors.primary },
+    badge: {
+      backgroundColor: colors.primary,
+      borderRadius: radius.pill,
+      minWidth: 16,
+      height: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 3,
+      marginLeft: 2,
+    },
+    badgeText: { color: colors.textInverse, fontSize: 9, fontFamily: fonts.bodyBold },
+  });
+}

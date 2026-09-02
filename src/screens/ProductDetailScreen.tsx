@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, typography, spacing, radius } from '@/theme';
+import { typography, spacing, radius, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useProducts } from '@/context/ProductsContext';
 import { getProductById } from '@/utils/productHelpers';
@@ -15,20 +15,31 @@ import { useRecentlyViewed } from '@/context/RecentlyViewedContext';
 import { useIsWideScreen } from '@/hooks/useResponsive';
 import { shareProduct } from '@/utils/share';
 import { goToMeesho } from '@/utils/buyNow';
+import { getProductImages } from '@/utils/productImages';
+import { goBackOrTo } from '@/utils/navigation';
+import WebPageWrapper from '@/components/WebPageWrapper';
 import PriceTag from '@/components/PriceTag';
 import RatingStars from '@/components/RatingStars';
 import Badge from '@/components/Badge';
 import ProductCard from '@/components/ProductCard';
-import ProductPlaceholder from '@/components/ProductPlaceholder';
+import ProductImageGallery from '@/components/ProductImageGallery';
 import SectionHeader from '@/components/SectionHeader';
 import Container from '@/components/Container';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type DetailRoute = RouteProp<RootStackParamList, 'ProductDetail'>;
 
-const hasRealPhoto = (url?: string) => !!url && !url.includes('placehold.co');
+// The back/share/wishlist buttons overlaid on the product photo always sit
+// on a fixed translucent-white circle (see iconButton style) regardless of
+// light/dark mode — that's intentional, it's readable on any photo. So the
+// icon glyph inside must stay a fixed dark color too, not the theme's
+// textPrimary, which flips to near-white in dark mode and would disappear
+// against that white circle.
+const OVERLAY_ICON_COLOR = '#2B2320';
 
 export default function ProductDetailScreen() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const navigation = useNavigation<Nav>();
   const route = useRoute<DetailRoute>();
   const { productId } = route.params;
@@ -52,6 +63,7 @@ export default function ProductDetailScreen() {
   }
 
   const wishlisted = isWishlisted(product.id);
+  const productImages = getProductImages(product);
   const related = products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 6);
 
   const handleShare = () => shareProduct(product.title, product.meeshoUrl);
@@ -125,30 +137,27 @@ export default function ProductDetailScreen() {
   );
 
   return (
+    <WebPageWrapper>
     <View style={styles.safe}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: isWide ? spacing.xxl : 100 }}>
         {isWide ? (
           <Container>
             <View style={styles.rowLayout}>
               <View style={[styles.imageWrap, { width: imageSize, aspectRatio: 1, borderRadius: radius.lg }]}>
-                {hasRealPhoto(product.image) ? (
-                  <Image source={{ uri: product.image }} style={styles.image} contentFit="cover" transition={200} />
-                ) : (
-                  <ProductPlaceholder category={product.category} />
-                )}
+                <ProductImageGallery images={productImages} category={product.category} width={imageSize} onDoubleTap={() => { if (!wishlisted) toggleWishlist(product.id); }} />
                 <View style={styles.imageOverlay}>
-                  <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+                  <TouchableOpacity style={styles.iconButton} onPress={() => goBackOrTo(navigation, 'Tabs')}>
+                    <Ionicons name="arrow-back" size={20} color={OVERLAY_ICON_COLOR} />
                   </TouchableOpacity>
                   <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                     <TouchableOpacity style={styles.iconButton} onPress={handleShare}>
-                      <Ionicons name="share-social-outline" size={19} color={colors.textPrimary} />
+                      <Ionicons name="share-social-outline" size={19} color={OVERLAY_ICON_COLOR} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.iconButton} onPress={() => toggleWishlist(product.id)}>
                       <Ionicons
                         name={wishlisted ? 'heart' : 'heart-outline'}
                         size={19}
-                        color={wishlisted ? colors.primary : colors.textPrimary}
+                        color={wishlisted ? colors.primary : OVERLAY_ICON_COLOR}
                       />
                     </TouchableOpacity>
                   </View>
@@ -175,24 +184,20 @@ export default function ProductDetailScreen() {
             {/* Full-bleed hero image on phones — deliberately NOT inside
                 Container, which would otherwise inset it with the page gutter. */}
             <View style={styles.imageWrap}>
-              {hasRealPhoto(product.image) ? (
-                <Image source={{ uri: product.image }} style={styles.image} contentFit="cover" transition={200} />
-              ) : (
-                <ProductPlaceholder category={product.category} />
-              )}
+              <ProductImageGallery images={productImages} category={product.category} width={width} onDoubleTap={() => { if (!wishlisted) toggleWishlist(product.id); }} />
               <SafeAreaView edges={['top']} style={styles.imageOverlay}>
-                <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-                  <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+                <TouchableOpacity style={styles.iconButton} onPress={() => goBackOrTo(navigation, 'Tabs')}>
+                  <Ionicons name="arrow-back" size={20} color={OVERLAY_ICON_COLOR} />
                 </TouchableOpacity>
                 <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                   <TouchableOpacity style={styles.iconButton} onPress={handleShare}>
-                    <Ionicons name="share-social-outline" size={19} color={colors.textPrimary} />
+                    <Ionicons name="share-social-outline" size={19} color={OVERLAY_ICON_COLOR} />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.iconButton} onPress={() => toggleWishlist(product.id)}>
                     <Ionicons
                       name={wishlisted ? 'heart' : 'heart-outline'}
                       size={19}
-                      color={wishlisted ? colors.primary : colors.textPrimary}
+                      color={wishlisted ? colors.primary : OVERLAY_ICON_COLOR}
                     />
                   </TouchableOpacity>
                 </View>
@@ -240,10 +245,12 @@ export default function ProductDetailScreen() {
         </SafeAreaView>
       )}
     </View>
+    </WebPageWrapper>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   notFound: { ...typography.body, textAlign: 'center', marginTop: spacing.xxl },
   rowLayout: { flexDirection: 'row', alignItems: 'flex-start', paddingTop: spacing.lg, gap: spacing.xl },
@@ -342,4 +349,5 @@ const styles = StyleSheet.create({
   },
   ctaButtonText: { ...typography.button, color: colors.textInverse },
   ctaButtonDisabled: { backgroundColor: colors.textMuted },
-});
+  });
+}

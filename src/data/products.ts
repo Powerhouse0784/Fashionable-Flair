@@ -1,10 +1,12 @@
 import { Product } from '@/types/product';
 
 // Seeded from your live Meesho shop "Fashionable Flair" (meesho.com/h6z4l).
-// NOTE: `image` fields are placeholders (placehold.co) since product photos
-// aren't exposed on the public shop page — export the real images from your
-// Meesho Supplier Panel (Catalog > Products > Download Images) and swap the
-// URLs here, or point them at your own CDN/Firebase Storage bucket.
+// NOTE: most `image` fields are still placeholders (placehold.co) since
+// product photos aren't exposed on the shop's grid page — export the real
+// images from your Meesho Supplier Panel (Catalog > Products > Download
+// Images) and swap the URLs here, or add them via the admin panel. The
+// last 3 products (page 2 of the shop) already have real photo URLs
+// pulled directly from their individual Meesho product pages.
 // Everything else (title, price, category, meeshoUrl) is real.
 
 export const products: Product[] = [
@@ -260,6 +262,46 @@ export const products: Product[] = [
     meeshoUrl: 'https://www.meesho.com/rose-gold-plated-stud-earrings-with-cubic-zirconia-stones-dangle-circle-design-for-women/p/7bzpbg',
     image: 'https://placehold.co/600x600/E8C4C9/8F4A54?text=Studs',
     material: 'Rose gold plated, zirconia',
+  },
+  {
+    id: '7c2xyi',
+    title: 'Pearl Rhinestone Hair Clips',
+    subtitle: 'Set of 3 Pcs',
+    price: 262,
+    currency: 'INR',
+    category: 'hair-accessories',
+    rating: 3.1,
+    ratingLabel: '3.1 Star Supplier',
+    meeshoUrl: 'https://www.meesho.com/korean-fashion-style-pearl-rhinestone-metal-hair-clips-stylish-hair-pins-hair-accessories-for-women-and-girls-set-of-3-pcs/p/7c2xyi',
+    image: 'https://images.meesho.com/images/products/443555946/fpmv0_512.webp?width=512',
+    description: 'Korean fashion style pearl rhinestone metal hair clips — elegant and contemporary, adorned with delicate pearls and shimmering rhinestones.',
+    material: 'Metal, pearl, rhinestone',
+  },
+  {
+    id: 'bt0w9a',
+    title: 'Star Moon Rabbit Stud Earrings',
+    price: 163,
+    currency: 'INR',
+    category: 'earrings',
+    rating: 3.1,
+    ratingLabel: '3.1 Star Supplier',
+    meeshoUrl: 'https://www.meesho.com/zircon-star-moon-rabbit-stud-earrings-for-women-girls-pearl-designer-cute-bunny-earrings-lightweight-party-casual-festive-wear-jewelry/p/bt0w9a',
+    image: 'https://images.meesho.com/images/products/713878606/fym9h_512.webp?width=512',
+    description: 'Celestial star and moon accents paired with a cute bunny motif — lightweight, gold-plated zircon studs for everyday or festive wear.',
+    material: 'Alloy, gold plated, cubic zirconia',
+  },
+  {
+    id: '7744a5',
+    title: 'Radha Krishna Jewellery Set',
+    price: 273,
+    currency: 'INR',
+    category: 'jewellery-sets',
+    rating: 3.1,
+    ratingLabel: '3.1 Star Supplier',
+    meeshoUrl: 'https://www.meesho.com/traditional-indian-jewellery-set-oxidized-necklace-with-radha-krishna-pendant-for-women-girls/p/7744a5',
+    image: 'https://images.meesho.com/images/products/435212717/xwkn6_512.webp?width=512',
+    description: 'Traditional oxidized necklace featuring an intricately detailed Radha Krishna pendant, paired with matching earrings — antique finish, spiritual elegance.',
+    material: 'Silver base, gold plated',
   },
 ];
 

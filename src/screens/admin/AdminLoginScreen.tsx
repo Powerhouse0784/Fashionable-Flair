@@ -7,6 +7,7 @@ import { colors, typography, spacing, radius } from '@/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { isSupabaseConfigured } from '@/services/supabaseClient';
+import { goBackOrTo } from '@/utils/navigation';
 import Container from '@/components/Container';
 
 export default function AdminLoginScreen() {
@@ -37,12 +38,23 @@ export default function AdminLoginScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <Container style={{ flex: 1 }}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-            </TouchableOpacity>
+            {Platform.OS === 'web' ? (
+              // The back arrow relies on browser navigation history, which
+              // is empty when /admin/login is opened directly (the
+              // documented way in on web) — goBack() silently did nothing
+              // there. A home button always works regardless of how the
+              // page was reached, so web gets that instead.
+              <TouchableOpacity onPress={() => navigation.navigate('Tabs')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={() => goBackOrTo(navigation, 'Tabs')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.content}>

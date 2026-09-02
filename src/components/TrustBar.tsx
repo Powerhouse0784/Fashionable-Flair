@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, radius } from '@/theme';
+import { typography, spacing, radius, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 
 const ITEMS: { icon: string; label: string }[] = [
@@ -18,6 +19,8 @@ interface Props {
 }
 
 export default function TrustBar({ variant = 'light' }: Props) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const isLight = variant === 'light';
   const textColor = isLight ? colors.textInverse : colors.textPrimary;
   const iconBg = isLight ? 'rgba(255,255,255,0.22)' : colors.primaryLight;
@@ -37,21 +40,23 @@ export default function TrustBar({ variant = 'light' }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: spacing.xl,
-    rowGap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  item: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  iconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: { ...typography.bodySmall, fontFamily: fonts.bodyBold },
-});
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    wrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      columnGap: spacing.xl,
+      rowGap: spacing.sm,
+      marginTop: spacing.lg,
+    },
+    item: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    iconWrap: {
+      width: 30,
+      height: 30,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    label: { ...typography.bodySmall, fontFamily: fonts.bodyBold },
+  });
+}

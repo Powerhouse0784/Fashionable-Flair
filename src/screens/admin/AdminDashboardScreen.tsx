@@ -12,10 +12,9 @@ import { useToast } from '@/context/ToastContext';
 import { deleteProduct } from '@/services/productService';
 import { hapticSuccess } from '@/utils/haptics';
 import { formatPrice } from '@/utils/formatPrice';
+import { getPrimaryImage } from '@/utils/productImages';
 import Container from '@/components/Container';
 import ProductPlaceholder from '@/components/ProductPlaceholder';
-
-const hasRealPhoto = (url?: string) => !!url && !url.includes('placehold.co');
 
 export default function AdminDashboardScreen() {
   const navigation = useNavigation<any>();
@@ -113,9 +112,14 @@ export default function AdminDashboardScreen() {
               {products.length} product{products.length === 1 ? '' : 's'} · {isLive ? 'live' : 'local fallback'}
             </Text>
           </View>
-          <TouchableOpacity onPress={handleSignOut} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="log-out-outline" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => navigation.navigate('Tabs')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="storefront-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSignOut} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="log-out-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -138,8 +142,8 @@ export default function AdminDashboardScreen() {
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View style={styles.thumb}>
-                {hasRealPhoto(item.image) ? (
-                  <Image source={{ uri: item.image }} style={styles.thumbImage} contentFit="cover" transition={150} />
+                {getPrimaryImage(item) ? (
+                  <Image source={{ uri: getPrimaryImage(item) }} style={styles.thumbImage} contentFit="cover" transition={150} />
                 ) : (
                   <ProductPlaceholder category={item.category} compact />
                 )}
@@ -220,6 +224,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: spacing.md,
   },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: 2 },
   title: { ...typography.h2, color: colors.textPrimary },
   subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
   addButton: {

@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, radius } from '@/theme';
+import { typography, spacing, radius, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 
 export type SortOption = 'default' | 'price-asc' | 'price-desc';
@@ -20,6 +21,9 @@ interface Props {
 }
 
 export default function SortSheet({ visible, value, onSelect, onClose }: Props) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -52,37 +56,39 @@ export default function SortSheet({ visible, value, onSelect, onClose }: Props) 
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xl,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
-  },
-  title: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.sm },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  optionLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  optionText: { ...typography.body, color: colors.textPrimary },
-  optionTextActive: { fontFamily: fonts.bodySemiBold, color: colors.primary },
-});
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    backdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+    sheet: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: radius.lg,
+      borderTopRightRadius: radius.lg,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.xl,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    handle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+      alignSelf: 'center',
+      marginBottom: spacing.md,
+    },
+    title: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.sm },
+    option: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    optionLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    optionText: { ...typography.body, color: colors.textPrimary },
+    optionTextActive: { fontFamily: fonts.bodySemiBold, color: colors.primary },
+  });
+}

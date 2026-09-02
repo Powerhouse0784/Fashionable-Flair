@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { colors } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { useIsWideScreen } from '@/hooks/useResponsive';
 import TopNav from '@/components/TopNav';
 import BottomTabNavigator from './BottomTabNavigator';
@@ -14,10 +14,11 @@ import BottomTabNavigator from './BottomTabNavigator';
  *    looks broken, a top nav is the pattern people actually expect on a site.
  */
 export default function AppShell() {
+  const { colors } = useTheme();
   const isWide = useIsWideScreen();
 
   return (
-    <View style={styles.flex}>
+    <View style={[styles.flex, { backgroundColor: colors.background }]}>
       {isWide && <TopNav />}
       <BottomTabNavigator hideTabBar={isWide} />
     </View>
@@ -25,5 +26,5 @@ export default function AppShell() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
 });

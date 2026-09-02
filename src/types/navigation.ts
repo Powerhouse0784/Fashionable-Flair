@@ -8,6 +8,11 @@ export type RootStackParamList = {
   AdminLogin: undefined;
   AdminDashboard: undefined;
   AdminProductForm: { productId?: string };
+  About: undefined;
+  Contact: undefined;
+  FAQ: undefined;
+  PrivacyPolicy: undefined;
+  Terms: undefined;
 };
 
 export type TabParamList = {

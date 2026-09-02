@@ -3,7 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Activity
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { colors, typography, spacing, radius } from '@/theme';
+import { typography, spacing, radius, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { fonts } from '@/hooks/useAppFonts';
 import { useProducts } from '@/context/ProductsContext';
 import { useAuth } from '@/context/AuthContext';
 import Container from '@/components/Container';
@@ -16,6 +18,8 @@ interface MenuItemProps {
 }
 
 function MenuItem({ icon, label, onPress, rightSlot }: MenuItemProps) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   return (
     <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7} disabled={!onPress}>
       <View style={styles.menuLeft}>
@@ -45,6 +49,8 @@ const SECRET_TAP_COUNT = 5;
 const SECRET_TAP_WINDOW_MS = 2500;
 
 export default function ProfileScreen() {
+  const { colors, preference, setPreference } = useTheme();
+  const styles = makeStyles(colors);
   const { isLive, lastSynced, refreshing, refresh } = useProducts();
   const { isAdmin, signOut } = useAuth();
   const navigation = useNavigation<any>();
@@ -129,18 +135,39 @@ export default function ProfileScreen() {
 
           <Text style={styles.sectionTitle}>Preferences</Text>
           <View style={styles.card}>
+            <View style={styles.themeRow}>
+              <View style={styles.menuLeft}>
+                <Ionicons name="moon-outline" size={20} color={colors.primary} />
+                <Text style={styles.menuLabel}>Appearance</Text>
+              </View>
+              <View style={styles.themeSegment}>
+                {(['light', 'dark', 'system'] as const).map((opt) => {
+                  const active = preference === opt;
+                  return (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[styles.themeOption, active && styles.themeOptionActive]}
+                      onPress={() => setPreference(opt)}
+                    >
+                      <Text style={[styles.themeOptionText, active && styles.themeOptionTextActive]}>
+                        {opt === 'light' ? 'Light' : opt === 'dark' ? 'Dark' : 'Auto'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
             <MenuItem icon="notifications-outline" label="Notifications" />
-            <MenuItem icon="moon-outline" label="Dark Mode" />
             <MenuItem icon="language-outline" label="Language" />
           </View>
 
           <Text style={styles.sectionTitle}>Support</Text>
           <View style={styles.card}>
-            <MenuItem icon="help-circle-outline" label="FAQs" />
-            <MenuItem icon="chatbubble-ellipses-outline" label="Contact Us" />
-            <MenuItem icon="document-text-outline" label="Privacy Policy" />
-            <MenuItem icon="reader-outline" label="Terms of Service" />
-            <MenuItem icon="information-circle-outline" label="About Fashionable Flair" />
+            <MenuItem icon="help-circle-outline" label="FAQs" onPress={() => navigation.navigate('FAQ')} />
+            <MenuItem icon="chatbubble-ellipses-outline" label="Contact Us" onPress={() => navigation.navigate('Contact')} />
+            <MenuItem icon="document-text-outline" label="Privacy Policy" onPress={() => navigation.navigate('PrivacyPolicy')} />
+            <MenuItem icon="reader-outline" label="Terms of Service" onPress={() => navigation.navigate('Terms')} />
+            <MenuItem icon="information-circle-outline" label="About Fashionable Flair" onPress={() => navigation.navigate('About')} />
           </View>
 
           <TouchableOpacity onPress={handleSecretTap} activeOpacity={1} style={styles.footer}>
@@ -155,47 +182,69 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: { alignItems: 'center', paddingVertical: spacing.xl },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  name: { ...typography.h3, color: colors.textPrimary },
-  subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' },
-  sectionTitle: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  menuLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  menuLabel: { ...typography.body, color: colors.textPrimary, marginLeft: spacing.sm },
-  syncTime: { ...typography.caption, color: colors.textMuted },
-  footer: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl, gap: spacing.xs },
-  footerText: { ...typography.caption, color: colors.textMuted },
-  footerDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primaryLight },
-});
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    header: { alignItems: 'center', paddingVertical: spacing.xl },
+    avatar: {
+      width: 64,
+      height: 64,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
+    },
+    name: { ...typography.h3, color: colors.textPrimary },
+    subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' },
+    sectionTitle: {
+      ...typography.caption,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      marginTop: spacing.lg,
+      marginBottom: spacing.sm,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    menuLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    menuLabel: { ...typography.body, color: colors.textPrimary, marginLeft: spacing.sm },
+    syncTime: { ...typography.caption, color: colors.textMuted },
+    themeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    themeSegment: {
+      flexDirection: 'row',
+      backgroundColor: colors.background,
+      borderRadius: radius.pill,
+      padding: 3,
+      gap: 2,
+    },
+    themeOption: { paddingHorizontal: spacing.sm + 2, paddingVertical: 5, borderRadius: radius.pill },
+    themeOptionActive: { backgroundColor: colors.primary },
+    themeOptionText: { ...typography.caption, color: colors.textSecondary, fontFamily: fonts.bodySemiBold },
+    themeOptionTextActive: { color: colors.textInverse },
+    footer: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl, gap: spacing.xs },
+    footerText: { ...typography.caption, color: colors.textMuted },
+    footerDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primaryLight },
+  });
+}

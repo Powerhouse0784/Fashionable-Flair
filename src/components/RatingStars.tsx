@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography } from '@/theme';
+import { typography, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
 
 interface Props {
   rating: number; // 0–5
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export default function RatingStars({ rating, size = 13, showLabel = true }: Props) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const rounded = Math.round(rating);
   return (
     <View style={styles.row}>
@@ -29,8 +32,10 @@ export default function RatingStars({ rating, size = 13, showLabel = true }: Pro
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center' },
-  stars: { flexDirection: 'row', marginRight: 4 },
-  label: { ...typography.caption, color: colors.textSecondary },
-});
+function makeStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    row: { flexDirection: 'row', alignItems: 'center' },
+    stars: { flexDirection: 'row', marginRight: 4 },
+    label: { ...typography.caption, color: colors.textSecondary },
+  });
+}

@@ -9,7 +9,7 @@ export const GUTTER_TABLET = 32;
 export const GUTTER_DESKTOP = 48;
 export const GUTTER_WIDE = 64;
 
-export const GRID_GAP = spacing.md; // 12 — a bit more breathing room between cards
+export const GRID_GAP = spacing.lg; // 16 — more breathing room between cards, less "congested" grid
 
 export const BREAKPOINTS = {
   sm: 600,   // tablet / large phone landscape
