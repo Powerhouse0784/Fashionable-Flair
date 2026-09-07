@@ -3,7 +3,6 @@ import {
   View,
   FlatList,
   StyleSheet,
-  Pressable,
   Animated,
   Platform,
   NativeSyntheticEvent,
@@ -36,7 +35,6 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   const flatListRef = useRef<FlatList>(null);
   const useNativeDriver = Platform.OS !== 'web';
 
-  // Reset scroll when images change
   React.useEffect(() => {
     if (flatListRef.current && images.length > 0) {
       flatListRef.current.scrollToOffset({ offset: 0, animated: false });
@@ -55,18 +53,17 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     ]).start(() => setHeartVisible(false));
   };
 
-  // FIX: Handle tap/double-tap for both web and mobile
   const handleTap = (e?: any) => {
     if (!onDoubleTap) return;
 
-    // For web, check if it's a double click
+    // Web double-click
     if (Platform.OS === 'web' && e?.nativeEvent?.detail === 2) {
       onDoubleTap();
       triggerHeartBurst();
       return;
     }
 
-    // For mobile or single click, use time-based detection
+    // Mobile / time-based double tap
     const now = Date.now();
     if (now - lastTapRef.current < DOUBLE_TAP_WINDOW_MS) {
       onDoubleTap();
@@ -75,17 +72,6 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     } else {
       lastTapRef.current = now;
     }
-  };
-
-  // FIX: Web-specific double-click handler using Pressable's onPress with custom logic
-  const handlePress = (e: any) => {
-    if (Platform.OS === 'web') {
-      if (e?.nativeEvent?.detail === 2) {
-        handleTap(e);
-        return;
-      }
-    }
-    handleTap(e);
   };
 
   const HeartOverlay = heartVisible && (
@@ -97,32 +83,29 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     </Animated.View>
   );
 
-  // FIX: Remove visual feedback from Pressable to avoid blinking
-  const ImageContainer = ({ children }: { children: React.ReactNode }) => {
-    return (
-      <Pressable
-        onPress={handlePress}
-        style={{ width, height: width }}
-        android_ripple={{ color: 'transparent' }}
-        hitSlop={{ top: 0, bottom: 0, left: 0, right: 0 }}
-      >
-        {children}
-      </Pressable>
-    );
-  };
-
+  // Single-image case: simple container with tap
   if (images.length === 0) {
     return (
-      <ImageContainer>
+      <View
+        style={{ width, height: width }}
+        onStartShouldSetResponder={() => true}
+        // @ts-ignore - web onClick
+        onClick={handleTap}
+      >
         <ProductPlaceholder category={category} />
         {HeartOverlay}
-      </ImageContainer>
+      </View>
     );
   }
 
   if (images.length === 1) {
     return (
-      <ImageContainer>
+      <View
+        style={{ width, height: width }}
+        onStartShouldSetResponder={() => true}
+        // @ts-ignore - web onClick
+        onClick={handleTap}
+      >
         <Image
           source={{ uri: images[0] }}
           style={styles.image}
@@ -131,7 +114,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
           cachePolicy="memory-disk"
         />
         {HeartOverlay}
-      </ImageContainer>
+      </View>
     );
   }
 
@@ -143,7 +126,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   };
 
   return (
-    <ImageContainer>
+    <View style={{ width, height: width }}>
       <FlatList
         ref={flatListRef}
         data={images}
@@ -157,8 +140,13 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
         overScrollMode="never"
         decelerationRate="fast"
         removeClippedSubviews={false}
-        renderItem={({ item }) => (
-          <View style={{ width, height: width }}>
+        renderItem={({ item, index }) => (
+          <View
+            style={{ width, height: width }}
+            onStartShouldSetResponder={() => true}
+            // @ts-ignore - web onClick
+            onClick={handleTap}
+          >
             <Image
               source={{ uri: item }}
               style={{ width: '100%', height: '100%' }}
@@ -174,12 +162,15 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
       <View style={styles.dotsContainer} pointerEvents="none">
         <View style={styles.dots}>
           {images.map((_, i) => (
-            <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
+            <View
+              key={i}
+              style={[styles.dot, i === activeIndex && styles.dotActive]}
+            />
           ))}
         </View>
       </View>
       {HeartOverlay}
-    </ImageContainer>
+    </View>
   );
 }
 
@@ -211,7 +202,7 @@ function makeStyles(colors: ColorTheme) {
       backgroundColor: 'rgba(255,255,255,0.5)',
     },
     dotActive: {
-      backgroundColor: '#FFD700',
+      backgroundColor: '#fff', // soft light pink
       width: 20,
     },
     heartBurst: {
