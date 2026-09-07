@@ -8,7 +8,6 @@ import {
   Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,22 +18,14 @@ import { hapticSelection } from '@/utils/haptics';
 import ProductPlaceholder from './ProductPlaceholder';
 
 interface Props {
-  images: string[]; // already filtered to real photos — may be empty
+  images: string[];
   category: CategoryKey;
-  width: number; // exact rendered width of the container, for paging math
-  /** Fires on a double-tap anywhere on the image — the Instagram-style
-   *  "double tap to like" gesture. Optional so this component still works
-   *  fine anywhere that doesn't need it. */
+  width: number;
   onDoubleTap?: () => void;
 }
 
 const DOUBLE_TAP_WINDOW_MS = 300;
 
-/**
- * Swipeable photo gallery, Amazon/Flipkart-style — one photo per page with
- * dot indicators. Falls back to the single designed placeholder when there
- * are no real photos at all, so callers don't need to branch on that.
- */
 export default function ProductImageGallery({ images, category, width, onDoubleTap }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -45,7 +36,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   const flatListRef = useRef<FlatList>(null);
   const useNativeDriver = Platform.OS !== 'web';
 
-  // FIX: Reset scroll when images change
+  // Reset scroll when images change
   React.useEffect(() => {
     if (flatListRef.current && images.length > 0) {
       flatListRef.current.scrollToOffset({ offset: 0, animated: false });
@@ -64,16 +55,38 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     ]).start(() => setHeartVisible(false));
   };
 
-  const handleTap = () => {
+  // FIX: Handle tap/double-tap for both web and mobile
+  const handleTap = (e?: any) => {
     if (!onDoubleTap) return;
+    
+    // For web, check if it's a double click
+    if (Platform.OS === 'web' && e?.nativeEvent?.detail === 2) {
+      onDoubleTap();
+      triggerHeartBurst();
+      return;
+    }
+
+    // For mobile or single click, use time-based detection
     const now = Date.now();
     if (now - lastTapRef.current < DOUBLE_TAP_WINDOW_MS) {
       onDoubleTap();
       triggerHeartBurst();
-      lastTapRef.current = 0; // avoid a triple-tap re-triggering immediately
+      lastTapRef.current = 0;
     } else {
       lastTapRef.current = now;
     }
+  };
+
+  // FIX: Web-specific double-click handler using Pressable's onPress with custom logic
+  const handlePress = (e: any) => {
+    if (Platform.OS === 'web') {
+      // On web, Pressable passes the event with nativeEvent
+      if (e?.nativeEvent?.detail === 2) {
+        handleTap(e);
+        return;
+      }
+    }
+    handleTap(e);
   };
 
   const HeartOverlay = heartVisible && (
@@ -82,18 +95,30 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     </Animated.View>
   );
 
+  // FIX: Create a wrapper using Pressable with web compatibility
+  const ImageContainer = ({ children }: { children: React.ReactNode }) => {
+    return (
+      <Pressable 
+        onPress={handlePress}
+        style={{ width, height: width }}
+      >
+        {children}
+      </Pressable>
+    );
+  };
+
   if (images.length === 0) {
     return (
-      <Pressable onPress={handleTap} style={{ width, height: width }}>
+      <ImageContainer>
         <ProductPlaceholder category={category} />
         {HeartOverlay}
-      </Pressable>
+      </ImageContainer>
     );
   }
 
   if (images.length === 1) {
     return (
-      <Pressable onPress={handleTap} style={{ width, height: width }}>
+      <ImageContainer>
         <Image 
           source={{ uri: images[0] }} 
           style={styles.image} 
@@ -102,7 +127,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
           cachePolicy="memory-disk"
         />
         {HeartOverlay}
-      </Pressable>
+      </ImageContainer>
     );
   }
 
@@ -113,15 +138,8 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     }
   };
 
-  // FIX: Handle scroll to specific index
-  const scrollToIndex = (index: number) => {
-    if (flatListRef.current && index >= 0 && index < images.length) {
-      flatListRef.current.scrollToOffset({ offset: index * width, animated: true });
-    }
-  };
-
   return (
-    <View style={{ width, height: width, position: 'relative' }}>
+    <ImageContainer>
       <FlatList
         ref={flatListRef}
         data={images}
@@ -131,7 +149,6 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        // FIX: Important props for scroll to work properly
         bounces={false}
         overScrollMode="never"
         decelerationRate="fast"
@@ -149,20 +166,19 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
           </View>
         )}
       />
-      {/* FIX: Dots with dark background for visibility on any image */}
+      {/* Dots with dark background */}
       <View style={styles.dotsContainer} pointerEvents="none">
         <View style={styles.dots}>
           {images.map((_, i) => (
-            <Pressable
+            <View
               key={i}
               style={[styles.dot, i === activeIndex && styles.dotActive]}
-              onPress={() => scrollToIndex(i)}
             />
           ))}
         </View>
       </View>
       {HeartOverlay}
-    </View>
+    </ImageContainer>
   );
 }
 
