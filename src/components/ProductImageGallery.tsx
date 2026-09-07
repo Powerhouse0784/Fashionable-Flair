@@ -54,19 +54,41 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     ]).start(() => setHeartVisible(false));
   };
 
-  // FIX: Time-based double-tap detection - works on both platforms
-  const handleTap = () => {
+  // FIX: RN time-based double-tap detection
+  const handleRNPress = () => {
     if (!onDoubleTap) return;
 
     const now = Date.now();
     if (now - lastTapRef.current < DOUBLE_TAP_WINDOW_MS) {
-      // Double tap detected!
       onDoubleTap();
       triggerHeartBurst();
       lastTapRef.current = 0;
     } else {
-      // Single tap - record the time
       lastTapRef.current = now;
+    }
+  };
+
+  // FIX: Web click handler with time-based detection
+  const handleWebClick = (e: any) => {
+    if (!onDoubleTap) return;
+    
+    const now = Date.now();
+    if (now - lastTapRef.current < DOUBLE_TAP_WINDOW_MS) {
+      onDoubleTap();
+      triggerHeartBurst();
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  };
+
+  // FIX: Web double click handler
+  const handleWebDoubleClick = (e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onDoubleTap) {
+      onDoubleTap();
+      triggerHeartBurst();
     }
   };
 
@@ -83,7 +105,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   const renderGallery = () => {
     if (images.length === 0) {
       return (
-        <View style={{ width, height: width }}>
+        <View style={{ width, height: width, position: 'relative' }}>
           <ProductPlaceholder category={category} />
           {HeartOverlay}
         </View>
@@ -94,8 +116,8 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
       return (
         <TouchableOpacity
           activeOpacity={1}
-          style={{ width, height: width }}
-          onPress={handleTap}
+          style={{ width, height: width, position: 'relative' }}
+          onPress={handleRNPress}
         >
           <Image
             source={{ uri: images[0] }}
@@ -135,7 +157,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
             <TouchableOpacity
               activeOpacity={1}
               style={{ width, height: width }}
-              onPress={handleTap}
+              onPress={handleRNPress}
             >
               <Image
                 source={{ uri: item }}
@@ -164,30 +186,18 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     );
   };
 
-  // FIX: Web uses div with click handlers
+  // FIX: Web - Use View with press handlers via TouchableOpacity
   if (Platform.OS === 'web') {
     return (
-      <div
-        style={{
-          width: width,
-          height: width,
-          position: 'relative',
-          cursor: 'pointer',
-          userSelect: 'none',
-          WebkitTapHighlightColor: 'transparent',
-          outline: 'none',
-        }}
-        onClick={handleTap}
-        onDoubleClick={(e) => {
-          e.preventDefault();
-          if (onDoubleTap) {
-            onDoubleTap();
-            triggerHeartBurst();
-          }
-        }}
+      <TouchableOpacity
+        activeOpacity={1}
+        style={{ width, height: width, position: 'relative' }}
+        onPress={handleWebClick}
+        // @ts-ignore - web only
+        onDoubleClick={handleWebDoubleClick}
       >
         {renderGallery()}
-      </div>
+      </TouchableOpacity>
     );
   }
 
@@ -196,7 +206,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     <TouchableOpacity
       activeOpacity={1}
       style={{ width, height: width, position: 'relative' }}
-      onPress={handleTap}
+      onPress={handleRNPress}
     >
       {renderGallery()}
     </TouchableOpacity>
