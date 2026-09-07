@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.fashionableflair.app",
@@ -18,7 +20,11 @@
         "backgroundColor": "#FFF8F3"
       },
       "package": "com.fashionableflair.app",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -40,6 +46,17 @@
           "backgroundColor": "#FFF8F3"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "696052a4-693a-49ce-b45c-26ab98126fb2"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/696052a4-693a-49ce-b45c-26ab98126fb2"
+    }
   }
 }

@@ -10,6 +10,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   Modal,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,7 +20,7 @@ import { fonts } from '@/hooks/useAppFonts';
 import { useIsWideScreen } from '@/hooks/useResponsive';
 import { useTabBarHeight } from '@/hooks/useTabBarHeight';
 import { isSupabaseConfigured } from '@/services/supabaseClient';
-import { sendChatMessage, ChatMessage } from '@/services/chatService';
+import { sendChatMessage, ChatMessage, checkChatbotHealth } from '@/services/chatService';
 
 const SUGGESTIONS = ['How do I place an order?', 'What\u2019s your return policy?', 'How can I contact you?'];
 
@@ -30,21 +31,12 @@ const WELCOME_MESSAGE: ChatMessage = {
 };
 
 interface Props {
-  /** True on the admin screens — this widget is for shoppers, not store
-   *  management, and shouldn't float over the dashboard. Passed down from
-   *  App.tsx via a navigation ref rather than useNavigationState() here,
-   *  since this component is a sibling of the navigator tree, not a
-   *  descendant of an actual screen — that hook would (and did) crash. */
   hidden?: boolean;
 }
 
 export default function ChatWidget({ hidden }: Props) {
   const { colors } = useTheme();
   const isWide = useIsWideScreen();
-  // Shared with BottomTabNavigator via useTabBarHeight so the FAB always
-  // clears the actual tab bar — computing this separately here (as before)
-  // was exactly what let them drift out of sync when the tab bar's own
-  // height changed.
   const tabBarHeight = useTabBarHeight();
   const styles = makeStyles(colors, tabBarHeight);
 
@@ -52,7 +44,54 @@ export default function ChatWidget({ hidden }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [chatStatus, setChatStatus] = useState<{ isAvailable: boolean; message: string } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  
+  // Animated pulse for loading dots
+  const [dot1] = useState(new Animated.Value(0));
+  const [dot2] = useState(new Animated.Value(0));
+  const [dot3] = useState(new Animated.Value(0));
+
+  // Animated loading dots
+  useEffect(() => {
+    if (sending) {
+      const animations = [dot1, dot2, dot3].map((dot, index) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.delay(index * 200),
+            Animated.spring(dot, {
+              toValue: 1,
+              useNativeDriver: true,
+              speed: 12,
+              bounciness: 8,
+            }),
+            Animated.delay(400),
+            Animated.spring(dot, {
+              toValue: 0,
+              useNativeDriver: true,
+              speed: 12,
+              bounciness: 8,
+            }),
+          ])
+        );
+      });
+      
+      animations.forEach(anim => anim.start());
+      
+      return () => {
+        animations.forEach(anim => anim.stop());
+      };
+    }
+  }, [sending]);
+
+  // Check chatbot health on mount
+  useEffect(() => {
+    const checkHealth = async () => {
+      const status = await checkChatbotHealth();
+      setChatStatus(status);
+    };
+    checkHealth();
+  }, []);
 
   useEffect(() => {
     if (open) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -60,25 +99,106 @@ export default function ChatWidget({ hidden }: Props) {
 
   if (hidden) return null;
 
-  const handleSend = async (text?: string) => {
-    const messageText = (text ?? input).trim();
-    if (!messageText || sending) return;
+  // FIX: Add optimistic response for faster feel
+const handleSend = async (text?: string) => {
+  const messageText = (text ?? input).trim();
+  if (!messageText || sending) return;
 
-    const userMessage: ChatMessage = { role: 'user', text: messageText };
-    const nextMessages = [...messages, userMessage];
-    setMessages(nextMessages);
-    setInput('');
-    setSending(true);
+  const userMessage: ChatMessage = { role: 'user', text: messageText };
+  const nextMessages = [...messages, userMessage];
+  setMessages(nextMessages);
+  setInput('');
+  setSending(true);
 
-    try {
-      const reply = await sendChatMessage(messageText, nextMessages);
-      setMessages((prev) => [...prev, { role: 'model', text: reply }]);
-    } catch (err: any) {
-      setMessages((prev) => [...prev, { role: 'model', text: err.message ?? 'Something went wrong.' }]);
-    } finally {
-      setSending(false);
+  // FIX: Show "typing" immediately
+  setTimeout(() => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, 50);
+
+  try {
+    const reply = await sendChatMessage(messageText, nextMessages);
+    setMessages((prev) => {
+      const lastMessage = prev[prev.length - 1];
+      if (lastMessage?.role === 'model' && lastMessage.text.startsWith('❌')) {
+        return [...prev.slice(0, -1), { role: 'model', text: reply }];
+      }
+      return [...prev, { role: 'model', text: reply }];
+    });
+  } catch (err: any) {
+    let errorMsg = err.message ?? 'Something went wrong.';
+    if (errorMsg.includes('timeout')) {
+      errorMsg = '⏳ Taking too long — please try again.';
+    } else if (errorMsg.includes('Network')) {
+      errorMsg = '📡 Network error — check connection.';
+    } else if (errorMsg.includes('configured')) {
+      errorMsg = '⚙️ Chatbot not configured yet.';
+    }
+    setMessages((prev) => [...prev, { role: 'model', text: `❌ ${errorMsg}` }]);
+  } finally {
+    setSending(false);
+  }
+};
+
+  // Retry last message
+  const handleRetry = () => {
+    const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+    if (lastUserMessage) {
+      // Remove the last error message
+      setMessages(prev => prev.slice(0, -1));
+      handleSend(lastUserMessage.text);
     }
   };
+
+  // Loading dots animation component
+  const LoadingDots = () => (
+    <View style={styles.loadingDots}>
+      <Animated.View style={[
+        styles.loadingDot,
+        {
+          transform: [{
+            scale: dot1.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.5, 1.2],
+            }),
+          }],
+          opacity: dot1.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.3, 1],
+          }),
+        },
+      ]} />
+      <Animated.View style={[
+        styles.loadingDot,
+        {
+          transform: [{
+            scale: dot2.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.5, 1.2],
+            }),
+          }],
+          opacity: dot2.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.3, 1],
+          }),
+        },
+      ]} />
+      <Animated.View style={[
+        styles.loadingDot,
+        {
+          transform: [{
+            scale: dot3.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.5, 1.2],
+            }),
+          }],
+          opacity: dot3.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.3, 1],
+          }),
+        },
+      ]} />
+    </View>
+  );
 
   const ChatPanel = (
     <View style={[styles.panelBase, isWide && styles.panelWide]}>
@@ -88,8 +208,18 @@ export default function ChatWidget({ hidden }: Props) {
             <Ionicons name="sparkles" size={14} color={colors.textInverse} />
           </View>
           <View>
-            <Text style={styles.panelTitle}>Flair Assistant</Text>
-            <Text style={styles.panelSubtitle}>Ask about products, orders & policies</Text>
+            <View style={styles.headerTitleRow}>
+              <Text style={styles.panelTitle}>Flair Assistant</Text>
+              {chatStatus && (
+                <View style={[
+                  styles.statusDot,
+                  { backgroundColor: chatStatus.isAvailable ? colors.success : colors.danger }
+                ]} />
+              )}
+            </View>
+            <Text style={styles.panelSubtitle}>
+              {chatStatus?.isAvailable ? 'Online' : chatStatus?.message || 'Ask about products, orders & policies'}
+            </Text>
           </View>
         </View>
         <TouchableOpacity onPress={() => setOpen(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -105,17 +235,34 @@ export default function ChatWidget({ hidden }: Props) {
       )}
 
       <ScrollView ref={scrollRef} style={styles.messages} contentContainerStyle={{ paddingVertical: spacing.sm }}>
-        {messages.map((msg, i) => (
-          <View key={i} style={[styles.bubbleRow, msg.role === 'user' && styles.bubbleRowUser]}>
-            <View style={[styles.bubble, msg.role === 'user' ? styles.bubbleUser : styles.bubbleModel]}>
-              <Text style={[styles.bubbleText, msg.role === 'user' && styles.bubbleTextUser]}>{msg.text}</Text>
+        {messages.map((msg, i) => {
+          const isError = msg.role === 'model' && msg.text.startsWith('❌');
+          return (
+            <View key={i} style={[styles.bubbleRow, msg.role === 'user' && styles.bubbleRowUser]}>
+              <View style={[
+                styles.bubble,
+                msg.role === 'user' ? styles.bubbleUser : styles.bubbleModel,
+                isError && styles.bubbleError,
+              ]}>
+                <Text style={[
+                  styles.bubbleText,
+                  msg.role === 'user' && styles.bubbleTextUser,
+                  isError && styles.bubbleTextError,
+                ]}>{msg.text}</Text>
+                {isError && (
+                  <TouchableOpacity onPress={handleRetry} style={styles.retryButton}>
+                    <Ionicons name="refresh-outline" size={14} color={colors.primary} />
+                    <Text style={styles.retryText}>Retry</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
         {sending && (
           <View style={styles.bubbleRow}>
-            <View style={[styles.bubble, styles.bubbleModel]}>
-              <ActivityIndicator size="small" color={colors.textSecondary} />
+            <View style={[styles.bubble, styles.bubbleModel, styles.loadingBubble]}>
+              <LoadingDots />
             </View>
           </View>
         )}
@@ -139,8 +286,14 @@ export default function ChatWidget({ hidden }: Props) {
           placeholderTextColor={colors.textMuted}
           onSubmitEditing={() => handleSend()}
           editable={!sending}
+          multiline
+          numberOfLines={1}
         />
-        <TouchableOpacity style={styles.sendButton} onPress={() => handleSend()} disabled={sending || !input.trim()}>
+        <TouchableOpacity 
+          style={[styles.sendButton, (!input.trim() || sending) && styles.sendButtonDisabled]} 
+          onPress={() => handleSend()} 
+          disabled={sending || !input.trim()}
+        >
           <Ionicons name="arrow-up" size={18} color={colors.textInverse} />
         </TouchableOpacity>
       </View>
@@ -192,15 +345,7 @@ function makeStyles(colors: ColorTheme, tabBarHeight: number) {
         : { shadowColor: colors.shadow, shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6 }),
     },
     fabWide: { bottom: 28, right: 28 },
-    // Clears the actual tab bar height (matches BottomTabNavigator's own
-    // math) plus a 16px gap, instead of a guessed fixed number that only
-    // happened to work on some devices.
     fabNarrow: { bottom: tabBarHeight + 16, right: 20 },
-    // Shared visual style, deliberately with NO position/size — the modal
-    // sheet (narrow) and the anchored box (wide) size it completely
-    // differently, and this used to hardcode the wide dimensions onto both,
-    // which is what broke the mobile layout (a fixed 360×480 box floating
-    // inside the modal instead of filling it).
     panelBase: {
       flex: 1,
       backgroundColor: colors.surface,
@@ -237,6 +382,12 @@ function makeStyles(colors: ColorTheme, tabBarHeight: number) {
       borderBottomColor: colors.divider,
     },
     panelHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    statusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
     avatarDot: {
       width: 30,
       height: 30,
@@ -259,11 +410,47 @@ function makeStyles(colors: ColorTheme, tabBarHeight: number) {
     messages: { flex: 1, paddingHorizontal: spacing.md },
     bubbleRow: { flexDirection: 'row', marginBottom: spacing.sm },
     bubbleRowUser: { justifyContent: 'flex-end' },
-    bubble: { maxWidth: '82%', borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+    bubble: { 
+      maxWidth: '85%', 
+      borderRadius: radius.md, 
+      paddingHorizontal: spacing.md, 
+      paddingVertical: spacing.sm,
+    },
     bubbleModel: { backgroundColor: colors.surfaceAlt, borderTopLeftRadius: 2 },
     bubbleUser: { backgroundColor: colors.primary, borderTopRightRadius: 2 },
-    bubbleText: { ...typography.bodySmall, color: colors.textPrimary, lineHeight: 19 },
+    bubbleError: { backgroundColor: colors.danger + '15', borderWidth: 1, borderColor: colors.danger },
+    bubbleText: { ...typography.bodySmall, color: colors.textPrimary, lineHeight: 20 },
     bubbleTextUser: { color: colors.textInverse },
+    bubbleTextError: { color: colors.danger },
+    loadingBubble: {
+      minHeight: 40,
+      justifyContent: 'center',
+    },
+    loadingDots: {
+      flexDirection: 'row',
+      paddingHorizontal: spacing.xs,
+      gap: 5,
+      alignItems: 'center',
+      minHeight: 30,
+    },
+    loadingDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: colors.primary,
+    },
+    retryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 4,
+      padding: 4,
+    },
+    retryText: {
+      ...typography.caption,
+      color: colors.primary,
+      fontFamily: fonts.bodySemiBold,
+    },
     suggestions: { gap: spacing.xs, marginTop: spacing.xs },
     suggestionChip: {
       alignSelf: 'flex-start',
@@ -287,9 +474,10 @@ function makeStyles(colors: ColorTheme, tabBarHeight: number) {
       backgroundColor: colors.background,
       borderRadius: radius.pill,
       paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      paddingVertical: Platform.OS === 'ios' ? spacing.sm : spacing.xs,
       ...typography.bodySmall,
       color: colors.textPrimary,
+      maxHeight: 100,
     },
     sendButton: {
       width: 36,
@@ -298,6 +486,9 @@ function makeStyles(colors: ColorTheme, tabBarHeight: number) {
       backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    sendButtonDisabled: {
+      opacity: 0.5,
     },
   });
 }

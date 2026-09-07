@@ -8,6 +8,7 @@ import {
   Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,7 +42,16 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   const [heartVisible, setHeartVisible] = useState(false);
   const heartScale = useRef(new Animated.Value(0)).current;
   const lastTapRef = useRef(0);
+  const flatListRef = useRef<FlatList>(null);
   const useNativeDriver = Platform.OS !== 'web';
+
+  // FIX: Reset scroll when images change
+  React.useEffect(() => {
+    if (flatListRef.current && images.length > 0) {
+      flatListRef.current.scrollToOffset({ offset: 0, animated: false });
+    }
+    setActiveIndex(0);
+  }, [images]);
 
   const triggerHeartBurst = () => {
     hapticSelection();
@@ -84,7 +94,13 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   if (images.length === 1) {
     return (
       <Pressable onPress={handleTap} style={{ width, height: width }}>
-        <Image source={{ uri: images[0] }} style={styles.image} contentFit="cover" transition={200} />
+        <Image 
+          source={{ uri: images[0] }} 
+          style={styles.image} 
+          contentFit="cover" 
+          transition={200}
+          cachePolicy="memory-disk"
+        />
         {HeartOverlay}
       </Pressable>
     );
@@ -92,12 +108,22 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (index !== activeIndex) setActiveIndex(index);
+    if (index !== activeIndex && index >= 0 && index < images.length) {
+      setActiveIndex(index);
+    }
+  };
+
+  // FIX: Handle scroll to specific index
+  const scrollToIndex = (index: number) => {
+    if (flatListRef.current && index >= 0 && index < images.length) {
+      flatListRef.current.scrollToOffset({ offset: index * width, animated: true });
+    }
   };
 
   return (
-    <Pressable onPress={handleTap} style={{ width, height: width }}>
+    <View style={{ width, height: width, position: 'relative' }}>
       <FlatList
+        ref={flatListRef}
         data={images}
         keyExtractor={(uri, i) => `${uri}-${i}`}
         horizontal
@@ -105,41 +131,71 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        // FIX: Important props for scroll to work properly
+        bounces={false}
+        overScrollMode="never"
+        decelerationRate="fast"
+        removeClippedSubviews={false}
         renderItem={({ item }) => (
-          <Image source={{ uri: item }} style={{ width, height: width }} contentFit="cover" transition={200} />
+          <View style={{ width, height: width }}>
+            <Image 
+              source={{ uri: item }} 
+              style={{ width: '100%', height: '100%' }} 
+              contentFit="cover" 
+              transition={200}
+              cachePolicy="memory-disk"
+              onError={() => console.log('Failed to load image:', item)}
+            />
+          </View>
         )}
       />
-      <View style={styles.dots}>
-        {images.map((_, i) => (
-          <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
-        ))}
+      {/* FIX: Dots with dark background for visibility on any image */}
+      <View style={styles.dotsContainer} pointerEvents="none">
+        <View style={styles.dots}>
+          {images.map((_, i) => (
+            <Pressable
+              key={i}
+              style={[styles.dot, i === activeIndex && styles.dotActive]}
+              onPress={() => scrollToIndex(i)}
+            />
+          ))}
+        </View>
       </View>
       {HeartOverlay}
-    </Pressable>
+    </View>
   );
 }
 
 function makeStyles(colors: ColorTheme) {
   return StyleSheet.create({
     image: { width: '100%', height: '100%' },
-    dots: {
+    dotsContainer: {
       position: 'absolute',
       bottom: 12,
       left: 0,
       right: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dots: {
       flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
+      backgroundColor: 'rgba(0,0,0,0.3)',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 12,
     },
     dot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
       backgroundColor: 'rgba(255,255,255,0.5)',
     },
     dotActive: {
-      backgroundColor: '#FFFFFF',
-      width: 18,
+      backgroundColor: '#FFD700',
+      width: 20,
     },
     heartBurst: {
       position: 'absolute',

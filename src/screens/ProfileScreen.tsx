@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -41,10 +41,6 @@ function formatSyncTime(date: Date | null): string {
   return `${hours} hr ago`;
 }
 
-// No customer accounts in this app — shoppers just browse, wishlist, and
-// buy on Meesho. The only thing hiding behind a login is store management.
-// Tapping the footer 5x is the sole entry point for anyone not already
-// signed in as admin; nothing on screen hints this exists otherwise.
 const SECRET_TAP_COUNT = 5;
 const SECRET_TAP_WINDOW_MS = 2500;
 
@@ -59,7 +55,7 @@ export default function ProfileScreen() {
   const [tapHintVisible, setTapHintVisible] = useState(false);
 
   const handleSecretTap = () => {
-    if (isAdmin) return; // already have visible access, no need for the gesture
+    if (isAdmin) return;
     tapCountRef.current += 1;
     if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
     tapTimerRef.current = setTimeout(() => {
@@ -83,20 +79,37 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleOffersPress = () => {
+    Alert.alert('Offers & Deals', 'Check out our latest offers and deals on Meesho!', [
+      { 
+        text: 'View on Meesho', 
+        onPress: () => Linking.openURL('https://www.meesho.com/h6z4l') 
+      },
+      { text: 'Close', style: 'cancel' },
+    ]);
+  };
+
+  const handleNotificationsPress = () => {
+    Alert.alert('Notifications', 'You have no new notifications at this time.');
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <Container>
           <View style={styles.header}>
-            <View style={styles.avatar}>
-              <Ionicons name="diamond" size={26} color={colors.textInverse} />
+            {/* FIX: Round logo like avatar */}
+            <View style={styles.logoContainer}>
+              <Image 
+                source={require('@/assets/icon.png')} 
+                style={styles.logo}
+                resizeMode="cover"
+              />
             </View>
             <Text style={styles.name}>Fashionable Flair</Text>
             <Text style={styles.subtitle}>Jewellery that speaks your style</Text>
           </View>
 
-          {/* Only ever visible on a device signed in as an allow-listed
-              admin — regular visitors never see this section. */}
           {isAdmin && (
             <>
               <Text style={styles.sectionTitle}>Store Management</Text>
@@ -130,7 +143,7 @@ export default function ProfileScreen() {
           <View style={styles.card}>
             <MenuItem icon="storefront-outline" label="Visit our Meesho Store" onPress={() => Linking.openURL('https://www.meesho.com/h6z4l')} />
             <MenuItem icon="heart-outline" label="My Wishlist" onPress={() => navigation.navigate('Tabs', { screen: 'Wishlist' })} />
-            <MenuItem icon="pricetag-outline" label="Offers & Deals" />
+            <MenuItem icon="pricetag-outline" label="Offers & Deals" onPress={handleOffersPress} />
           </View>
 
           <Text style={styles.sectionTitle}>Preferences</Text>
@@ -157,8 +170,7 @@ export default function ProfileScreen() {
                 })}
               </View>
             </View>
-            <MenuItem icon="notifications-outline" label="Notifications" />
-            <MenuItem icon="language-outline" label="Language" />
+            <MenuItem icon="notifications-outline" label="Notifications" onPress={handleNotificationsPress} />
           </View>
 
           <Text style={styles.sectionTitle}>Support</Text>
@@ -185,15 +197,32 @@ export default function ProfileScreen() {
 function makeStyles(colors: ColorTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
-    header: { alignItems: 'center', paddingVertical: spacing.xl },
-    avatar: {
-      width: 64,
-      height: 64,
-      borderRadius: radius.pill,
-      backgroundColor: colors.primary,
+    header: { 
+      alignItems: 'center', 
+      paddingVertical: spacing.xl,
+    },
+    // FIX: Round logo like avatar
+    logoContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40, // Half of width/height for perfect circle
+      backgroundColor: colors.surfaceAlt,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: spacing.md,
+      overflow: 'hidden',
+      borderWidth: 2,
+      borderColor: colors.primary,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    logo: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
     },
     name: { ...typography.h3, color: colors.textPrimary },
     subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' },

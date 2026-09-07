@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
@@ -29,12 +29,6 @@ import Container from '@/components/Container';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type DetailRoute = RouteProp<RootStackParamList, 'ProductDetail'>;
 
-// The back/share/wishlist buttons overlaid on the product photo always sit
-// on a fixed translucent-white circle (see iconButton style) regardless of
-// light/dark mode — that's intentional, it's readable on any photo. So the
-// icon glyph inside must stay a fixed dark color too, not the theme's
-// textPrimary, which flips to near-white in dark mode and would disappear
-// against that white circle.
 const OVERLAY_ICON_COLOR = '#2B2320';
 
 export default function ProductDetailScreen() {
@@ -49,10 +43,24 @@ export default function ProductDetailScreen() {
   const { trackView } = useRecentlyViewed();
   const isWide = useIsWideScreen();
   const { width } = useWindowDimensions();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (product) trackView(product.id);
   }, [product?.id]);
+
+  // FIX: Instant scroll to top when screen focuses or product changes
+  useFocusEffect(
+    React.useCallback(() => {
+      // Instant scroll to top without delay
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    }, [productId])
+  );
+
+  // FIX: Also scroll when product changes
+  useEffect(() => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+  }, [productId]);
 
   if (!product) {
     return (
@@ -68,6 +76,11 @@ export default function ProductDetailScreen() {
 
   const handleShare = () => shareProduct(product.title, product.meeshoUrl);
   const handleBuyNow = () => goToMeesho(navigation, product.meeshoUrl, product.title);
+
+  // FIX: Instant navigation - no delay
+  const handleRelatedProductPress = (relatedProductId: string) => {
+    navigation.replace('ProductDetail', { productId: relatedProductId });
+  };
 
   const imageSize = isWide ? Math.min(460, width * 0.4) : width;
 
@@ -118,8 +131,6 @@ export default function ProductDetailScreen() {
         </Text>
       </View>
 
-      {/* Inline CTA — shown here on wide/web layouts. On phones this is
-          replaced by the sticky bottom bar so it's always reachable with a thumb. */}
       {isWide && (
         <TouchableOpacity
           style={[styles.ctaButtonInline, product.isAvailable === false && styles.ctaButtonDisabled]}
@@ -139,12 +150,22 @@ export default function ProductDetailScreen() {
   return (
     <WebPageWrapper>
     <View style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: isWide ? spacing.xxl : 100 }}>
+      <ScrollView 
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: isWide ? spacing.xxl : 100 }}
+      >
         {isWide ? (
           <Container>
             <View style={styles.rowLayout}>
               <View style={[styles.imageWrap, { width: imageSize, aspectRatio: 1, borderRadius: radius.lg }]}>
-                <ProductImageGallery images={productImages} category={product.category} width={imageSize} onDoubleTap={() => { if (!wishlisted) toggleWishlist(product.id); }} />
+                <ProductImageGallery 
+                  key={`gallery-${product.id}`}
+                  images={productImages} 
+                  category={product.category} 
+                  width={imageSize} 
+                  onDoubleTap={() => { if (!wishlisted) toggleWishlist(product.id); }} 
+                />
                 <View style={styles.imageOverlay}>
                   <TouchableOpacity style={styles.iconButton} onPress={() => goBackOrTo(navigation, 'Tabs')}>
                     <Ionicons name="arrow-back" size={20} color={OVERLAY_ICON_COLOR} />
@@ -171,9 +192,14 @@ export default function ProductDetailScreen() {
                 <SectionHeader title="You May Also Like" />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {related.map((item) => (
-                    <View key={item.id} style={{ marginRight: spacing.sm }}>
+                    <TouchableOpacity 
+                      key={item.id} 
+                      style={{ marginRight: spacing.sm }}
+                      onPress={() => handleRelatedProductPress(item.id)}
+                      activeOpacity={0.8}
+                    >
                       <ProductCard product={item} compact />
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </ScrollView>
               </>
@@ -181,10 +207,14 @@ export default function ProductDetailScreen() {
           </Container>
         ) : (
           <>
-            {/* Full-bleed hero image on phones — deliberately NOT inside
-                Container, which would otherwise inset it with the page gutter. */}
             <View style={styles.imageWrap}>
-              <ProductImageGallery images={productImages} category={product.category} width={width} onDoubleTap={() => { if (!wishlisted) toggleWishlist(product.id); }} />
+              <ProductImageGallery 
+                key={`gallery-${product.id}`}
+                images={productImages} 
+                category={product.category} 
+                width={width} 
+                onDoubleTap={() => { if (!wishlisted) toggleWishlist(product.id); }}
+              />
               <SafeAreaView edges={['top']} style={styles.imageOverlay}>
                 <TouchableOpacity style={styles.iconButton} onPress={() => goBackOrTo(navigation, 'Tabs')}>
                   <Ionicons name="arrow-back" size={20} color={OVERLAY_ICON_COLOR} />
@@ -212,9 +242,14 @@ export default function ProductDetailScreen() {
                   <SectionHeader title="You May Also Like" />
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     {related.map((item) => (
-                      <View key={item.id} style={{ marginRight: spacing.sm }}>
+                      <TouchableOpacity 
+                        key={item.id} 
+                        style={{ marginRight: spacing.sm }}
+                        onPress={() => handleRelatedProductPress(item.id)}
+                        activeOpacity={0.8}
+                      >
                         <ProductCard product={item} compact />
-                      </View>
+                      </TouchableOpacity>
                     ))}
                   </ScrollView>
                 </>
@@ -224,7 +259,6 @@ export default function ProductDetailScreen() {
         )}
       </ScrollView>
 
-      {/* Sticky CTA — phones and native app only; desktop web uses the inline button above */}
       {!isWide && (
         <SafeAreaView edges={['bottom']} style={styles.ctaBar}>
           <View style={styles.ctaPriceWrap}>
@@ -318,6 +352,7 @@ function makeStyles(colors: ColorTheme) {
     borderRadius: radius.pill,
     gap: spacing.xs,
     marginTop: spacing.lg,
+    marginBottom: spacing.lg,
     alignSelf: 'flex-start',
     paddingHorizontal: spacing.xl,
   },
@@ -332,8 +367,14 @@ function makeStyles(colors: ColorTheme) {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
+    paddingBottom: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
   ctaPriceWrap: { marginRight: spacing.md },
   ctaPriceLabel: { ...typography.caption, color: colors.textMuted },

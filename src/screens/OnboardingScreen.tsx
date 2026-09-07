@@ -8,6 +8,8 @@ import {
   useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,31 +19,26 @@ import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 
 interface Slide {
-  icon: string;
   title: string;
   description: string;
 }
 
 const SLIDES: Slide[] = [
   {
-    icon: 'diamond',
-    title: 'Welcome to Fashionable Flair',
-    description: 'Jewellery that speaks your style — browse our full handpicked collection.',
+    title: '✨ Welcome to\nFashionable Flair',
+    description: 'Discover jewellery that speaks your style — explore our handpicked collection.',
   },
   {
-    icon: 'heart',
-    title: 'Save What You Love',
-    description: 'Tap the heart on any product to add it to your Wishlist — saved right on your device, no account needed.',
+    title: '❤️ Save What You Love',
+    description: 'Tap the heart on any product to add it to your Wishlist — saved right on your device.',
   },
   {
-    icon: 'shield-checkmark',
-    title: 'Secure Checkout via Meesho',
-    description: 'When you\u2019re ready to buy, "Buy Now" takes you straight to our Meesho store to complete your purchase securely.',
+    title: '🛡️ Secure Checkout',
+    description: 'Ready to buy? "Buy Now" takes you to our Meesho store for secure purchase.',
   },
   {
-    icon: 'chatbubble-ellipses',
-    title: 'Have a Question? Just Ask',
-    description: 'Our chat assistant can answer anything about the app, our products, or how ordering works — any time.',
+    title: '💬 Have Questions?',
+    description: 'Our AI assistant can answer anything about products, orders, or our app.',
   },
 ];
 
@@ -52,11 +49,12 @@ interface Props {
 export default function OnboardingScreen({ onDone }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList>(null);
 
   const isLast = index === SLIDES.length - 1;
+  const isWeb = Platform.OS === 'web';
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -68,45 +66,104 @@ export default function OnboardingScreen({ onDone }: Props) {
       onDone();
       return;
     }
-    listRef.current?.scrollToIndex({ index: index + 1, animated: true });
+    const nextOffset = (index + 1) * width;
+    listRef.current?.scrollToOffset({ offset: nextOffset, animated: true });
   };
 
+  const renderSlide = ({ item }: { item: Slide }) => (
+    <View style={[styles.slide, { width, height }]}>
+      {/* Decorative elements */}
+      <View style={styles.decorativeCircle1} />
+      <View style={styles.decorativeCircle2} />
+      <View style={styles.decorativeCircle3} />
+
+      {/* Content wrapper with flex distribution */}
+      <View style={styles.contentWrapper}>
+        <View style={styles.topSpacer} />
+
+        {/* FIX: Big Logo covering full circle */}
+        <View style={styles.iconContainer}>
+          <Image 
+            source={require('@/assets/icon.png')} 
+            style={styles.centerLogo}
+            resizeMode="cover"
+          />
+        </View>
+
+        <View style={styles.textContainer}>
+          <Text style={[styles.title, isWeb && styles.titleWeb]}>
+            {item.title}
+          </Text>
+
+          <Text style={[styles.description, isWeb && styles.descriptionWeb]}>
+            {item.description}
+          </Text>
+        </View>
+
+        <View style={styles.bottomSpacer} />
+      </View>
+    </View>
+  );
+
   return (
-    <LinearGradient colors={[colors.background, colors.surfaceAlt]} style={styles.safe}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <TouchableOpacity style={styles.skipButton} onPress={onDone} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+    <LinearGradient
+      colors={[colors.background, colors.surfaceAlt]}
+      style={[styles.safe, { height }]}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        {/* Skip Button - Top Right (dark) */}
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={onDone}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
 
-        <FlatList
-          ref={listRef}
-          data={SLIDES}
-          keyExtractor={(_, i) => String(i)}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          renderItem={({ item }) => (
-            <View style={[styles.slide, { width }]}>
-              <View style={styles.iconCircle}>
-                <Ionicons name={item.icon as any} size={40} color={colors.textInverse} />
-              </View>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.description}>{item.description}</Text>
-            </View>
-          )}
-        />
+        {/* Slides - Takes full remaining space */}
+        <View style={styles.slidesContainer}>
+          <FlatList
+            ref={listRef}
+            data={SLIDES}
+            keyExtractor={(_, i) => String(i)}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            renderItem={renderSlide}
+            style={styles.flatList}
+          />
+        </View>
 
+        {/* Footer - Bottom with progress and button */}
         <View style={styles.footer}>
-          <View style={styles.dots}>
+          <View style={styles.progressContainer}>
             {SLIDES.map((_, i) => (
-              <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
+              <View
+                key={i}
+                style={[
+                  styles.progressDot,
+                  i === index && styles.progressDotActive,
+                ]}
+              />
             ))}
           </View>
-          <TouchableOpacity style={styles.nextButton} onPress={goNext} activeOpacity={0.85}>
-            <Text style={styles.nextButtonText}>{isLast ? 'Get Started' : 'Next'}</Text>
-            <Ionicons name="arrow-forward" size={18} color={colors.textInverse} />
+
+          <TouchableOpacity
+            style={styles.nextButton}
+            onPress={goNext}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.nextButtonText}>
+              {isLast ? 'Get Started' : 'Next'}
+            </Text>
+            <Ionicons
+              name="arrow-forward"
+              size={18}
+              color={colors.textInverse}
+              style={{ marginLeft: 6 }}
+            />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -115,41 +172,190 @@ export default function OnboardingScreen({ onDone }: Props) {
 }
 
 function makeStyles(colors: ColorTheme) {
+  const isWeb = Platform.OS === 'web';
+
   return StyleSheet.create({
     safe: { flex: 1 },
-    skipButton: { alignSelf: 'flex-end', paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-    skipText: { ...typography.bodySmall, color: colors.textSecondary, fontFamily: fonts.bodySemiBold },
-    slide: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl },
-    iconCircle: {
-      width: 96,
-      height: 96,
+    safeArea: { flex: 1 },
+    
+    // Dark Skip Button
+    skipButton: {
+      position: 'absolute',
+      top: isWeb ? 20 : 10,
+      right: isWeb ? 24 : 14,
+      zIndex: 100,
+      backgroundColor: '#111827',
+      paddingHorizontal: isWeb ? 16 : 12,
+      paddingVertical: isWeb ? 8 : 5,
       borderRadius: radius.pill,
-      backgroundColor: colors.primary,
+    },
+    skipText: {
+      color: '#FFFFFF',
+      fontFamily: fonts.bodySemiBold,
+      fontSize: isWeb ? 13 : 12,
+      fontWeight: '600',
+      letterSpacing: 0.3,
+    },
+    
+    slidesContainer: {
+      flex: 1,
+      marginTop: 0,
+    },
+    flatList: {
+      flex: 1,
+    },
+    slide: {
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: spacing.xl,
+      position: 'relative',
     },
-    title: { ...typography.h2, color: colors.textPrimary, textAlign: 'center' },
+    contentWrapper: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '100%',
+      maxWidth: isWeb ? 600 : '100%',
+      paddingHorizontal: isWeb ? spacing.xxl : spacing.xl,
+      paddingVertical: isWeb ? spacing.xl : spacing.lg,
+    },
+    topSpacer: {
+      flex: 1,
+      maxHeight: isWeb ? 20 : 10,
+    },
+    bottomSpacer: {
+      flex: 1,
+      maxHeight: isWeb ? 20 : 10,
+    },
+    decorativeCircle1: {
+      position: 'absolute',
+      top: isWeb ? '5%' : '8%',
+      right: isWeb ? '5%' : '8%',
+      width: isWeb ? 180 : 120,
+      height: isWeb ? 180 : 120,
+      borderRadius: 90,
+      backgroundColor: colors.primary + '06',
+    },
+    decorativeCircle2: {
+      position: 'absolute',
+      bottom: isWeb ? '10%' : '12%',
+      left: isWeb ? '5%' : '8%',
+      width: isWeb ? 120 : 80,
+      height: isWeb ? 120 : 80,
+      borderRadius: 60,
+      backgroundColor: colors.primary + '04',
+    },
+    decorativeCircle3: {
+      position: 'absolute',
+      top: '50%',
+      right: isWeb ? '3%' : '5%',
+      width: isWeb ? 80 : 50,
+      height: isWeb ? 80 : 50,
+      borderRadius: 40,
+      backgroundColor: colors.primary + '03',
+    },
+    
+    // FIX: Big Logo filling entire circle
+    iconContainer: {
+      width: isWeb ? 140 : 110,
+      height: isWeb ? 140 : 110,
+      borderRadius: isWeb ? 70 : 55,
+      marginBottom: isWeb ? spacing.md : spacing.md,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      borderWidth: 2,
+      borderColor: colors.primary + '30',
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    centerLogo: {
+      width: '100%',
+      height: '100%',
+      borderRadius: isWeb ? 70 : 55,
+    },
+    
+    textContainer: {
+      alignItems: 'center',
+      width: '100%',
+    },
+    title: {
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginBottom: isWeb ? spacing.xs : spacing.xs,
+      lineHeight: isWeb ? 32 : 26,
+      fontWeight: '700',
+      fontSize: isWeb ? 22 : 19,
+      paddingHorizontal: spacing.sm,
+    },
+    titleWeb: {
+      fontSize: 24,
+      lineHeight: 34,
+    },
     description: {
-      ...typography.body,
       color: colors.textSecondary,
       textAlign: 'center',
-      marginTop: spacing.md,
-      lineHeight: 22,
+      lineHeight: isWeb ? 22 : 18,
+      maxWidth: isWeb ? 450 : 360,
+      fontSize: isWeb ? 14 : 13,
+      paddingHorizontal: spacing.sm,
+      opacity: 0.75,
     },
-    footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
-    dots: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xs, marginBottom: spacing.xl },
-    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
-    dotActive: { backgroundColor: colors.primary, width: 24 },
+    descriptionWeb: {
+      fontSize: 15,
+      lineHeight: 24,
+    },
+    progressContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      marginTop: isWeb ? spacing.md : spacing.md,
+    },
+    progressDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      backgroundColor: colors.border,
+      opacity: 0.4,
+    },
+    progressDotActive: {
+      backgroundColor: colors.primary,
+      width: 20,
+      opacity: 1,
+    },
+    footer: {
+      paddingHorizontal: isWeb ? spacing.xxl : spacing.xl,
+      paddingBottom: isWeb ? spacing.xl : spacing.xl,
+      paddingTop: spacing.sm,
+      gap: spacing.md,
+    },
     nextButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.sm,
       backgroundColor: colors.primary,
       borderRadius: radius.pill,
-      paddingVertical: spacing.md,
+      paddingVertical: isWeb ? spacing.md : spacing.md,
+      paddingHorizontal: spacing.xl,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 6,
+      minHeight: isWeb ? 48 : 46,
+      width: '100%',
+      maxWidth: isWeb ? 240 : '100%',
+      alignSelf: 'center',
     },
-    nextButtonText: { ...typography.button, color: colors.textInverse },
+    nextButtonText: {
+      color: colors.textInverse,
+      fontSize: isWeb ? 15 : 15,
+      fontWeight: '600',
+      letterSpacing: 0.5,
+    },
   });
 }
