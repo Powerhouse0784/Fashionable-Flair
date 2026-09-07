@@ -58,7 +58,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   // FIX: Handle tap/double-tap for both web and mobile
   const handleTap = (e?: any) => {
     if (!onDoubleTap) return;
-    
+
     // For web, check if it's a double click
     if (Platform.OS === 'web' && e?.nativeEvent?.detail === 2) {
       onDoubleTap();
@@ -80,7 +80,6 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   // FIX: Web-specific double-click handler using Pressable's onPress with custom logic
   const handlePress = (e: any) => {
     if (Platform.OS === 'web') {
-      // On web, Pressable passes the event with nativeEvent
       if (e?.nativeEvent?.detail === 2) {
         handleTap(e);
         return;
@@ -90,17 +89,22 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   };
 
   const HeartOverlay = heartVisible && (
-    <Animated.View style={[styles.heartBurst, { transform: [{ scale: heartScale }] }]} pointerEvents="none">
+    <Animated.View
+      style={[styles.heartBurst, { transform: [{ scale: heartScale }] }]}
+      pointerEvents="none"
+    >
       <Ionicons name="heart" size={90} color="#FFFFFF" />
     </Animated.View>
   );
 
-  // FIX: Create a wrapper using Pressable with web compatibility
+  // FIX: Remove visual feedback from Pressable to avoid blinking
   const ImageContainer = ({ children }: { children: React.ReactNode }) => {
     return (
-      <Pressable 
+      <Pressable
         onPress={handlePress}
         style={{ width, height: width }}
+        android_ripple={{ color: 'transparent' }}
+        hitSlop={{ top: 0, bottom: 0, left: 0, right: 0 }}
       >
         {children}
       </Pressable>
@@ -119,10 +123,10 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   if (images.length === 1) {
     return (
       <ImageContainer>
-        <Image 
-          source={{ uri: images[0] }} 
-          style={styles.image} 
-          contentFit="cover" 
+        <Image
+          source={{ uri: images[0] }}
+          style={styles.image}
+          contentFit="cover"
           transition={200}
           cachePolicy="memory-disk"
         />
@@ -155,10 +159,10 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
         removeClippedSubviews={false}
         renderItem={({ item }) => (
           <View style={{ width, height: width }}>
-            <Image 
-              source={{ uri: item }} 
-              style={{ width: '100%', height: '100%' }} 
-              contentFit="cover" 
+            <Image
+              source={{ uri: item }}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
               transition={200}
               cachePolicy="memory-disk"
               onError={() => console.log('Failed to load image:', item)}
@@ -170,10 +174,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
       <View style={styles.dotsContainer} pointerEvents="none">
         <View style={styles.dots}>
           {images.map((_, i) => (
-            <View
-              key={i}
-              style={[styles.dot, i === activeIndex && styles.dotActive]}
-            />
+            <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
           ))}
         </View>
       </View>
