@@ -35,7 +35,6 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   const lastTapRef = useRef(0);
   const flatListRef = useRef<FlatList>(null);
   const useNativeDriver = Platform.OS !== 'web';
-  const containerRef = useRef<View>(null);
 
   useEffect(() => {
     if (flatListRef.current && images.length > 0) {
@@ -55,16 +54,18 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     ]).start(() => setHeartVisible(false));
   };
 
-  // FIX: Single tap handler with time-based double-tap detection
+  // FIX: Time-based double-tap detection - works on both platforms
   const handleTap = () => {
     if (!onDoubleTap) return;
 
     const now = Date.now();
     if (now - lastTapRef.current < DOUBLE_TAP_WINDOW_MS) {
+      // Double tap detected!
       onDoubleTap();
       triggerHeartBurst();
       lastTapRef.current = 0;
     } else {
+      // Single tap - record the time
       lastTapRef.current = now;
     }
   };
@@ -190,7 +191,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     );
   }
 
-  // FIX: Native uses TouchableOpacity wrapper
+  // FIX: Native uses TouchableOpacity wrapper with time-based detection
   return (
     <TouchableOpacity
       activeOpacity={1}
