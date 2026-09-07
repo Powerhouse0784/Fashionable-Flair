@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -7,6 +7,7 @@ import {
   Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,8 +35,9 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   const lastTapRef = useRef(0);
   const flatListRef = useRef<FlatList>(null);
   const useNativeDriver = Platform.OS !== 'web';
+  const containerRef = useRef<View>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (flatListRef.current && images.length > 0) {
       flatListRef.current.scrollToOffset({ offset: 0, animated: false });
     }
@@ -53,17 +55,10 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     ]).start(() => setHeartVisible(false));
   };
 
-  const handleTap = (e?: any) => {
+  // FIX: Single tap handler with time-based double-tap detection
+  const handleTap = () => {
     if (!onDoubleTap) return;
 
-    // Web double-click
-    if (Platform.OS === 'web' && e?.nativeEvent?.detail === 2) {
-      onDoubleTap();
-      triggerHeartBurst();
-      return;
-    }
-
-    // Mobile / time-based double tap
     const now = Date.now();
     if (now - lastTapRef.current < DOUBLE_TAP_WINDOW_MS) {
       onDoubleTap();
@@ -83,94 +78,127 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     </Animated.View>
   );
 
-  // Single-image case: simple container with tap
-  if (images.length === 0) {
-    return (
-      <View
-        style={{ width, height: width }}
-        onStartShouldSetResponder={() => true}
-        // @ts-ignore - web onClick
-        onClick={handleTap}
-      >
-        <ProductPlaceholder category={category} />
-        {HeartOverlay}
-      </View>
-    );
-  }
-
-  if (images.length === 1) {
-    return (
-      <View
-        style={{ width, height: width }}
-        onStartShouldSetResponder={() => true}
-        // @ts-ignore - web onClick
-        onClick={handleTap}
-      >
-        <Image
-          source={{ uri: images[0] }}
-          style={styles.image}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-        />
-        {HeartOverlay}
-      </View>
-    );
-  }
-
-  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const index = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (index !== activeIndex && index >= 0 && index < images.length) {
-      setActiveIndex(index);
+  // FIX: Render the gallery with tap handler on the container
+  const renderGallery = () => {
+    if (images.length === 0) {
+      return (
+        <View style={{ width, height: width }}>
+          <ProductPlaceholder category={category} />
+          {HeartOverlay}
+        </View>
+      );
     }
+
+    if (images.length === 1) {
+      return (
+        <TouchableOpacity
+          activeOpacity={1}
+          style={{ width, height: width }}
+          onPress={handleTap}
+        >
+          <Image
+            source={{ uri: images[0] }}
+            style={styles.image}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
+          {HeartOverlay}
+        </TouchableOpacity>
+      );
+    }
+
+    const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const index = Math.round(e.nativeEvent.contentOffset.x / width);
+      if (index !== activeIndex && index >= 0 && index < images.length) {
+        setActiveIndex(index);
+      }
+    };
+
+    return (
+      <View style={{ width, height: width, position: 'relative' }}>
+        <FlatList
+          ref={flatListRef}
+          data={images}
+          keyExtractor={(uri, i) => `${uri}-${i}`}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          bounces={false}
+          overScrollMode="never"
+          decelerationRate="fast"
+          removeClippedSubviews={false}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              activeOpacity={1}
+              style={{ width, height: width }}
+              onPress={handleTap}
+            >
+              <Image
+                source={{ uri: item }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
+                onError={() => console.log('Failed to load image:', item)}
+              />
+            </TouchableOpacity>
+          )}
+        />
+        {/* Dots with dark background */}
+        <View style={styles.dotsContainer} pointerEvents="none">
+          <View style={styles.dots}>
+            {images.map((_, i) => (
+              <View
+                key={i}
+                style={[styles.dot, i === activeIndex && styles.dotActive]}
+              />
+            ))}
+          </View>
+        </View>
+        {HeartOverlay}
+      </View>
+    );
   };
 
+  // FIX: Web uses div with click handlers
+  if (Platform.OS === 'web') {
+    return (
+      <div
+        style={{
+          width: width,
+          height: width,
+          position: 'relative',
+          cursor: 'pointer',
+          userSelect: 'none',
+          WebkitTapHighlightColor: 'transparent',
+          outline: 'none',
+        }}
+        onClick={handleTap}
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          if (onDoubleTap) {
+            onDoubleTap();
+            triggerHeartBurst();
+          }
+        }}
+      >
+        {renderGallery()}
+      </div>
+    );
+  }
+
+  // FIX: Native uses TouchableOpacity wrapper
   return (
-    <View style={{ width, height: width }}>
-      <FlatList
-        ref={flatListRef}
-        data={images}
-        keyExtractor={(uri, i) => `${uri}-${i}`}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        bounces={false}
-        overScrollMode="never"
-        decelerationRate="fast"
-        removeClippedSubviews={false}
-        renderItem={({ item, index }) => (
-          <View
-            style={{ width, height: width }}
-            onStartShouldSetResponder={() => true}
-            // @ts-ignore - web onClick
-            onClick={handleTap}
-          >
-            <Image
-              source={{ uri: item }}
-              style={{ width: '100%', height: '100%' }}
-              contentFit="cover"
-              transition={200}
-              cachePolicy="memory-disk"
-              onError={() => console.log('Failed to load image:', item)}
-            />
-          </View>
-        )}
-      />
-      {/* Dots with dark background */}
-      <View style={styles.dotsContainer} pointerEvents="none">
-        <View style={styles.dots}>
-          {images.map((_, i) => (
-            <View
-              key={i}
-              style={[styles.dot, i === activeIndex && styles.dotActive]}
-            />
-          ))}
-        </View>
-      </View>
-      {HeartOverlay}
-    </View>
+    <TouchableOpacity
+      activeOpacity={1}
+      style={{ width, height: width, position: 'relative' }}
+      onPress={handleTap}
+    >
+      {renderGallery()}
+    </TouchableOpacity>
   );
 }
 
@@ -202,7 +230,7 @@ function makeStyles(colors: ColorTheme) {
       backgroundColor: 'rgba(255,255,255,0.5)',
     },
     dotActive: {
-      backgroundColor: '#fff', // soft light pink
+      backgroundColor: '#FFD700',
       width: 20,
     },
     heartBurst: {

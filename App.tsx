@@ -40,6 +40,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       },
       ProductDetail: 'product/:productId',
       CategoryProducts: 'category/:category',
+      MeeshoRedirect: 'meesho',
       AdminLogin: 'admin/login',
       AdminDashboard: 'admin',
       AdminProductForm: 'admin/product/:productId?',
@@ -59,6 +60,7 @@ function AppNavigation() {
   const { isDark } = useTheme();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const [isAdminScreen, setIsAdminScreen] = useState(false);
+  const [isMeeshoRedirect, setIsMeeshoRedirect] = useState(false);
 
   // ChatWidget sits as a sibling of RootNavigator, not inside any of its
   // screens — so it can't use useNavigationState() itself (that hook
@@ -69,14 +71,19 @@ function AppNavigation() {
   const updateCurrentRoute = useCallback(() => {
     const routeName = navigationRef.getCurrentRoute()?.name;
     setIsAdminScreen(typeof routeName === 'string' && routeName.startsWith('Admin'));
+    // FIX: Hide chat widget on MeeshoRedirect screen
+    setIsMeeshoRedirect(routeName === 'MeeshoRedirect');
   }, [navigationRef]);
+
+  // FIX: Hide chat widget if on admin screen OR meesho redirect screen
+  const shouldHideChatWidget = isAdminScreen || isMeeshoRedirect;
 
   return (
     <NavigationContainer ref={navigationRef} linking={linking} onReady={updateCurrentRoute} onStateChange={updateCurrentRoute}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={{ flex: 1 }}>
         <RootNavigator />
-        <ChatWidget hidden={isAdminScreen} />
+        <ChatWidget hidden={shouldHideChatWidget} />
       </View>
     </NavigationContainer>
   );

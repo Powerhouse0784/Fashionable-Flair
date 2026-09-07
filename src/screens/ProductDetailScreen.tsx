@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -49,15 +49,12 @@ export default function ProductDetailScreen() {
     if (product) trackView(product.id);
   }, [product?.id]);
 
-  // FIX: Instant scroll to top when screen focuses or product changes
   useFocusEffect(
     React.useCallback(() => {
-      // Instant scroll to top without delay
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
     }, [productId])
   );
 
-  // FIX: Also scroll when product changes
   useEffect(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   }, [productId]);
@@ -77,7 +74,6 @@ export default function ProductDetailScreen() {
   const handleShare = () => shareProduct(product.title, product.meeshoUrl);
   const handleBuyNow = () => goToMeesho(navigation, product.meeshoUrl, product.title);
 
-  // FIX: Instant navigation - no delay
   const handleRelatedProductPress = (relatedProductId: string) => {
     navigation.replace('ProductDetail', { productId: relatedProductId });
   };
@@ -153,7 +149,9 @@ export default function ProductDetailScreen() {
       <ScrollView 
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ paddingBottom: isWide ? spacing.xxl : 100 }}
+        contentContainerStyle={{ 
+          paddingBottom: isWide ? spacing.xxl : 160 
+        }}
       >
         {isWide ? (
           <Container>
@@ -367,7 +365,7 @@ function makeStyles(colors: ColorTheme) {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     shadowColor: '#000',
