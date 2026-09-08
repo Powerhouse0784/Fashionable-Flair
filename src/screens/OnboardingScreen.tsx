@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { typography, spacing, radius, ColorTheme } from '@/theme';
+import { spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 
@@ -26,19 +26,23 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     title: '✨ Welcome to\nFashionable Flair',
-    description: 'Discover jewellery that speaks your style — explore our handpicked collection.',
+    description:
+      'Discover jewellery that speaks your style — explore our handpicked collection.',
   },
   {
     title: '❤️ Save What You Love',
-    description: 'Tap the heart on any product to add it to your Wishlist — saved right on your device.',
+    description:
+      'Tap the heart on any product to add it to your Wishlist — saved right on your device.',
   },
   {
     title: '🛡️ Secure Checkout',
-    description: 'Ready to buy? "Buy Now" takes you to our Meesho store for secure purchase.',
+    description:
+      'Ready to buy? "Buy Now" takes you to our Meesho store for secure purchase.',
   },
   {
     title: '💬 Have Questions?',
-    description: 'Our AI assistant can answer anything about products, orders, or our app.',
+    description:
+      'Our AI assistant can answer anything about products, orders, or our app.',
   },
 ];
 
@@ -50,15 +54,19 @@ export default function OnboardingScreen({ onDone }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const { width, height } = useWindowDimensions();
+
   const [index, setIndex] = useState(0);
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<FlatList<Slide>>(null);
 
   const isLast = index === SLIDES.length - 1;
   const isWeb = Platform.OS === 'web';
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (newIndex !== index) setIndex(newIndex);
+
+    if (newIndex !== index && newIndex >= 0 && newIndex < SLIDES.length) {
+      setIndex(newIndex);
+    }
   };
 
   const goNext = () => {
@@ -66,25 +74,27 @@ export default function OnboardingScreen({ onDone }: Props) {
       onDone();
       return;
     }
-    const nextOffset = (index + 1) * width;
-    listRef.current?.scrollToOffset({ offset: nextOffset, animated: true });
+
+    listRef.current?.scrollToOffset({
+      offset: (index + 1) * width,
+      animated: true,
+    });
   };
 
   const renderSlide = ({ item }: { item: Slide }) => (
-    <View style={[styles.slide, { width, height }]}>
-      {/* Decorative elements */}
+    <View style={[styles.slide, { width }]}>
+      {/* Background decorative circles */}
       <View style={styles.decorativeCircle1} />
       <View style={styles.decorativeCircle2} />
       <View style={styles.decorativeCircle3} />
 
-      {/* Content wrapper with flex distribution */}
       <View style={styles.contentWrapper}>
         <View style={styles.topSpacer} />
 
-        {/* FIX: Big Logo covering full circle */}
+        {/* App logo */}
         <View style={styles.iconContainer}>
-          <Image 
-            source={require('@/assets/icon.png')} 
+          <Image
+            source={require('@/assets/icon.png')}
             style={styles.centerLogo}
             resizeMode="cover"
           />
@@ -108,19 +118,25 @@ export default function OnboardingScreen({ onDone }: Props) {
   return (
     <LinearGradient
       colors={[colors.background, colors.surfaceAlt]}
-      style={[styles.safe, { height }]}
+      style={[styles.safe, { minHeight: height }]}
     >
-      <SafeAreaView style={styles.safeArea}>
-        {/* Skip Button - Top Right (dark) */}
-        <TouchableOpacity
-          style={styles.skipButton}
-          onPress={onDone}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
+      {/* edges makes content start below Android/iPhone status area */}
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        {/* Skip button is safely positioned in normal layout */}
+        <View style={styles.topHeader}>
+          <View style={styles.headerSpacer} />
 
-        {/* Slides - Takes full remaining space */}
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={onDone}
+            activeOpacity={0.8}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Slides */}
         <View style={styles.slidesContainer}>
           <FlatList
             ref={listRef}
@@ -136,7 +152,7 @@ export default function OnboardingScreen({ onDone }: Props) {
           />
         </View>
 
-        {/* Footer - Bottom with progress and button */}
+        {/* Footer */}
         <View style={styles.footer}>
           <View style={styles.progressContainer}>
             {SLIDES.map((_, i) => (
@@ -158,11 +174,12 @@ export default function OnboardingScreen({ onDone }: Props) {
             <Text style={styles.nextButtonText}>
               {isLast ? 'Get Started' : 'Next'}
             </Text>
+
             <Ionicons
               name="arrow-forward"
               size={18}
               color={colors.textInverse}
-              style={{ marginLeft: 6 }}
+              style={{ marginLeft: 7 }}
             />
           </TouchableOpacity>
         </View>
@@ -175,41 +192,69 @@ function makeStyles(colors: ColorTheme) {
   const isWeb = Platform.OS === 'web';
 
   return StyleSheet.create({
-    safe: { flex: 1 },
-    safeArea: { flex: 1 },
-    
-    // Dark Skip Button
-    skipButton: {
-      position: 'absolute',
-      top: isWeb ? 20 : 10,
-      right: isWeb ? 24 : 14,
-      zIndex: 100,
-      backgroundColor: '#111827',
-      paddingHorizontal: isWeb ? 16 : 12,
-      paddingVertical: isWeb ? 8 : 5,
-      borderRadius: radius.pill,
+    safe: {
+      flex: 1,
     },
+
+    safeArea: {
+      flex: 1,
+    },
+
+    /*
+      This header is inside SafeAreaView.
+      So Skip automatically starts after Android status bar.
+    */
+    topHeader: {
+      height: isWeb ? 58 : 66,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      paddingHorizontal: isWeb ? 28 : 18,
+    },
+
+    headerSpacer: {
+      flex: 1,
+    },
+
+    skipButton: {
+      backgroundColor: '#111827',
+      paddingHorizontal: isWeb ? 16 : 15,
+      paddingVertical: isWeb ? 8 : 8,
+      borderRadius: radius.pill,
+      minHeight: 34,
+      alignItems: 'center',
+      justifyContent: 'center',
+
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+
     skipText: {
       color: '#FFFFFF',
       fontFamily: fonts.bodySemiBold,
-      fontSize: isWeb ? 13 : 12,
+      fontSize: isWeb ? 13 : 13,
       fontWeight: '600',
       letterSpacing: 0.3,
     },
-    
+
     slidesContainer: {
       flex: 1,
-      marginTop: 0,
     },
+
     flatList: {
       flex: 1,
     },
+
     slide: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
       position: 'relative',
     },
+
     contentWrapper: {
       flex: 1,
       alignItems: 'center',
@@ -217,104 +262,123 @@ function makeStyles(colors: ColorTheme) {
       width: '100%',
       maxWidth: isWeb ? 600 : '100%',
       paddingHorizontal: isWeb ? spacing.xxl : spacing.xl,
-      paddingVertical: isWeb ? spacing.xl : spacing.lg,
+      paddingVertical: isWeb ? spacing.md : spacing.sm,
     },
+
     topSpacer: {
       flex: 1,
-      maxHeight: isWeb ? 20 : 10,
+      maxHeight: isWeb ? 25 : 14,
     },
+
     bottomSpacer: {
       flex: 1,
-      maxHeight: isWeb ? 20 : 10,
+      maxHeight: isWeb ? 25 : 14,
     },
+
     decorativeCircle1: {
       position: 'absolute',
       top: isWeb ? '5%' : '8%',
       right: isWeb ? '5%' : '8%',
       width: isWeb ? 180 : 120,
       height: isWeb ? 180 : 120,
-      borderRadius: 90,
-      backgroundColor: colors.primary + '06',
+      borderRadius: isWeb ? 90 : 60,
+      backgroundColor: `${colors.primary}08`,
     },
+
     decorativeCircle2: {
       position: 'absolute',
       bottom: isWeb ? '10%' : '12%',
       left: isWeb ? '5%' : '8%',
       width: isWeb ? 120 : 80,
       height: isWeb ? 120 : 80,
-      borderRadius: 60,
-      backgroundColor: colors.primary + '04',
+      borderRadius: isWeb ? 60 : 40,
+      backgroundColor: `${colors.primary}06`,
     },
+
     decorativeCircle3: {
       position: 'absolute',
-      top: '50%',
+      top: '48%',
       right: isWeb ? '3%' : '5%',
       width: isWeb ? 80 : 50,
       height: isWeb ? 80 : 50,
-      borderRadius: 40,
-      backgroundColor: colors.primary + '03',
+      borderRadius: isWeb ? 40 : 25,
+      backgroundColor: `${colors.primary}04`,
     },
-    
-    // FIX: Big Logo filling entire circle
+
     iconContainer: {
-      width: isWeb ? 140 : 110,
-      height: isWeb ? 140 : 110,
-      borderRadius: isWeb ? 70 : 55,
+      width: isWeb ? 140 : 112,
+      height: isWeb ? 140 : 112,
+      borderRadius: isWeb ? 70 : 56,
       marginBottom: isWeb ? spacing.md : spacing.md,
       backgroundColor: colors.surfaceAlt,
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
       borderWidth: 2,
-      borderColor: colors.primary + '30',
+      borderColor: `${colors.primary}30`,
+
       shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
+      shadowOpacity: 0.16,
       shadowRadius: 12,
       elevation: 6,
     },
+
     centerLogo: {
       width: '100%',
       height: '100%',
-      borderRadius: isWeb ? 70 : 55,
+      borderRadius: isWeb ? 70 : 56,
     },
-    
+
     textContainer: {
       alignItems: 'center',
       width: '100%',
     },
+
     title: {
       color: colors.textPrimary,
       textAlign: 'center',
-      marginBottom: isWeb ? spacing.xs : spacing.xs,
+      marginBottom: spacing.xs,
       lineHeight: isWeb ? 32 : 26,
       fontWeight: '700',
       fontSize: isWeb ? 22 : 19,
       paddingHorizontal: spacing.sm,
     },
+
     titleWeb: {
       fontSize: 24,
       lineHeight: 34,
     },
+
     description: {
       color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: isWeb ? 22 : 18,
+      lineHeight: isWeb ? 22 : 19,
       maxWidth: isWeb ? 450 : 360,
       fontSize: isWeb ? 14 : 13,
       paddingHorizontal: spacing.sm,
-      opacity: 0.75,
+      opacity: 0.78,
     },
+
     descriptionWeb: {
       fontSize: 15,
       lineHeight: 24,
     },
+
+    footer: {
+      paddingHorizontal: isWeb ? spacing.xxl : spacing.xl,
+      paddingTop: spacing.sm,
+      paddingBottom: isWeb ? spacing.xl : spacing.lg,
+      gap: spacing.md,
+    },
+
     progressContainer: {
       flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'center',
       gap: spacing.xs,
-      marginTop: isWeb ? spacing.md : spacing.md,
     },
+
     progressDot: {
       width: 7,
       height: 7,
@@ -322,35 +386,33 @@ function makeStyles(colors: ColorTheme) {
       backgroundColor: colors.border,
       opacity: 0.4,
     },
+
     progressDotActive: {
-      backgroundColor: colors.primary,
       width: 20,
+      backgroundColor: colors.primary,
       opacity: 1,
     },
-    footer: {
-      paddingHorizontal: isWeb ? spacing.xxl : spacing.xl,
-      paddingBottom: isWeb ? spacing.xl : spacing.xl,
-      paddingTop: spacing.sm,
-      gap: spacing.md,
-    },
+
     nextButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.primary,
       borderRadius: radius.pill,
-      paddingVertical: isWeb ? spacing.md : spacing.md,
+      paddingVertical: spacing.md,
       paddingHorizontal: spacing.xl,
+      minHeight: isWeb ? 48 : 48,
+      width: '100%',
+      maxWidth: isWeb ? 240 : '100%',
+      alignSelf: 'center',
+
       shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.25,
       shadowRadius: 8,
       elevation: 6,
-      minHeight: isWeb ? 48 : 46,
-      width: '100%',
-      maxWidth: isWeb ? 240 : '100%',
-      alignSelf: 'center',
     },
+
     nextButtonText: {
       color: colors.textInverse,
       fontSize: isWeb ? 15 : 15,
