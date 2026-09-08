@@ -241,7 +241,7 @@ function makeStyles(colors: ColorTheme) {
       backgroundColor: 'rgba(255,255,255,0.5)',
     },
     dotActive: {
-      backgroundColor: '#FFD700',
+      backgroundColor: '#fff',
       width: 20,
     },
     heartBurst: {
