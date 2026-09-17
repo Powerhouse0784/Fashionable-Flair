@@ -12,6 +12,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { RecentlyViewedProvider } from '@/context/RecentlyViewedContext';
+import { ScrollVisibilityProvider } from '@/context/ScrollVisibilityContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import QuickActionsSidebar from '@/components/QuickActionsSidebar';
 import OnboardingScreen from '@/screens/OnboardingScreen';
@@ -61,6 +62,7 @@ function AppNavigation() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const [isAdminScreen, setIsAdminScreen] = useState(false);
   const [isMeeshoRedirect, setIsMeeshoRedirect] = useState(false);
+  const [isProductDetail, setIsProductDetail] = useState(false);
 
   // QuickActionsSidebar (chat + WhatsApp + Instagram + call) sits as a
   // sibling of RootNavigator, not inside any of its screens — so it can't
@@ -74,6 +76,12 @@ function AppNavigation() {
     setIsAdminScreen(typeof routeName === 'string' && routeName.startsWith('Admin'));
     // FIX: Hide the sidebar on MeeshoRedirect screen
     setIsMeeshoRedirect(routeName === 'MeeshoRedirect');
+    // ProductDetail has its own sticky "Buy Now" bar on mobile, taller than
+    // (and positioned independently of) the app's normal tab bar — the
+    // sidebar's usual bottom offset assumes the tab bar's height, so on
+    // this one screen it needs to sit higher or it visually collides with
+    // that bar / the content just above it while scrolling.
+    setIsProductDetail(routeName === 'ProductDetail');
   }, [navigationRef]);
 
   // FIX: Hide the sidebar if on admin screen OR meesho redirect screen
@@ -84,7 +92,7 @@ function AppNavigation() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={{ flex: 1 }}>
         <RootNavigator />
-        <QuickActionsSidebar hidden={shouldHideSidebar} />
+        <QuickActionsSidebar hidden={shouldHideSidebar} extraBottomOffset={isProductDetail ? 64 : 0} />
       </View>
     </NavigationContainer>
   );
@@ -135,7 +143,9 @@ export default function App() {
                 <ProductsProvider>
                   <WishlistProvider>
                     <RecentlyViewedProvider>
-                      <AppNavigation />
+                      <ScrollVisibilityProvider>
+                        <AppNavigation />
+                      </ScrollVisibilityProvider>
                     </RecentlyViewedProvider>
                   </WishlistProvider>
                 </ProductsProvider>

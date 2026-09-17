@@ -26,6 +26,7 @@ import BannerCarousel from '@/components/BannerCarousel';
 import WhyChooseUs from '@/components/WhyChooseUs';
 import GoogleReviewsSection from '@/components/GoogleReviewsSection';
 import Logo from '@/components/Logo';
+import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -64,6 +65,7 @@ export default function HomeScreen() {
     .map((id) => products.find((p) => p.id === id))
     .filter((p): p is Product => !!p);
   const isWide = useIsWideScreen();
+  const handleScroll = useScrollVisibilityHandler();
   
   // Create refs
   const scrollViewRef = useRef<ScrollView>(null);
@@ -97,6 +99,8 @@ export default function HomeScreen() {
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
       >
         <Container>

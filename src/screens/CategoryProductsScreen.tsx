@@ -18,6 +18,7 @@ import SortSheet, { SortOption } from '@/components/SortSheet';
 import FilterSheet, { FilterState, DEFAULT_FILTERS, countActiveFilters } from '@/components/FilterSheet';
 import WebPageWrapper from '@/components/WebPageWrapper';
 import Footer from '@/components/Footer';
+import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import { goBackOrTo } from '@/utils/navigation';
 
 type CategoryRoute = RouteProp<RootStackParamList, 'CategoryProducts'>;
@@ -42,6 +43,7 @@ export default function CategoryProductsScreen() {
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const columns = useColumns();
   const isWide = useIsWideScreen();
+  const handleScroll = useScrollVisibilityHandler();
 
   const items = useMemo(() => {
     const inCategory = getProductsByCategory(products, category);
@@ -128,6 +130,8 @@ export default function CategoryProductsScreen() {
         <SafeAreaView style={styles.safe}>
           <ScrollView
             showsVerticalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
           >
             <Container>
@@ -176,6 +180,8 @@ export default function CategoryProductsScreen() {
           numColumns={columns}
           columnWrapperStyle={{ gap: GRID_GAP }}
           contentContainerStyle={{ gap: GRID_GAP, paddingTop: spacing.sm, paddingBottom: spacing.xxl }}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
           ListEmptyComponent={
             <EmptyState icon="cube-outline" title="No products match these filters" />

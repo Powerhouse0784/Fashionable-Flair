@@ -11,6 +11,7 @@ import { useSearchHistory } from '@/hooks/useSearchHistory';
 import { GRID_GAP } from '@/constants/layout';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
+import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import Container from '@/components/Container';
 import SortSheet, { SortOption } from '@/components/SortSheet';
 import FilterSheet, { FilterState, DEFAULT_FILTERS, countActiveFilters } from '@/components/FilterSheet';
@@ -31,6 +32,7 @@ export default function SearchScreen() {
   const [sortSheetVisible, setSortSheetVisible] = useState(false);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const columns = useColumns();
+  const handleScroll = useScrollVisibilityHandler();
   const { products, refreshing, refresh } = useProducts();
   const { history, addSearch, clearHistory } = useSearchHistory();
 
@@ -153,6 +155,8 @@ export default function SearchScreen() {
           numColumns={columns}
           columnWrapperStyle={{ gap: GRID_GAP }}
           contentContainerStyle={{ gap: GRID_GAP, paddingTop: spacing.sm, paddingBottom: spacing.xxl }}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
           ListEmptyComponent={
             <EmptyState

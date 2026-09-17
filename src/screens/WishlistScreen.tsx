@@ -11,6 +11,7 @@ import { GRID_GAP } from '@/constants/layout';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
 import Container from '@/components/Container';
+import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 
 export default function WishlistScreen() {
   const { colors } = useTheme();
@@ -19,6 +20,7 @@ export default function WishlistScreen() {
   const { wishlistIds, clearWishlist } = useWishlist();
   const wishlistedProducts = products.filter((p) => wishlistIds.includes(p.id));
   const columns = useColumns();
+  const handleScroll = useScrollVisibilityHandler();
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -41,6 +43,8 @@ export default function WishlistScreen() {
           numColumns={columns}
           columnWrapperStyle={{ gap: GRID_GAP }}
           contentContainerStyle={{ gap: GRID_GAP, paddingBottom: spacing.xxl }}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
           ListEmptyComponent={
             <EmptyState

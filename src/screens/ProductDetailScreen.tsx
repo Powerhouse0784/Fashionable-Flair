@@ -18,6 +18,7 @@ import { goToMeesho } from '@/utils/buyNow';
 import { getProductImages } from '@/utils/productImages';
 import { goBackOrTo } from '@/utils/navigation';
 import WebPageWrapper from '@/components/WebPageWrapper';
+import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import PriceTag from '@/components/PriceTag';
 import RatingStars from '@/components/RatingStars';
 import Badge from '@/components/Badge';
@@ -42,6 +43,7 @@ export default function ProductDetailScreen() {
   const { isWishlisted, toggleWishlist } = useWishlist();
   const { trackView } = useRecentlyViewed();
   const isWide = useIsWideScreen();
+  const handleScroll = useScrollVisibilityHandler();
   const { width } = useWindowDimensions();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -149,6 +151,8 @@ export default function ProductDetailScreen() {
       <ScrollView 
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false} 
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={{ 
           paddingBottom: isWide ? spacing.xxl : 160 
         }}
