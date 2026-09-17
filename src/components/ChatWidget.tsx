@@ -98,20 +98,21 @@ export default function ChatWidget({ hidden, open: openProp, onClose, wideBottom
   // Animated loading dots
   useEffect(() => {
     if (sending) {
+      const useNativeDriverForDots = Platform.OS !== 'web';
       const animations = [dot1, dot2, dot3].map((dot, index) => {
         return Animated.loop(
           Animated.sequence([
             Animated.delay(index * 200),
             Animated.spring(dot, {
               toValue: 1,
-              useNativeDriver: true,
+              useNativeDriver: useNativeDriverForDots,
               speed: 12,
               bounciness: 8,
             }),
             Animated.delay(400),
             Animated.spring(dot, {
               toValue: 0,
-              useNativeDriver: true,
+              useNativeDriver: useNativeDriverForDots,
               speed: 12,
               bounciness: 8,
             }),

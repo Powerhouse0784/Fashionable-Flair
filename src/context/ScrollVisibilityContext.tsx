@@ -1,8 +1,14 @@
 import React, { createContext, useContext, useRef } from 'react';
-import { Animated, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { Animated, NativeScrollEvent, NativeSyntheticEvent, Platform } from 'react-native';
 
 const MIN_DELTA = 6; // ignore tiny jitter/rubber-band scroll noise
 const TOP_THRESHOLD = 24; // always show near the very top of a page
+// React Native Web has no native animation thread — this value is combined
+// with other Animated values in QuickActionsSidebar, so it needs to match
+// whichever driver those use on a given platform, or driving it with the
+// native driver here while a consumer runs on the JS driver would still
+// print the same "not supported on web" warning this exists to avoid.
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 interface ScrollVisibilityContextValue {
   /** 1 = fully shown, 0 = hidden. Mutated directly (no re-renders) so this
@@ -33,13 +39,13 @@ export function ScrollVisibilityProvider({ children }: { children: React.ReactNo
   const show = () => {
     if (lastDirection.current !== 'up') {
       lastDirection.current = 'up';
-      Animated.timing(visibility, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+      Animated.timing(visibility, { toValue: 1, duration: 220, useNativeDriver: USE_NATIVE_DRIVER }).start();
     }
   };
   const hide = () => {
     if (lastDirection.current !== 'down') {
       lastDirection.current = 'down';
-      Animated.timing(visibility, { toValue: 0, duration: 220, useNativeDriver: true }).start();
+      Animated.timing(visibility, { toValue: 0, duration: 220, useNativeDriver: USE_NATIVE_DRIVER }).start();
     }
   };
 

@@ -57,9 +57,20 @@ export default function OnboardingScreen({ onDone }: Props) {
 
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList<Slide>>(null);
+  // Measured real height of the footer (dots + button), so the slide area
+  // can be given an explicit height rather than relying on flex to stretch
+  // it — React Native Web doesn't always stretch a horizontal FlatList's
+  // items to fill the cross-axis height reliably, which was leaving the
+  // logo/title/description sitting near the top with a large dead gap
+  // below instead of sitting centered in the available space. Starts with
+  // a sensible estimate so there's no visible jump once the real
+  // measurement comes in a frame later.
+  const [footerHeight, setFooterHeight] = useState(150);
 
   const isLast = index === SLIDES.length - 1;
   const isWeb = Platform.OS === 'web';
+  const topHeaderHeight = isWeb ? 58 : 66;
+  const slideHeight = Math.max(320, height - topHeaderHeight - footerHeight);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -82,7 +93,7 @@ export default function OnboardingScreen({ onDone }: Props) {
   };
 
   const renderSlide = ({ item }: { item: Slide }) => (
-    <View style={[styles.slide, { width }]}>
+    <View style={[styles.slide, { width, height: slideHeight }]}>
       {/* Background decorative circles */}
       <View style={styles.decorativeCircle1} />
       <View style={styles.decorativeCircle2} />
@@ -149,7 +160,7 @@ export default function OnboardingScreen({ onDone }: Props) {
         </View>
 
         {/* Footer */}
-        <View style={styles.footer}>
+        <View style={styles.footer} onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}>
           <View style={styles.progressContainer}>
             {SLIDES.map((_, i) => (
               <View
@@ -221,11 +232,9 @@ function makeStyles(colors: ColorTheme) {
       alignItems: 'center',
       justifyContent: 'center',
 
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 3,
+      ...(Platform.OS === 'web'
+        ? ({ boxShadow: '0 2px 4px rgba(0,0,0,0.12)' } as any)
+        : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 3 }),
     },
 
     skipText: {
@@ -313,11 +322,9 @@ function makeStyles(colors: ColorTheme) {
       borderWidth: 2,
       borderColor: `${colors.primary}30`,
 
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.16,
-      shadowRadius: 12,
-      elevation: 6,
+      ...(Platform.OS === 'web'
+        ? ({ boxShadow: `0 4px 12px ${colors.primary}29` } as any)
+        : { shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.16, shadowRadius: 12, elevation: 6 }),
     },
 
     textContainer: {
@@ -396,11 +403,9 @@ function makeStyles(colors: ColorTheme) {
       maxWidth: isWeb ? 240 : '100%',
       alignSelf: 'center',
 
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 8,
-      elevation: 6,
+      ...(Platform.OS === 'web'
+        ? ({ boxShadow: `0 4px 8px ${colors.primary}40` } as any)
+        : { shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 6 }),
     },
 
     nextButtonText: {

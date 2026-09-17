@@ -24,7 +24,12 @@ export default function EmptyState({ icon = 'sparkles-outline', title, subtitle 
 
 function makeStyles(colors: ColorTheme) {
   return StyleSheet.create({
-    wrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xxl * 2, paddingHorizontal: spacing.xl },
+    // flex: 1 only actually centers this when the parent gives it real
+    // room to grow into — as a FlatList's ListEmptyComponent, that means
+    // the FlatList's own contentContainerStyle also needs flexGrow: 1, or
+    // this just sits at its own natural (small) height at the top of the
+    // screen instead of centering in the full available space.
+    wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xxl * 2, paddingHorizontal: spacing.xl },
     title: { ...typography.h3, color: colors.textPrimary, marginTop: spacing.md, textAlign: 'center' },
     subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' },
   });

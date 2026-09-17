@@ -42,7 +42,7 @@ export default function WishlistScreen() {
           keyExtractor={(item) => item.id}
           numColumns={columns}
           columnWrapperStyle={{ gap: GRID_GAP }}
-          contentContainerStyle={{ gap: GRID_GAP, paddingBottom: spacing.xxl }}
+          contentContainerStyle={{ gap: GRID_GAP, paddingBottom: spacing.xxl, flexGrow: 1 }}
           onScroll={handleScroll}
           scrollEventThrottle={16}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}

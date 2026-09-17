@@ -372,11 +372,9 @@ function makeStyles(colors: ColorTheme) {
     paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
+    ...(Platform.OS === 'web'
+      ? ({ boxShadow: '0 -4px 8px rgba(0,0,0,0.1)' } as any)
+      : { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8 }),
   },
   ctaPriceWrap: { marginRight: spacing.md },
   ctaPriceLabel: { ...typography.caption, color: colors.textMuted },

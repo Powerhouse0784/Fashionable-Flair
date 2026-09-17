@@ -65,6 +65,17 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
   const [chatOpen, setChatOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  // Mirrors scrollVisibility as a plain boolean so we can flip pointerEvents
+  // to a real 'none' while hidden — opacity/translate alone only make the
+  // widget invisible, they don't stop it from still eating taps sitting
+  // underneath it (which is exactly what was intercepting taps meant for
+  // the bottom tab bar while the widget was scrolled out of sight).
+  const [scrollHidden, setScrollHidden] = useState(false);
+
+  // React Native Web has no native animation thread, so useNativeDriver
+  // does nothing there but log a warning every time — same pattern already
+  // used elsewhere in this app (ProductCard, ProductImageGallery, Toast).
+  const useNativeDriver = Platform.OS !== 'web';
 
   const handleAnim = useRef(new Animated.Value(0)).current;
   const itemAnims = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
@@ -74,8 +85,21 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
   // Gentle entrance the first time this mounts, so the widget arrives
   // instead of just popping into existence.
   useEffect(() => {
-    Animated.spring(mountAnim, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 8 }).start();
+    Animated.spring(mountAnim, { toValue: 1, useNativeDriver, speed: 14, bounciness: 8 }).start();
   }, []);
+
+  // Track scroll-visibility as a plain boolean (see scrollHidden above) —
+  // Animated.Value doesn't expose its current number synchronously, so a
+  // listener is the only way to derive a real on/off pointerEvents switch
+  // from it.
+  useEffect(() => {
+    const id = scrollVisibility.addListener(({ value }) => {
+      const nowHidden = value < 0.4;
+      setScrollHidden(nowHidden);
+      if (nowHidden && expanded) setExpandedAnimated(false);
+    });
+    return () => scrollVisibility.removeListener(id);
+  }, [scrollVisibility, expanded]);
 
   // A single soft pulse ring, repeating on a long interval, until the
   // person interacts with the widget for the first time.
@@ -91,7 +115,7 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
         toValue: 1,
         duration: PULSE_DURATION_MS,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
+        useNativeDriver,
       }).start(() => {
         if (!cancelled) timer = setTimeout(runPulse, PULSE_INTERVAL_MS);
       });
@@ -112,11 +136,11 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
       toValue: next ? 1 : 0,
       duration: 180,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver,
     }).start();
 
     const springs = itemAnims.map((v) =>
-      Animated.spring(v, { toValue: next ? 1 : 0, useNativeDriver: true, speed: 20, bounciness: 9 })
+      Animated.spring(v, { toValue: next ? 1 : 0, useNativeDriver, speed: 20, bounciness: 9 })
     );
     Animated.stagger(STAGGER_MS, next ? springs : springs.slice().reverse()).start();
   };
@@ -204,7 +228,7 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
         <Animated.View
           style={[
             styles.rail,
-            { bottom: 28 + extraBottomOffset, right: 28, pointerEvents: 'box-none' },
+            { bottom: 28 + extraBottomOffset, right: 28, pointerEvents: scrollHidden ? 'none' : 'box-none' },
             {
               opacity: Animated.multiply(mountAnim, scrollVisibility),
               transform: [
@@ -215,7 +239,9 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
           ]}
         >
           <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            {!hasInteracted && <Animated.View pointerEvents="none" style={pulseRingStyle(BUTTON_SIZE_WIDE, 'left')} />}
+            {!hasInteracted && (
+              <Animated.View style={[pulseRingStyle(BUTTON_SIZE_WIDE, 'left'), { pointerEvents: 'none' }]} />
+            )}
             <RailButton
               icon={chatOpen ? 'close' : 'chatbubbles'}
               color={colors.primary}
@@ -252,10 +278,25 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
 
   return (
     <>
+      {/* Full-screen invisible backdrop, only present while the speed-dial
+          is expanded — tapping anywhere outside the widget's own buttons
+          closes it, same as any standard dropdown/menu dismiss pattern.
+          Rendered before the widget itself so the widget's own buttons
+          (later in the tree) still get first claim on overlapping taps. */}
+      {expanded && (
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={() => setExpandedAnimated(false)}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      )}
+
       <Animated.View
         style={[
           styles.wrap,
-          { bottom, right: 16, pointerEvents: 'box-none' },
+          { bottom, right: 16, pointerEvents: scrollHidden ? 'none' : 'box-none' },
           {
             opacity: Animated.multiply(mountAnim, scrollVisibility),
             transform: [
@@ -293,7 +334,9 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
           );
         })}
 
-        {!hasInteracted && <Animated.View pointerEvents="none" style={pulseRingStyle(MAIN_SIZE_NARROW, 'right')} />}
+        {!hasInteracted && (
+          <Animated.View style={[pulseRingStyle(MAIN_SIZE_NARROW, 'right'), { pointerEvents: 'none' }]} />
+        )}
 
         {/* Main chat button — always front and center, one tap opens chat
             directly, completely independent of the expand/collapse state. */}

@@ -1,3 +1,4 @@
+import '@/utils/suppressKnownWarnings';
 import 'react-native-url-polyfill/auto';
 import React, { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
