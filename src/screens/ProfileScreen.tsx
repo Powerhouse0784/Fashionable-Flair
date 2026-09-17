@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import { fonts } from '@/hooks/useAppFonts';
 import { useProducts } from '@/context/ProductsContext';
 import { useAuth } from '@/context/AuthContext';
 import Container from '@/components/Container';
+import Logo from '@/components/Logo';
 
 interface MenuItemProps {
   icon: string;
@@ -98,13 +99,9 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <Container>
           <View style={styles.header}>
-            {/* FIX: Round logo like avatar */}
+            {/* Round logo like avatar */}
             <View style={styles.logoContainer}>
-              <Image 
-                source={require('@/assets/icon.png')} 
-                style={styles.logo}
-                resizeMode="cover"
-              />
+              <Logo variant="mark" height={44} />
             </View>
             <Text style={styles.name}>Fashionable Flair</Text>
             <Text style={styles.subtitle}>Jewellery that speaks your style</Text>
@@ -218,11 +215,6 @@ function makeStyles(colors: ColorTheme) {
       shadowOpacity: 0.2,
       shadowRadius: 8,
       elevation: 4,
-    },
-    logo: {
-      width: 76,
-      height: 76,
-      borderRadius: 38,
     },
     name: { ...typography.h3, color: colors.textPrimary },
     subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' },

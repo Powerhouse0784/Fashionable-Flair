@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,15 +33,57 @@ const WELCOME_MESSAGE: ChatMessage = {
 
 interface Props {
   hidden?: boolean;
+  /**
+   * Controlled mode: pass `open` + `onClose` when this widget is being
+   * driven by an external trigger (e.g. QuickActionsSidebar's chat button)
+   * so there's a single source of truth for whether the panel is visible.
+   * Omit both to fall back to the old self-contained behavior (own FAB,
+   * own open/close state) — kept for anything that still mounts
+   * ChatWidget on its own.
+   */
+  open?: boolean;
+  onClose?: () => void;
+  /** How far above its default bottom-right corner the floating panel
+   * should sit on wide screens, so it can clear a taller trigger (like the
+   * sidebar rail) instead of overlapping it. Ignored on narrow screens,
+   * where the panel is always a full bottom sheet. */
+  wideBottomOffset?: number;
 }
 
-export default function ChatWidget({ hidden }: Props) {
+export default function ChatWidget({ hidden, open: openProp, onClose, wideBottomOffset }: Props) {
   const { colors } = useTheme();
   const isWide = useIsWideScreen();
   const tabBarHeight = useTabBarHeight();
-  const styles = makeStyles(colors, tabBarHeight);
+  const { height: windowHeight } = useWindowDimensions();
 
-  const [open, setOpen] = useState(false);
+  // The panel used to have a fixed 480px height regardless of the actual
+  // browser window size. Combined with a trigger that can sit fairly high
+  // up (the quick-actions rail), that fixed height was taller than some
+  // laptop viewports could fit below wideBottomOffset — pushing the panel's
+  // top edge above y=0, i.e. "off the top of the screen". Capping it to
+  // whatever room is actually available (with a sane floor/ceiling) means
+  // it always fits, however short the window is.
+  const wideTopMargin = 16;
+  const minPanelHeight = 320;
+  const maxPanelHeight = 480;
+  // If even the minimum panel height wouldn't fit below the requested
+  // bottom offset (a very short/laptop-with-devtools-open window), pull
+  // the offset down instead of letting the panel clip above y=0 — a little
+  // overlap with the rail's lowest icon beats the panel vanishing off the
+  // top of the screen.
+  const requestedBottom = wideBottomOffset ?? 96;
+  const wideBottom = Math.max(16, Math.min(requestedBottom, windowHeight - minPanelHeight - wideTopMargin));
+  const panelHeightWide = Math.max(minPanelHeight, Math.min(maxPanelHeight, windowHeight - wideBottom - wideTopMargin));
+
+  const styles = makeStyles(colors, tabBarHeight, wideBottom, panelHeightWide);
+
+  const isControlled = openProp !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? (openProp as boolean) : internalOpen;
+  const closePanel = () => {
+    if (onClose) onClose();
+    if (!isControlled) setInternalOpen(false);
+  };
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -222,7 +265,7 @@ const handleSend = async (text?: string) => {
             </Text>
           </View>
         </View>
-        <TouchableOpacity onPress={() => setOpen(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity onPress={closePanel} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="close" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
@@ -302,19 +345,25 @@ const handleSend = async (text?: string) => {
 
   return (
     <>
-      <TouchableOpacity
-        style={[styles.fab, isWide ? styles.fabWide : styles.fabNarrow]}
-        activeOpacity={0.85}
-        onPress={() => setOpen(true)}
-      >
-        <Ionicons name="chatbubble-ellipses" size={24} color={colors.textInverse} />
-      </TouchableOpacity>
+      {/* Own FAB only in uncontrolled mode — when a parent (like
+          QuickActionsSidebar) supplies `open`, that parent owns the
+          trigger button instead, so we don't end up with two chat
+          buttons on screen. */}
+      {!isControlled && (
+        <TouchableOpacity
+          style={[styles.fab, isWide ? styles.fabWide : styles.fabNarrow]}
+          activeOpacity={0.85}
+          onPress={() => setInternalOpen(true)}
+        >
+          <Ionicons name="chatbubble-ellipses" size={24} color={colors.textInverse} />
+        </TouchableOpacity>
+      )}
 
       {open &&
         (isWide ? (
           ChatPanel
         ) : (
-          <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+          <Modal visible={open} transparent animationType="slide" onRequestClose={closePanel}>
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={styles.modalBackdrop}
@@ -329,7 +378,7 @@ const handleSend = async (text?: string) => {
   );
 }
 
-function makeStyles(colors: ColorTheme, tabBarHeight: number) {
+function makeStyles(colors: ColorTheme, tabBarHeight: number, wideBottomOffset: number, panelHeightWide: number) {
   return StyleSheet.create({
     fab: {
       position: 'absolute',
@@ -353,10 +402,10 @@ function makeStyles(colors: ColorTheme, tabBarHeight: number) {
     },
     panelWide: {
       position: 'absolute',
-      bottom: 96,
+      bottom: wideBottomOffset,
       right: 28,
       width: 360,
-      height: 480,
+      height: panelHeightWide,
       flex: 0,
       borderRadius: radius.lg,
       borderWidth: 1,

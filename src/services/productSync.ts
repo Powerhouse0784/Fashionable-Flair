@@ -4,12 +4,22 @@ import { SHEET_CSV_URL } from '@/config/sheetConfig';
 
 const VALID_CATEGORIES: CategoryKey[] = [
   'earrings',
-  'necklaces',
   'pendants',
   'jewellery-sets',
   'bracelets',
   'hair-accessories',
 ];
+
+// See productService.ts — same reasoning: an old published sheet may still
+// have rows tagged with a category that was later merged into another one.
+const LEGACY_CATEGORY_ALIASES: Record<string, CategoryKey> = {
+  necklaces: 'pendants',
+};
+
+function normalizeCategory(raw: string | undefined): CategoryKey {
+  const key = (raw || '').trim();
+  return (LEGACY_CATEGORY_ALIASES[key] ?? key) as CategoryKey;
+}
 
 function toBool(value: string | undefined): boolean {
   if (!value) return false;
@@ -20,7 +30,7 @@ function rowToProduct(row: Record<string, string>): Product | null {
   const id = row.id?.trim();
   const title = row.title?.trim();
   const price = parseFloat(row.price);
-  const category = row.category?.trim() as CategoryKey;
+  const category = normalizeCategory(row.category);
   const rating = parseFloat(row.rating);
   const meeshoUrl = row.meeshoUrl?.trim();
 

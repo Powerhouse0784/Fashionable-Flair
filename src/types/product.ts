@@ -1,6 +1,5 @@
 export type CategoryKey =
   | 'earrings'
-  | 'necklaces'
   | 'pendants'
   | 'jewellery-sets'
   | 'bracelets'

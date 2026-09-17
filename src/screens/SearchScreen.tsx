@@ -63,7 +63,7 @@ export default function SearchScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search earrings, necklaces, sets..."
+            placeholder="Search earrings, pendants, sets..."
             placeholderTextColor={colors.textMuted}
             style={styles.input}
             autoCorrect={false}

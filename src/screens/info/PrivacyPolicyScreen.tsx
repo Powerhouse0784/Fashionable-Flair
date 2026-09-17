@@ -56,6 +56,14 @@ export default function PrivacyPolicyScreen() {
         people managing the catalog.
       </InfoSection>
 
+      <InfoSection heading="4d. Quick Contact — WhatsApp, Instagram & Phone">
+        The chat, WhatsApp, Instagram, and call icons available throughout the app are quick links to
+        reach us on each of those channels — tapping one opens that service directly (e.g. a WhatsApp
+        chat with our number, our Instagram profile, or your phone's dialer). We don't see or store
+        anything from those conversations within this app; once you leave to WhatsApp or Instagram, your
+        communication is governed by Meta's own privacy policy for that service, not this one.
+      </InfoSection>
+
       <InfoSection heading="5. Store Admin Accounts">
         Sign-in exists only for store management (adding, editing, or removing products) and is limited
         to specifically approved store staff. Regular shoppers never create or need an account, and this

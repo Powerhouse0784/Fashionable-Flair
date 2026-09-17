@@ -7,6 +7,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useWishlist } from '@/context/WishlistContext';
 import { useContentMetrics } from '@/hooks/useResponsive';
+import Logo from '@/components/Logo';
 
 const NAV_ITEMS: { label: string; tab: 'Home' | 'Search' | 'Wishlist' | 'Profile'; icon: string }[] = [
   { label: 'Home', tab: 'Home', icon: 'home-outline' },
@@ -41,10 +42,7 @@ export default function TopNav() {
     <View style={styles.wrap}>
       <View style={[styles.inner, { paddingHorizontal: sidePadding }]}>
         <TouchableOpacity style={styles.brandRow} onPress={() => goToTab('Home')}>
-          <View style={styles.logoDot}>
-            <Ionicons name="diamond" size={16} color={colors.textInverse} />
-          </View>
-          <Text style={styles.brand}>Fashionable Flair</Text>
+          <Logo variant="full" height={34} />
         </TouchableOpacity>
 
         <View style={styles.links}>
@@ -91,15 +89,6 @@ function makeStyles(colors: ColorTheme) {
       paddingVertical: spacing.md,
     },
     brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    logoDot: {
-      width: 30,
-      height: 30,
-      borderRadius: radius.pill,
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    brand: { ...typography.h3, color: colors.textPrimary },
     links: { flexDirection: 'row', alignItems: 'center', gap: spacing.xl },
     link: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, position: 'relative' },
     linkText: { ...typography.bodySmall, color: colors.textSecondary, fontFamily: fonts.bodySemiBold },

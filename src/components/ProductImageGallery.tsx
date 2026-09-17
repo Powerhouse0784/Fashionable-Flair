@@ -94,8 +94,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
 
   const HeartOverlay = heartVisible && (
     <Animated.View
-      style={[styles.heartBurst, { transform: [{ scale: heartScale }] }]}
-      pointerEvents="none"
+      style={[styles.heartBurst, { transform: [{ scale: heartScale }], pointerEvents: 'none' }]}
     >
       <Ionicons name="heart" size={90} color="#FFFFFF" />
     </Animated.View>
@@ -171,7 +170,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
           )}
         />
         {/* Dots with dark background */}
-        <View style={styles.dotsContainer} pointerEvents="none">
+        <View style={[styles.dotsContainer, { pointerEvents: 'none' }]}>
           <View style={styles.dots}>
             {images.map((_, i) => (
               <View

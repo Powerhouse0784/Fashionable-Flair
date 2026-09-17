@@ -14,8 +14,8 @@ export default function AboutScreen() {
   return (
     <InfoPageLayout title="About Fashionable Flair" subtitle="Jewellery that speaks your style" icon="diamond">
       <InfoSection>
-        Fashionable Flair started as a small, hand-curated jewellery collection — earrings, necklaces,
-        pendants, bracelets, and hair accessories chosen for everyday elegance without the everyday price
+        Fashionable Flair started as a small, hand-curated jewellery collection — earrings, pendants,
+        chains, bracelets, and hair accessories chosen for everyday elegance without the everyday price
         tag. Every piece in this catalog has been personally selected, not mass-imported.
       </InfoSection>
 

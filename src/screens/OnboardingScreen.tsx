@@ -9,7 +9,6 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Platform,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
+import Logo from '@/components/Logo';
 
 interface Slide {
   title: string;
@@ -93,11 +93,7 @@ export default function OnboardingScreen({ onDone }: Props) {
 
         {/* App logo */}
         <View style={styles.iconContainer}>
-          <Image
-            source={require('@/assets/icon.png')}
-            style={styles.centerLogo}
-            resizeMode="cover"
-          />
+          <Logo variant="mark" height={isWeb ? 84 : 64} />
         </View>
 
         <View style={styles.textContainer}>
@@ -322,12 +318,6 @@ function makeStyles(colors: ColorTheme) {
       shadowOpacity: 0.16,
       shadowRadius: 12,
       elevation: 6,
-    },
-
-    centerLogo: {
-      width: '100%',
-      height: '100%',
-      borderRadius: isWeb ? 70 : 56,
     },
 
     textContainer: {

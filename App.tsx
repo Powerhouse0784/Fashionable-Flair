@@ -13,7 +13,7 @@ import { ToastProvider } from '@/context/ToastContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { RecentlyViewedProvider } from '@/context/RecentlyViewedContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import ChatWidget from '@/components/ChatWidget';
+import QuickActionsSidebar from '@/components/QuickActionsSidebar';
 import OnboardingScreen from '@/screens/OnboardingScreen';
 import RootNavigator from '@/navigation/RootNavigator';
 import { RootStackParamList } from '@/types/navigation';
@@ -62,28 +62,29 @@ function AppNavigation() {
   const [isAdminScreen, setIsAdminScreen] = useState(false);
   const [isMeeshoRedirect, setIsMeeshoRedirect] = useState(false);
 
-  // ChatWidget sits as a sibling of RootNavigator, not inside any of its
-  // screens — so it can't use useNavigationState() itself (that hook
-  // requires being a descendant of an actual Navigator, not just inside
-  // NavigationContainer, and calling it anyway crashed the whole app).
-  // Tracking the current route via the container ref instead and passing
-  // it down as a plain prop avoids that entirely.
+  // QuickActionsSidebar (chat + WhatsApp + Instagram + call) sits as a
+  // sibling of RootNavigator, not inside any of its screens — so it can't
+  // use useNavigationState() itself (that hook requires being a descendant
+  // of an actual Navigator, not just inside NavigationContainer, and
+  // calling it anyway crashed the whole app). Tracking the current route
+  // via the container ref instead and passing it down as a plain prop
+  // avoids that entirely.
   const updateCurrentRoute = useCallback(() => {
     const routeName = navigationRef.getCurrentRoute()?.name;
     setIsAdminScreen(typeof routeName === 'string' && routeName.startsWith('Admin'));
-    // FIX: Hide chat widget on MeeshoRedirect screen
+    // FIX: Hide the sidebar on MeeshoRedirect screen
     setIsMeeshoRedirect(routeName === 'MeeshoRedirect');
   }, [navigationRef]);
 
-  // FIX: Hide chat widget if on admin screen OR meesho redirect screen
-  const shouldHideChatWidget = isAdminScreen || isMeeshoRedirect;
+  // FIX: Hide the sidebar if on admin screen OR meesho redirect screen
+  const shouldHideSidebar = isAdminScreen || isMeeshoRedirect;
 
   return (
     <NavigationContainer ref={navigationRef} linking={linking} onReady={updateCurrentRoute} onStateChange={updateCurrentRoute}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={{ flex: 1 }}>
         <RootNavigator />
-        <ChatWidget hidden={shouldHideChatWidget} />
+        <QuickActionsSidebar hidden={shouldHideSidebar} />
       </View>
     </NavigationContainer>
   );

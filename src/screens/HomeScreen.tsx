@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, ScrollView, FlatList, StyleSheet, TouchableOpacity, RefreshControl, Image, Platform } from 'react-native';
+import { View, Text, ScrollView, FlatList, StyleSheet, TouchableOpacity, RefreshControl, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -22,6 +22,10 @@ import Container from '@/components/Container';
 import Footer from '@/components/Footer';
 import TrustBar from '@/components/TrustBar';
 import EmptyState from '@/components/EmptyState';
+import BannerCarousel from '@/components/BannerCarousel';
+import WhyChooseUs from '@/components/WhyChooseUs';
+import GoogleReviewsSection from '@/components/GoogleReviewsSection';
+import Logo from '@/components/Logo';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -100,11 +104,7 @@ export default function HomeScreen() {
           {!isWide && (
             <View style={styles.header}>
               <View style={styles.logoContainer}>
-                <Image 
-                  source={require('@/assets/icon.png')} 
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
+                <Logo variant="mark" height={46} />
                 <View style={styles.headerTextContainer}>
                   <Text style={styles.brand}>Fashionable Flair</Text>
                   <Text style={styles.tagline}>Jewellery that speaks your style</Text>
@@ -186,6 +186,9 @@ export default function HomeScreen() {
             )}
           </View>
 
+          {/* Scrollable promo banner strip */}
+          <BannerCarousel />
+
           {/* Featured */}
           {featured.length > 0 && (
             <>
@@ -235,6 +238,12 @@ export default function HomeScreen() {
               />
             )}
           </View>
+
+          {/* Why choose us — trust features */}
+          <WhyChooseUs />
+
+          {/* Google reviews CTA */}
+          <GoogleReviewsSection />
 
           {!isWide && <View style={{ height: spacing.xxl }} />}
         </Container>

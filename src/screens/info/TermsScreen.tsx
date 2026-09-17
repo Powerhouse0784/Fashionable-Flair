@@ -62,9 +62,10 @@ export default function TermsScreen() {
 
       <InfoSection heading="9. Third-Party Links & Services">
         This app links out to and relies on third-party services — most centrally Meesho for every
-        purchase, plus Google Gemini (chat), Brevo (contact form email), and Supabase (catalog data). Each
-        operates under its own terms, and we aren't responsible for their availability, content, or
-        conduct once you're using them directly.
+        purchase, plus Google Gemini (chat), Brevo (contact form email), Supabase (catalog data), and
+        WhatsApp/Instagram (via the quick-contact icons available throughout the app). Each operates
+        under its own terms, and we aren't responsible for their availability, content, or conduct once
+        you're using them directly.
       </InfoSection>
 
       <InfoSection heading="10. Disclaimers">

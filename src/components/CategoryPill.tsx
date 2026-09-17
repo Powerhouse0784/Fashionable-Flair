@@ -19,11 +19,10 @@ export default function CategoryPill({ category, onPress }: Props) {
   // icon "chips" rather than plain outline icons floating on the page.
   const tints: Record<CategoryKey, string> = {
     earrings: colors.primaryLight,
-    necklaces: colors.goldLight,
-    pendants: colors.primaryLight,
-    'jewellery-sets': colors.goldLight,
-    bracelets: colors.primaryLight,
-    'hair-accessories': colors.goldLight,
+    pendants: colors.goldLight,
+    'jewellery-sets': colors.primaryLight,
+    bracelets: colors.goldLight,
+    'hair-accessories': colors.primaryLight,
   };
   const tint = tints[category.key] ?? colors.primaryLight;
 

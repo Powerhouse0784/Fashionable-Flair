@@ -7,7 +7,6 @@ import { CategoryKey } from '@/types/product';
 
 const CATEGORY_ICON: Record<CategoryKey, string> = {
   earrings: 'diamond-outline',
-  necklaces: 'ellipse-outline',
   pendants: 'heart-outline',
   'jewellery-sets': 'sparkles-outline',
   bracelets: 'infinite-outline',
@@ -31,11 +30,10 @@ export default function ProductPlaceholder({ category, compact }: Props) {
   const styles = makeStyles(colors);
   const categoryTint: Record<CategoryKey, string> = {
     earrings: colors.primaryLight,
-    necklaces: colors.goldLight,
-    pendants: colors.primaryLight,
-    'jewellery-sets': colors.goldLight,
-    bracelets: colors.primaryLight,
-    'hair-accessories': colors.goldLight,
+    pendants: colors.goldLight,
+    'jewellery-sets': colors.primaryLight,
+    bracelets: colors.goldLight,
+    'hair-accessories': colors.primaryLight,
   };
   const icon = CATEGORY_ICON[category] ?? 'sparkles-outline';
   const tint = categoryTint[category] ?? colors.surfaceAlt;

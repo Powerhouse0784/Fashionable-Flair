@@ -7,6 +7,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useContentMetrics } from '@/hooks/useResponsive';
 import { CategoryKey } from '@/types/product';
+import Logo from '@/components/Logo';
 
 const PHONE = '8448822940';
 const EMAIL = 'fashionableflair786@gmail.com';
@@ -14,7 +15,7 @@ const ADDRESS = 'R-3/A-2, 5 Mohan Garden, Uttam Nagar, New Delhi - 110059';
 
 const SHOP_LINKS: { label: string; category: CategoryKey }[] = [
   { label: 'Earrings & Studs', category: 'earrings' },
-  { label: 'Necklaces & Chains', category: 'necklaces' },
+  { label: 'Pendants & Chains', category: 'pendants' },
   { label: 'Jewellery Sets', category: 'jewellery-sets' },
   { label: 'Bracelets & Bangles', category: 'bracelets' },
 ];
@@ -43,7 +44,7 @@ export default function Footer() {
     <View style={styles.wrap}>
       <View style={[styles.inner, { paddingHorizontal: sidePadding }]}>
         <View style={styles.brandBlock}>
-          <Text style={styles.brand}>Fashionable Flair</Text>
+          <Logo variant="full" height={40} style={{ alignSelf: 'flex-start' }} />
           <Text style={styles.tagline}>Jewellery that speaks your style.</Text>
           <TouchableOpacity onPress={() => Linking.openURL('https://www.meesho.com/h6z4l')}>
             <Text style={styles.storeLink}>Visit our Meesho store →</Text>
@@ -94,6 +95,23 @@ export default function Footer() {
         </View>
 
         <View style={styles.divider} />
+
+        <TouchableOpacity
+          style={styles.supportBanner}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Contact')}
+        >
+          <View style={styles.supportIconWrap}>
+            <Ionicons name="headset-outline" size={20} color={colors.textInverse} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.supportTitle}>24/7 Support</Text>
+            <Text style={styles.supportSubtitle}>Have a question? Feel free to contact us.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+        </TouchableOpacity>
+
+        <View style={styles.divider} />
         <Text style={styles.copyright}>
           © {new Date().getFullYear()} Fashionable Flair. Products are sold and fulfilled by Meesho.
         </Text>
@@ -129,6 +147,26 @@ function makeStyles(colors: ColorTheme) {
       cursor: 'pointer',
     },
     divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.lg },
+    supportBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      padding: spacing.md,
+    },
+    supportIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    supportTitle: { ...typography.body, fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
+    supportSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 1 },
     copyright: { ...typography.caption, color: colors.textMuted },
   });
 }

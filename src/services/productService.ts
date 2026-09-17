@@ -1,8 +1,23 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { Product } from '@/types/product';
+import { Product, CategoryKey } from '@/types/product';
 
 const TABLE = 'products';
 const BUCKET = 'product-images';
+
+// Categories that used to exist as their own entries but have since been
+// merged into another one (see src/data/categories.ts). Products already
+// saved in Supabase under the old key would otherwise vanish from every
+// category screen the moment the old key stopped being a valid
+// CategoryKey — this keeps old rows working without requiring a manual
+// edit in the database for each one.
+const LEGACY_CATEGORY_ALIASES: Record<string, CategoryKey> = {
+  necklaces: 'pendants',
+};
+
+function normalizeCategory(raw: unknown): CategoryKey {
+  const key = typeof raw === 'string' ? raw : '';
+  return (LEGACY_CATEGORY_ALIASES[key] ?? key) as CategoryKey;
+}
 
 // --- Reads ---------------------------------------------------------------
 
@@ -19,7 +34,7 @@ export async function fetchProducts(): Promise<Product[] | null> {
   // once an admin is managing real inventory: deleting the only product
   // made the entire 21-item placeholder catalog reappear, which looked
   // exactly like "the delete didn't work."
-  return data as Product[];
+  return ((data as Product[]) || []).map((p) => ({ ...p, category: normalizeCategory(p.category) }));
 }
 
 /**
