@@ -1,83 +1,91 @@
-// Fashionable Flair — brand palette
-// Warm, jewellery-store feel: rose-gold accent on a soft cream base (light)
-// or a warm charcoal base (dark). Both palettes share the exact same key
-// names so every component can swap between them without any other code
-// changes — see ThemeContext.tsx / useTheme().
+// Fashionable Flair — Dual Luxury Theme
+//
+// LIGHT MODE
+// Clean Ocean Blue + White
+//
+// DARK MODE
+// Premium Black + Gold
+//
+// Both themes use the same keys so existing components
+// can switch themes without requiring component changes.
 
 export const lightColors = {
   // Brand
-  primary: '#B76E79',
-  primaryDark: '#8F4A54',
-  primaryLight: '#E8C4C9',
+  primary: '#286CB0',
+  primaryDark: '#1E4F86',
+  primaryLight: '#DCEEFF',
+
+  // Gold jewellery accent
   gold: '#C9A24B',
-  goldLight: '#F1E2B8',
+  goldLight: '#F3E7C5',
 
   // Backgrounds
-  background: '#FFF8F3',
+  background: '#F8FAFF',
   surface: '#FFFFFF',
-  surfaceAlt: '#FBEFE8',
+  surfaceAlt: '#EAF3FC',
 
   // Text
-  textPrimary: '#2B2320',
-  textSecondary: '#7A6E68',
-  textMuted: '#A89C95',
+  textPrimary: '#192A3D',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
   textInverse: '#FFFFFF',
 
   // Status
-  success: '#3C8C5C',
-  successLight: '#DCF0E2',
-  warning: '#C97A2B',
-  danger: '#C1443B',
+  success: '#2E7D63',
+  successLight: '#DDF3EB',
+  warning: '#C58A2C',
+  danger: '#C94A4A',
 
   // UI
-  border: '#EFE0D6',
-  divider: '#F1E7DF',
-  overlay: 'rgba(43, 35, 32, 0.55)',
-  shadow: 'rgba(183, 110, 121, 0.18)',
+  border: '#D9E7F5',
+  divider: '#E7EEF6',
+  overlay: 'rgba(25, 42, 61, 0.45)',
+  shadow: 'rgba(40, 108, 176, 0.14)',
 
   // Rating
-  star: '#E0A63C',
+  star: '#D9A441',
 };
 
 export const darkColors = {
-  // Brand — lightened slightly so it still reads clearly against dark
-  // surfaces instead of looking muddy.
-  primary: '#CB8D97',
-  primaryDark: '#E8C4C9',
-  primaryLight: '#4A2C32',
-  gold: '#D9B76B',
-  goldLight: '#4A3F26',
+  // Brand
+  // In dark mode BLUE is no longer the main brand colour.
+  // Gold becomes the primary visual accent.
+  primary: '#D4A943',
+  primaryDark: '#B88A2E',
+  primaryLight: '#3A301C',
+
+  // Gold
+  gold: '#D9B65F',
+  goldLight: '#4A3D22',
 
   // Backgrounds
-  background: '#1C1512',
-  surface: '#251C18',
-  surfaceAlt: '#2E2320',
+  background: '#0B0B0A',
+  surface: '#151514',
+  surfaceAlt: '#201F1C',
 
   // Text
-  textPrimary: '#F4E9E2',
-  textSecondary: '#C9B8AF',
-  textMuted: '#8A7B72',
-  textInverse: '#FFFFFF',
+  textPrimary: '#F5EBD5',
+  textSecondary: '#B9B1A3',
+  textMuted: '#77736A',
+  textInverse: '#0B0B0A',
 
   // Status
-  success: '#4FAD73',
-  successLight: '#25422F',
-  warning: '#D68F42',
-  danger: '#D9695F',
+  success: '#4FA47C',
+  successLight: '#20372D',
+  warning: '#D6A247',
+  danger: '#D96A5F',
 
   // UI
-  border: '#3A2C26',
-  divider: '#332822',
-  overlay: 'rgba(0, 0, 0, 0.6)',
-  shadow: 'rgba(0, 0, 0, 0.4)',
+  border: '#302D27',
+  divider: '#26241F',
+  overlay: 'rgba(0, 0, 0, 0.70)',
+  shadow: 'rgba(0, 0, 0, 0.55)',
 
   // Rating
-  star: '#E0A63C',
+  star: '#E0B04F',
 };
 
-// Default export kept for any code that hasn't been migrated to the
-// useTheme() hook yet — always resolves to the light palette so nothing
-// breaks, it just won't respond to the dark mode toggle until converted.
+// Default palette
 export const colors = lightColors;
 
 export type ColorTheme = typeof lightColors;
