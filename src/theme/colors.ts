@@ -1,13 +1,13 @@
 // Fashionable Flair — Dual Luxury Theme
 //
 // LIGHT MODE
-// Clean Ocean Blue + White
+// Ocean Blue + White
 //
 // DARK MODE
-// Premium Black + Gold
+// Deep Blue + Gold
 //
 // Both themes use the same keys so existing components
-// can switch themes without requiring component changes.
+// can switch themes without component changes.
 
 export const lightColors = {
   // Brand
@@ -15,7 +15,7 @@ export const lightColors = {
   primaryDark: '#1E4F86',
   primaryLight: '#DCEEFF',
 
-  // Gold jewellery accent
+  // Jewellery accent
   gold: '#C9A24B',
   goldLight: '#F3E7C5',
 
@@ -47,42 +47,40 @@ export const lightColors = {
 };
 
 export const darkColors = {
-  // Brand
-  // In dark mode BLUE is no longer the main brand colour.
-  // Gold becomes the primary visual accent.
-  primary: '#D4A943',
-  primaryDark: '#B88A2E',
-  primaryLight: '#3A301C',
+  // Brand — Deep Blue
+  primary: '#2878C8',
+  primaryDark: '#1760A8',
+  primaryLight: '#12385D',
 
-  // Gold
-  gold: '#D9B65F',
-  goldLight: '#4A3D22',
+  // Jewellery accent — Gold
+  gold: '#D9A943',
+  goldLight: '#4A3B1D',
 
-  // Backgrounds
-  background: '#0B0B0A',
-  surface: '#151514',
-  surfaceAlt: '#201F1C',
+  // Backgrounds — Deep Blue
+  background: '#07111F',
+  surface: '#0D1C2E',
+  surfaceAlt: '#102943',
 
   // Text
-  textPrimary: '#F5EBD5',
-  textSecondary: '#B9B1A3',
-  textMuted: '#77736A',
-  textInverse: '#0B0B0A',
+  textPrimary: '#F4F8FC',
+  textSecondary: '#B8C7D8',
+  textMuted: '#718398',
+  textInverse: '#FFFFFF',
 
   // Status
-  success: '#4FA47C',
-  successLight: '#20372D',
-  warning: '#D6A247',
-  danger: '#D96A5F',
+  success: '#4BA889',
+  successLight: '#17372F',
+  warning: '#D8A64A',
+  danger: '#D96666',
 
   // UI
-  border: '#302D27',
-  divider: '#26241F',
-  overlay: 'rgba(0, 0, 0, 0.70)',
-  shadow: 'rgba(0, 0, 0, 0.55)',
+  border: '#1B4A73',
+  divider: '#16344F',
+  overlay: 'rgba(0, 0, 0, 0.65)',
+  shadow: 'rgba(0, 35, 70, 0.55)',
 
   // Rating
-  star: '#E0B04F',
+  star: '#E4B54F',
 };
 
 // Default palette
