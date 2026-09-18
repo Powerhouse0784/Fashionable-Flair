@@ -281,21 +281,6 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
 
   return (
     <>
-      {/* Full-screen invisible backdrop, only present while the speed-dial
-          is expanded — tapping anywhere outside the widget's own buttons
-          closes it, same as any standard dropdown/menu dismiss pattern.
-          Rendered before the widget itself so the widget's own buttons
-          (later in the tree) still get first claim on overlapping taps. */}
-      {expanded && (
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={() => setExpandedAnimated(false)}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        />
-      )}
-
       <Animated.View
         style={[
           styles.wrap,
