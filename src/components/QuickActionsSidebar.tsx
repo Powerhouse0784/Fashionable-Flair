@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useIsWideScreen } from '@/hooks/useResponsive';
 import { useTabBarHeight } from '@/hooks/useTabBarHeight';
-import { useScrollVisibility } from '@/context/ScrollVisibilityContext';
+import { useScrollVisibility, useOnAnyScroll } from '@/context/ScrollVisibilityContext';
 import ChatWidget from '@/components/ChatWidget';
 import { WHATSAPP_NUMBER, WHATSAPP_DEFAULT_MESSAGE, INSTAGRAM_URL, SUPPORT_PHONE } from '@/config/socialLinks';
 
@@ -62,15 +62,10 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
   const isWide = useIsWideScreen();
   const tabBarHeight = useTabBarHeight();
   const scrollVisibility = useScrollVisibility();
+  const onAnyScroll = useOnAnyScroll();
   const [chatOpen, setChatOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
-  // Mirrors scrollVisibility as a plain boolean so we can flip pointerEvents
-  // to a real 'none' while hidden — opacity/translate alone only make the
-  // widget invisible, they don't stop it from still eating taps sitting
-  // underneath it (which is exactly what was intercepting taps meant for
-  // the bottom tab bar while the widget was scrolled out of sight).
-  const [scrollHidden, setScrollHidden] = useState(false);
 
   // React Native Web has no native animation thread, so useNativeDriver
   // does nothing there but log a warning every time — same pattern already
@@ -87,19 +82,6 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
   useEffect(() => {
     Animated.spring(mountAnim, { toValue: 1, useNativeDriver, speed: 14, bounciness: 8 }).start();
   }, []);
-
-  // Track scroll-visibility as a plain boolean (see scrollHidden above) —
-  // Animated.Value doesn't expose its current number synchronously, so a
-  // listener is the only way to derive a real on/off pointerEvents switch
-  // from it.
-  useEffect(() => {
-    const id = scrollVisibility.addListener(({ value }) => {
-      const nowHidden = value < 0.4;
-      setScrollHidden(nowHidden);
-      if (nowHidden && expanded) setExpandedAnimated(false);
-    });
-    return () => scrollVisibility.removeListener(id);
-  }, [scrollVisibility, expanded]);
 
   // A single soft pulse ring, repeating on a long interval, until the
   // person interacts with the widget for the first time.
@@ -144,6 +126,20 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
     );
     Animated.stagger(STAGGER_MS, next ? springs : springs.slice().reverse()).start();
   };
+
+  // Close the speed-dial the instant the person starts scrolling anywhere,
+  // rather than trying to catch "tap outside to close" with a full-screen
+  // overlay — that overlay would also swallow the scroll gesture itself
+  // (there's no way in plain React Native to distinguish "tap" from "the
+  // start of a scroll drag" on a see-through layer sitting above a
+  // ScrollView), which is exactly what was blocking scrolling while the
+  // menu was open. Scrolling is the far more common way someone moves on
+  // from the menu anyway, and re-tapping the handle or picking an action
+  // still close it instantly too.
+  useEffect(() => {
+    if (!expanded) return;
+    return onAnyScroll(() => setExpandedAnimated(false));
+  }, [expanded]);
 
   const handleWhatsApp = () =>
     Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_DEFAULT_MESSAGE)}`);
@@ -228,7 +224,7 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
         <Animated.View
           style={[
             styles.rail,
-            { bottom: 28 + extraBottomOffset, right: 28, pointerEvents: scrollHidden ? 'none' : 'box-none' },
+            { bottom: 28 + extraBottomOffset, right: 28, pointerEvents: 'box-none' },
             {
               opacity: Animated.multiply(mountAnim, scrollVisibility),
               transform: [
@@ -274,7 +270,14 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
   // ---- Narrow / mobile: chat button up front + a small "more" handle ----
   const handleRotate = handleAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
   const bottom = tabBarHeight + 16 + extraBottomOffset;
-  const scrollTranslateNarrow = scrollVisibility.interpolate({ inputRange: [0, 1], outputRange: [90, 0] });
+  // When hidden, push the whole widget down far enough to clear the tab
+  // bar entirely (not just far enough to look hidden) — otherwise, even
+  // though it's faded out, its buttons are still sitting exactly on top of
+  // the tab bar and silently steal taps meant for it. Distance is derived
+  // from the actual tab bar height so it's always enough clearance,
+  // regardless of platform/safe-area differences.
+  const hideDistance = tabBarHeight + MAIN_SIZE_NARROW + 24;
+  const scrollTranslateNarrow = scrollVisibility.interpolate({ inputRange: [0, 1], outputRange: [hideDistance, 0] });
 
   return (
     <>
@@ -296,7 +299,7 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
       <Animated.View
         style={[
           styles.wrap,
-          { bottom, right: 16, pointerEvents: scrollHidden ? 'none' : 'box-none' },
+          { bottom, right: 16, pointerEvents: 'box-none' },
           {
             opacity: Animated.multiply(mountAnim, scrollVisibility),
             transform: [

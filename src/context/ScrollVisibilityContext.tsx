@@ -18,6 +18,12 @@ interface ScrollVisibilityContextValue {
    * (pair with scrollEventThrottle={16}) to have that screen's scrolling
    * drive the shared visibility value. */
   handleScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /** Register a callback fired on every scroll tick, from any screen.
+   * Returns an unsubscribe function. Used by QuickActionsSidebar to close
+   * its speed-dial the moment scrolling starts, rather than blocking
+   * scroll with a tap-to-dismiss overlay (which would catch the scroll
+   * gesture itself, not just taps). */
+  subscribeScroll: (callback: () => void) => () => void;
 }
 
 const ScrollVisibilityContext = createContext<ScrollVisibilityContextValue | null>(null);
@@ -35,6 +41,7 @@ export function ScrollVisibilityProvider({ children }: { children: React.ReactNo
   const visibility = useRef(new Animated.Value(1)).current;
   const lastY = useRef(0);
   const lastDirection = useRef<'up' | 'down' | null>(null);
+  const scrollListeners = useRef(new Set<() => void>());
 
   const show = () => {
     if (lastDirection.current !== 'up') {
@@ -50,6 +57,8 @@ export function ScrollVisibilityProvider({ children }: { children: React.ReactNo
   };
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollListeners.current.forEach((cb) => cb());
+
     const y = e.nativeEvent.contentOffset.y;
     const delta = y - lastY.current;
     lastY.current = y;
@@ -62,8 +71,15 @@ export function ScrollVisibilityProvider({ children }: { children: React.ReactNo
     else if (delta < -MIN_DELTA) show();
   };
 
+  const subscribeScroll = (callback: () => void) => {
+    scrollListeners.current.add(callback);
+    return () => scrollListeners.current.delete(callback);
+  };
+
   return (
-    <ScrollVisibilityContext.Provider value={{ visibility, handleScroll }}>{children}</ScrollVisibilityContext.Provider>
+    <ScrollVisibilityContext.Provider value={{ visibility, handleScroll, subscribeScroll }}>
+      {children}
+    </ScrollVisibilityContext.Provider>
   );
 }
 
@@ -81,4 +97,10 @@ export function useScrollVisibility(): Animated.Value {
   const ctx = useContext(ScrollVisibilityContext);
   const fallback = useRef(new Animated.Value(1)).current;
   return ctx?.visibility ?? fallback;
+}
+
+/** Registers a callback that fires on every scroll tick from any screen. */
+export function useOnAnyScroll(): (callback: () => void) => () => void {
+  const ctx = useContext(ScrollVisibilityContext);
+  return ctx?.subscribeScroll ?? (() => () => {});
 }
