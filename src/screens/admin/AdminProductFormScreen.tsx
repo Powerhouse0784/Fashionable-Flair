@@ -41,6 +41,7 @@ interface FormState {
   title: string;
   subtitle: string;
   price: string;
+  compareAtPrice: string;
   category: CategoryKey;
   rating: string;
   ratingLabel: string;
@@ -68,6 +69,7 @@ const EMPTY_FORM: FormState = {
   title: '',
   subtitle: '',
   price: '',
+  compareAtPrice: '',
   category: 'earrings',
   rating: '',
   ratingLabel: '',
@@ -103,6 +105,7 @@ export default function AdminProductFormScreen() {
         title: existing.title,
         subtitle: existing.subtitle ?? '',
         price: String(existing.price),
+        compareAtPrice: existing.compareAtPrice ? String(existing.compareAtPrice) : '',
         category: existing.category,
         rating: existing.rating ? String(existing.rating) : '',
         ratingLabel: existing.ratingLabel ?? '',
@@ -156,6 +159,9 @@ export default function AdminProductFormScreen() {
   const validate = (): string | null => {
     if (!form.title.trim()) return 'Title is required.';
     if (!form.price.trim() || Number.isNaN(parseFloat(form.price))) return 'Enter a valid price.';
+    if (form.compareAtPrice.trim() && Number.isNaN(parseFloat(form.compareAtPrice))) {
+      return 'Compare-at price must be a number, or leave it blank.';
+    }
     if (!form.meeshoUrl.trim().startsWith('http')) return 'Enter a full Meesho product URL.';
     return null;
   };
@@ -188,6 +194,7 @@ export default function AdminProductFormScreen() {
         title: form.title.trim(),
         subtitle: form.subtitle.trim() || undefined,
         price: parseFloat(form.price),
+        compareAtPrice: form.compareAtPrice.trim() ? parseFloat(form.compareAtPrice) : null,
         currency: 'INR',
         category: form.category,
         rating: form.rating.trim() ? parseFloat(form.rating) : 0,
@@ -230,7 +237,16 @@ export default function AdminProductFormScreen() {
           <Ionicons name="close" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{isEditing ? 'Edit Product' : 'Add Product'}</Text>
-        <View style={{ width: 24 }} />
+        {isEditing ? (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AdminReviews', { productId: productId!, productTitle: existing?.title || form.title })}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chatbubbles-outline" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 24 }} />
+        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
@@ -280,6 +296,10 @@ export default function AdminProductFormScreen() {
 
           <Field label="Price (₹) *" colors={colors}>
             <TextInput style={styles.input} value={form.price} onChangeText={(v) => set('price', v)} keyboardType="numeric" placeholder="274" placeholderTextColor={colors.textMuted} />
+          </Field>
+
+          <Field label="Compare-at price (₹)" colors={colors} hint="Optional — shows as a struck-through 'was' price with a discount badge. Leave blank for no discount.">
+            <TextInput style={styles.input} value={form.compareAtPrice} onChangeText={(v) => set('compareAtPrice', v)} keyboardType="numeric" placeholder="e.g. 399" placeholderTextColor={colors.textMuted} />
           </Field>
 
           <Field label="Category *" colors={colors}>
@@ -356,12 +376,23 @@ export default function AdminProductFormScreen() {
   );
 }
 
-function Field({ label, children, colors }: { label: string; children: React.ReactNode; colors: ColorTheme }) {
+function Field({
+  label,
+  children,
+  colors,
+  hint,
+}: {
+  label: string;
+  children: React.ReactNode;
+  colors: ColorTheme;
+  hint?: string;
+}) {
   const styles = makeStyles(colors);
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       {children}
+      {hint ? <Text style={styles.fieldHint}>{hint}</Text> : null}
     </View>
   );
 }
@@ -444,6 +475,7 @@ function makeStyles(colors: ColorTheme) {
     },
     field: { marginTop: spacing.lg },
     label: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xs, textTransform: 'uppercase' },
+    fieldHint: { ...typography.caption, color: colors.textMuted, marginTop: spacing.xs, textTransform: 'none' },
     input: {
       borderWidth: 1,
       borderColor: colors.border,

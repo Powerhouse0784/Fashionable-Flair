@@ -67,12 +67,20 @@ export default function ProductCard({ product, compact, columns }: Props) {
               color={wishlisted ? colors.primary : colors.textSecondary}
             />
           </TouchableOpacity>
-          {(product.isNewArrival || product.isBestSeller) && (
+          {(product.isNewArrival || product.isBestSeller || (product.compareAtPrice && product.compareAtPrice > product.price)) && (
             <View style={styles.badgeWrap}>
-              <Badge
-                label={product.isNewArrival ? 'New' : 'Bestseller'}
-                variant={product.isNewArrival ? 'success' : 'gold'}
-              />
+              {product.compareAtPrice && product.compareAtPrice > product.price && (
+                <Badge
+                  label={`${Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)}% OFF`}
+                  variant="success"
+                />
+              )}
+              {(product.isNewArrival || product.isBestSeller) && (
+                <Badge
+                  label={product.isNewArrival ? 'New' : 'Bestseller'}
+                  variant={product.isNewArrival ? 'success' : 'gold'}
+                />
+              )}
             </View>
           )}
           {product.isAvailable === false && (
@@ -92,7 +100,7 @@ export default function ProductCard({ product, compact, columns }: Props) {
             </Text>
           ) : null}
           <View style={styles.bottomRow}>
-            <PriceTag amount={product.price} style={{ fontSize: 15 }} />
+            <PriceTag amount={product.price} compareAtAmount={product.compareAtPrice} style={{ fontSize: 15 }} hideBadge />
             <RatingStars rating={product.rating} size={11} />
           </View>
         </View>
@@ -149,7 +157,7 @@ function makeStyles(colors: ColorTheme) {
         ? ({ boxShadow: `0 1px 4px ${colors.shadow}` } as any)
         : { shadowColor: colors.shadow, shadowOpacity: 0.5, shadowRadius: 4, elevation: 2 }),
     },
-    badgeWrap: { position: 'absolute', top: spacing.xs, left: spacing.xs },
+    badgeWrap: { position: 'absolute', top: spacing.xs, left: spacing.xs, gap: 4 },
     outOfStockOverlay: {
       position: 'absolute',
       bottom: 0,

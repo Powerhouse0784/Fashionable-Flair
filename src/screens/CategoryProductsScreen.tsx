@@ -13,6 +13,7 @@ import { useColumns, useIsWideScreen } from '@/hooks/useResponsive';
 import { GRID_GAP } from '@/constants/layout';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
+import { ProductGridSkeleton } from '@/components/ProductCardSkeleton';
 import Container from '@/components/Container';
 import SortSheet, { SortOption } from '@/components/SortSheet';
 import FilterSheet, { FilterState, DEFAULT_FILTERS, countActiveFilters } from '@/components/FilterSheet';
@@ -36,7 +37,7 @@ export default function CategoryProductsScreen() {
   const navigation = useNavigation();
   const route = useRoute<CategoryRoute>();
   const { category, label } = route.params;
-  const { products, refreshing, refresh } = useProducts();
+  const { products, loading, refreshing, refresh } = useProducts();
   const [sortOption, setSortOption] = useState<SortOption>('default');
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [sortSheetVisible, setSortSheetVisible] = useState(false);
@@ -139,7 +140,9 @@ export default function CategoryProductsScreen() {
                 <Text style={styles.title} numberOfLines={1}>{label}</Text>
               </View>
               {Toolbar}
-              {items.length > 0 ? (
+              {loading && products.length === 0 ? (
+                <ProductGridSkeleton count={6} />
+              ) : items.length > 0 ? (
                 <View style={[styles.grid, { gap: GRID_GAP }]}>
                   {items.map((item) => (
                     <ProductCard key={item.id} product={item} />
@@ -173,21 +176,25 @@ export default function CategoryProductsScreen() {
       {sheets}
 
       <Container style={{ flex: 1 }}>
-        <FlatList
-          key={`category-${columns}`}
-          data={items}
-          keyExtractor={(item) => item.id}
-          numColumns={columns}
-          columnWrapperStyle={{ gap: GRID_GAP }}
-          contentContainerStyle={{ gap: GRID_GAP, paddingTop: spacing.sm, paddingBottom: spacing.xxl, flexGrow: 1 }}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-          ListEmptyComponent={
-            <EmptyState icon="cube-outline" title="No products match these filters" />
-          }
-          renderItem={({ item }) => <ProductCard product={item} columns={columns} />}
-        />
+        {loading && products.length === 0 ? (
+          <ProductGridSkeleton count={6} columns={columns} />
+        ) : (
+          <FlatList
+            key={`category-${columns}`}
+            data={items}
+            keyExtractor={(item) => item.id}
+            numColumns={columns}
+            columnWrapperStyle={{ gap: GRID_GAP }}
+            contentContainerStyle={{ gap: GRID_GAP, paddingTop: spacing.sm, paddingBottom: spacing.xxl, flexGrow: 1 }}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
+            ListEmptyComponent={
+              <EmptyState icon="cube-outline" title="No products match these filters" />
+            }
+            renderItem={({ item }) => <ProductCard product={item} columns={columns} />}
+          />
+        )}
       </Container>
     </SafeAreaView>
   );

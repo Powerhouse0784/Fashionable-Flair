@@ -10,13 +10,14 @@ import { useColumns } from '@/hooks/useResponsive';
 import { GRID_GAP } from '@/constants/layout';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
+import { ProductGridSkeleton } from '@/components/ProductCardSkeleton';
 import Container from '@/components/Container';
 import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 
 export default function WishlistScreen() {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const { products, refreshing, refresh } = useProducts();
+  const { products, loading, refreshing, refresh } = useProducts();
   const { wishlistIds, clearWishlist } = useWishlist();
   const wishlistedProducts = products.filter((p) => wishlistIds.includes(p.id));
   const columns = useColumns();
@@ -36,25 +37,29 @@ export default function WishlistScreen() {
       </Container>
 
       <Container style={{ flex: 1 }}>
-        <FlatList
-          key={`wishlist-${columns}`}
-          data={wishlistedProducts}
-          keyExtractor={(item) => item.id}
-          numColumns={columns}
-          columnWrapperStyle={{ gap: GRID_GAP }}
-          contentContainerStyle={{ gap: GRID_GAP, paddingBottom: spacing.xxl, flexGrow: 1 }}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-          ListEmptyComponent={
-            <EmptyState
-              icon="heart-outline"
-              title="Your wishlist is empty"
-              subtitle="Tap the heart on any product to save it here"
-            />
-          }
-          renderItem={({ item }) => <ProductCard product={item} columns={columns} />}
-        />
+        {loading && products.length === 0 ? (
+          <ProductGridSkeleton count={4} columns={columns} />
+        ) : (
+          <FlatList
+            key={`wishlist-${columns}`}
+            data={wishlistedProducts}
+            keyExtractor={(item) => item.id}
+            numColumns={columns}
+            columnWrapperStyle={{ gap: GRID_GAP }}
+            contentContainerStyle={{ gap: GRID_GAP, paddingBottom: spacing.xxl, flexGrow: 1 }}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
+            ListEmptyComponent={
+              <EmptyState
+                icon="heart-outline"
+                title="Your wishlist is empty"
+                subtitle="Tap the heart on any product to save it here"
+              />
+            }
+            renderItem={({ item }) => <ProductCard product={item} columns={columns} />}
+          />
+        )}
       </Container>
     </SafeAreaView>
   );

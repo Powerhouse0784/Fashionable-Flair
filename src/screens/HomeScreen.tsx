@@ -22,6 +22,7 @@ import Container from '@/components/Container';
 import Footer from '@/components/Footer';
 import TrustBar from '@/components/TrustBar';
 import EmptyState from '@/components/EmptyState';
+import { ProductGridSkeleton } from '@/components/ProductCardSkeleton';
 import BannerCarousel from '@/components/BannerCarousel';
 import WhyChooseUs from '@/components/WhyChooseUs';
 import GoogleReviewsSection from '@/components/GoogleReviewsSection';
@@ -56,7 +57,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const { products, refreshing, refresh } = useProducts();
+  const { products, loading, refreshing, refresh } = useProducts();
   const { recentlyViewedIds } = useRecentlyViewed();
   const featured = getFeaturedProducts(products);
   const newArrivals = getNewArrivals(products);
@@ -228,7 +229,9 @@ export default function HomeScreen() {
           {/* Full catalog grid - "All Products" section with ref */}
           <View ref={allProductsRef}>
             <SectionHeader title="All Products" />
-            {products.length > 0 ? (
+            {loading && products.length === 0 ? (
+              <ProductGridSkeleton count={6} />
+            ) : products.length > 0 ? (
               <View style={[styles.grid, { gap: GRID_GAP }]}>
                 {products.map((item) => (
                   <ProductCard key={item.id} product={item} />

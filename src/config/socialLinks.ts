@@ -24,3 +24,11 @@ export const SUPPORT_PHONE = '8448822940';
  * Kept as a clearly-marked placeholder since none was provided.
  */
 export const GOOGLE_REVIEWS_URL = 'https://g.page/r/fashionableflair/review';
+
+/**
+ * TODO: replace with the real hosted APK download link once you have one
+ * (e.g. a GitHub Release asset, Supabase Storage public file, or your own
+ * server). Used only by the "Download App" button, which only ever shows
+ * on the web build — native app users obviously don't need it.
+ */
+export const APK_DOWNLOAD_URL = 'https://example.com/fashionable-flair.apk';

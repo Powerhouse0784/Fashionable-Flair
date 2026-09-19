@@ -11,6 +11,7 @@ import { useSearchHistory } from '@/hooks/useSearchHistory';
 import { GRID_GAP } from '@/constants/layout';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
+import { ProductGridSkeleton } from '@/components/ProductCardSkeleton';
 import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import Container from '@/components/Container';
 import SortSheet, { SortOption } from '@/components/SortSheet';
@@ -33,7 +34,7 @@ export default function SearchScreen() {
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const columns = useColumns();
   const handleScroll = useScrollVisibilityHandler();
-  const { products, refreshing, refresh } = useProducts();
+  const { products, loading, refreshing, refresh } = useProducts();
   const { history, addSearch, clearHistory } = useSearchHistory();
 
   const results = useMemo(() => {
@@ -148,25 +149,29 @@ export default function SearchScreen() {
       />
 
       <Container style={{ flex: 1 }}>
-        <FlatList
-          key={`search-${columns}`}
-          data={results}
-          keyExtractor={(item) => item.id}
-          numColumns={columns}
-          columnWrapperStyle={{ gap: GRID_GAP }}
-          contentContainerStyle={{ gap: GRID_GAP, paddingTop: spacing.sm, paddingBottom: spacing.xxl, flexGrow: 1 }}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-          ListEmptyComponent={
-            <EmptyState
-              icon="search-outline"
-              title="No products found"
-              subtitle="Try different filters or a broader search term"
-            />
-          }
-          renderItem={({ item }) => <ProductCard product={item} columns={columns} />}
-        />
+        {loading && products.length === 0 ? (
+          <ProductGridSkeleton count={6} columns={columns} />
+        ) : (
+          <FlatList
+            key={`search-${columns}`}
+            data={results}
+            keyExtractor={(item) => item.id}
+            numColumns={columns}
+            columnWrapperStyle={{ gap: GRID_GAP }}
+            contentContainerStyle={{ gap: GRID_GAP, paddingTop: spacing.sm, paddingBottom: spacing.xxl, flexGrow: 1 }}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
+            ListEmptyComponent={
+              <EmptyState
+                icon="search-outline"
+                title="No products found"
+                subtitle="Try different filters or a broader search term"
+              />
+            }
+            renderItem={({ item }) => <ProductCard product={item} columns={columns} />}
+          />
+        )}
       </Container>
     </SafeAreaView>
   );

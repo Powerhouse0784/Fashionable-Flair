@@ -10,6 +10,13 @@ export interface Product {
   title: string;
   subtitle?: string;          // e.g. "+2 More" variant note from Meesho
   price: number;
+  /** Optional "was" price shown struck through next to `price` when higher,
+   * to display a discount (e.g. "₹399 → ₹208 · 48% off"). Omit/null for no
+   * discount badge. Nullable (not just optional) so an admin can explicitly
+   * clear a previously-set discount — an `undefined` field is dropped
+   * entirely from a Supabase update payload rather than clearing the
+   * column, which would silently leave the old value in place. */
+  compareAtPrice?: number | null;
   currency: 'INR';
   category: CategoryKey;
   rating: number;
@@ -30,4 +37,17 @@ export interface Category {
   key: CategoryKey;
   label: string;
   icon: string; // Ionicons name
+}
+
+/** Admin-curated customer review, shown on a product's detail page. Since
+ * checkout happens on Meesho (not in this app), reviews aren't collected
+ * from in-app verified purchases — the admin panel lets staff add genuine
+ * reviews sourced from the product's actual Meesho reviews. */
+export interface ProductReview {
+  id: string;
+  productId: string;
+  authorName: string;
+  rating: number; // 1-5
+  body: string;
+  createdAt: string; // ISO date
 }

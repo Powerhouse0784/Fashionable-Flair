@@ -8,6 +8,7 @@ import { fonts } from '@/hooks/useAppFonts';
 import { useContentMetrics } from '@/hooks/useResponsive';
 import { CategoryKey } from '@/types/product';
 import Logo from '@/components/Logo';
+import DownloadAppButton from '@/components/DownloadAppButton';
 
 const PHONE = '8448822940';
 const EMAIL = 'fashionableflair786@gmail.com';
@@ -49,6 +50,8 @@ export default function Footer() {
           <TouchableOpacity onPress={() => Linking.openURL('https://www.meesho.com/h6z4l')}>
             <Text style={styles.storeLink}>Visit our Meesho store →</Text>
           </TouchableOpacity>
+
+          <DownloadAppButton style={{ marginTop: spacing.md, alignSelf: 'flex-start' }} />
 
           <View style={styles.contactBlock}>
             <TouchableOpacity style={styles.contactRow} onPress={() => Linking.openURL(`tel:${PHONE}`)}>

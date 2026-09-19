@@ -41,6 +41,10 @@ This is a one-time, ~10 minute setup.
 > old single `image` field keep working exactly as before, no data migration
 > needed.
 >
+> **Also already set up and want discount pricing + customer reviews?**
+> Jump to [section 9](#9-add-discount-pricing-and-customer-reviews) below —
+> it's two small additions, not a full re-setup.
+>
 > Otherwise, continue below for the full first-time setup.
 
 In the Supabase dashboard: **SQL Editor → New query**, paste and run:
@@ -230,3 +234,50 @@ storefront shows an empty state, not the old placeholder catalog. (An
 earlier version of this app treated "empty" the same as "unreachable" and
 silently showed the placeholder catalog instead — which looked exactly
 like a delete not working. Fixed.)
+
+## 9. Add discount pricing and customer reviews
+
+Two independent additions — run whichever you need, or both. Neither
+requires touching any existing data.
+
+**Discount ("was/now") pricing** — lets a product show a struck-through
+original price with a "% OFF" badge, set from the product edit form's new
+"Compare-at price" field:
+
+```sql
+alter table products add column if not exists "compareAtPrice" numeric;
+```
+
+**Customer reviews** — a product's detail page shows admin-added reviews
+instead of just a bare star rating. Reviews aren't collected from in-app
+purchases (checkout happens on Meesho, not here) — add genuine ones
+yourself from the product's real Meesho reviews via the new "Reviews"
+icon (top-right of the product edit screen).
+
+```sql
+create table reviews (
+  id uuid primary key default gen_random_uuid(),
+  "productId" text not null references products(id) on delete cascade,
+  "authorName" text not null,
+  rating numeric not null check (rating >= 1 and rating <= 5),
+  body text not null,
+  "createdAt" timestamptz default now()
+);
+
+alter table reviews enable row level security;
+
+create policy "Public can read reviews"
+  on reviews for select
+  using (true);
+
+create policy "Admins can insert reviews"
+  on reviews for insert
+  to authenticated
+  with check (exists (select 1 from admins where user_id = auth.uid()));
+
+create policy "Admins can delete reviews"
+  on reviews for delete
+  to authenticated
+  using (exists (select 1 from admins where user_id = auth.uid()));
+```
+

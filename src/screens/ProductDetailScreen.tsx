@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
@@ -24,6 +24,9 @@ import RatingStars from '@/components/RatingStars';
 import Badge from '@/components/Badge';
 import ProductCard from '@/components/ProductCard';
 import ProductImageGallery from '@/components/ProductImageGallery';
+import ProductReviews from '@/components/ProductReviews';
+import { fetchReviews } from '@/services/reviewService';
+import { ProductReview } from '@/types/product';
 import SectionHeader from '@/components/SectionHeader';
 import Container from '@/components/Container';
 
@@ -46,6 +49,22 @@ export default function ProductDetailScreen() {
   const handleScroll = useScrollVisibilityHandler();
   const { width } = useWindowDimensions();
   const scrollViewRef = useRef<ScrollView>(null);
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setReviewsLoading(true);
+    fetchReviews(productId).then((data) => {
+      if (!cancelled) {
+        setReviews(data);
+        setReviewsLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
 
   useEffect(() => {
     if (product) trackView(product.id);
@@ -93,7 +112,7 @@ export default function ProductDetailScreen() {
       {product.subtitle ? <Text style={styles.subtitle}>{product.subtitle}</Text> : null}
 
       <View style={styles.priceRow}>
-        <PriceTag amount={product.price} style={{ fontSize: 24 }} />
+        <PriceTag amount={product.price} compareAtAmount={product.compareAtPrice} style={{ fontSize: 24 }} />
         <RatingStars rating={product.rating} size={15} />
       </View>
       {product.ratingLabel && <Text style={styles.ratingLabel}>{product.ratingLabel}</Text>}
@@ -118,6 +137,8 @@ export default function ProductDetailScreen() {
           {product.category.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
         </Text>
       </View>
+
+      <ProductReviews reviews={reviews} loading={reviewsLoading} />
 
       <View style={styles.divider} />
 
@@ -265,7 +286,7 @@ export default function ProductDetailScreen() {
         <SafeAreaView edges={['bottom']} style={styles.ctaBar}>
           <View style={styles.ctaPriceWrap}>
             <Text style={styles.ctaPriceLabel}>Price</Text>
-            <PriceTag amount={product.price} style={{ fontSize: 18 }} />
+            <PriceTag amount={product.price} compareAtAmount={product.compareAtPrice} style={{ fontSize: 18 }} />
           </View>
           <TouchableOpacity
             style={[styles.ctaButton, product.isAvailable === false && styles.ctaButtonDisabled]}
@@ -359,7 +380,15 @@ function makeStyles(colors: ColorTheme) {
     paddingHorizontal: spacing.xl,
   },
   ctaBar: {
-    position: 'absolute',
+    // On web, 'absolute' positions relative to the nearest positioned
+    // ancestor (here, the flex:1 `safe` wrapper) — and that wrapper's
+    // computed height can lag behind the true browser viewport after a
+    // client-side product swap (navigating via "You May Also Like" reuses
+    // this same screen instance) or a fast scroll, leaving this bar
+    // stranded above the real bottom of the window with a gap of page
+    // background showing beneath it. 'fixed' pins it to the actual
+    // viewport instead, which is unaffected by any of that.
+    position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute',
     bottom: 0,
     left: 0,
     right: 0,

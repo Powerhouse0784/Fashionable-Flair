@@ -16,6 +16,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { CategoryKey } from '@/types/product';
 import { hapticSelection } from '@/utils/haptics';
 import ProductPlaceholder from './ProductPlaceholder';
+import ImageZoomViewer from './ImageZoomViewer';
 
 interface Props {
   images: string[];
@@ -31,6 +32,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
   const styles = makeStyles(colors);
   const [activeIndex, setActiveIndex] = useState(0);
   const [heartVisible, setHeartVisible] = useState(false);
+  const [zoomVisible, setZoomVisible] = useState(false);
   const heartScale = useRef(new Animated.Value(0)).current;
   const lastTapRef = useRef(0);
   const flatListRef = useRef<FlatList>(null);
@@ -100,6 +102,19 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
     </Animated.View>
   );
 
+  const galleryImages = images.length > 0 ? images : [];
+  const ZoomButton = galleryImages.length > 0 && (
+    <TouchableOpacity
+      style={styles.zoomButton}
+      onPress={() => setZoomVisible(true)}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityRole="button"
+      accessibilityLabel="View full-screen, zoomable photos"
+    >
+      <Ionicons name="expand-outline" size={16} color="#FFFFFF" />
+    </TouchableOpacity>
+  );
+
   // FIX: Render the gallery with tap handler on the container
   const renderGallery = () => {
     if (images.length === 0) {
@@ -126,6 +141,7 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
             cachePolicy="memory-disk"
           />
           {HeartOverlay}
+          {ZoomButton}
         </TouchableOpacity>
       );
     }
@@ -181,34 +197,50 @@ export default function ProductImageGallery({ images, category, width, onDoubleT
           </View>
         </View>
         {HeartOverlay}
+        {ZoomButton}
       </View>
     );
   };
 
+  const ZoomModal = (
+    <ImageZoomViewer
+      visible={zoomVisible}
+      images={galleryImages}
+      initialIndex={activeIndex}
+      onClose={() => setZoomVisible(false)}
+    />
+  );
+
   // FIX: Web - Use View with press handlers via TouchableOpacity
   if (Platform.OS === 'web') {
     return (
-      <TouchableOpacity
-        activeOpacity={1}
-        style={{ width, height: width, position: 'relative' }}
-        onPress={handleWebClick}
-        // @ts-ignore - web only
-        onDoubleClick={handleWebDoubleClick}
-      >
-        {renderGallery()}
-      </TouchableOpacity>
+      <>
+        <TouchableOpacity
+          activeOpacity={1}
+          style={{ width, height: width, position: 'relative' }}
+          onPress={handleWebClick}
+          // @ts-ignore - web only
+          onDoubleClick={handleWebDoubleClick}
+        >
+          {renderGallery()}
+        </TouchableOpacity>
+        {ZoomModal}
+      </>
     );
   }
 
   // FIX: Native uses TouchableOpacity wrapper with time-based detection
   return (
-    <TouchableOpacity
-      activeOpacity={1}
-      style={{ width, height: width, position: 'relative' }}
-      onPress={handleRNPress}
-    >
-      {renderGallery()}
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        activeOpacity={1}
+        style={{ width, height: width, position: 'relative' }}
+        onPress={handleRNPress}
+      >
+        {renderGallery()}
+      </TouchableOpacity>
+      {ZoomModal}
+    </>
   );
 }
 
@@ -242,6 +274,17 @@ function makeStyles(colors: ColorTheme) {
     dotActive: {
       backgroundColor: '#fff',
       width: 20,
+    },
+    zoomButton: {
+      position: 'absolute',
+      bottom: 12,
+      right: 12,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     heartBurst: {
       position: 'absolute',

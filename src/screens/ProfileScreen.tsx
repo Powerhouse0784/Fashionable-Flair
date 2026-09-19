@@ -10,6 +10,7 @@ import { useProducts } from '@/context/ProductsContext';
 import { useAuth } from '@/context/AuthContext';
 import Container from '@/components/Container';
 import Logo from '@/components/Logo';
+import DownloadAppButton from '@/components/DownloadAppButton';
 
 interface MenuItemProps {
   icon: string;
@@ -105,6 +106,7 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.name}>Fashionable Flair</Text>
             <Text style={styles.subtitle}>Jewellery that speaks your style</Text>
+            <DownloadAppButton style={{ marginTop: spacing.md }} />
           </View>
 
           {isAdmin && (
