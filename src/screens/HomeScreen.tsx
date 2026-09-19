@@ -28,6 +28,7 @@ import WhyChooseUs from '@/components/WhyChooseUs';
 import GoogleReviewsSection from '@/components/GoogleReviewsSection';
 import Logo from '@/components/Logo';
 import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -67,6 +68,10 @@ export default function HomeScreen() {
     .filter((p): p is Product => !!p);
   const isWide = useIsWideScreen();
   const handleScroll = useScrollVisibilityHandler();
+  useDocumentMeta({
+    title: 'Fashionable Flair',
+    description: 'Trendy, affordable jewellery for women — earrings, pendants, chains, bracelets, and jewellery sets, delivered across India.',
+  });
   
   // Create refs
   const scrollViewRef = useRef<ScrollView>(null);

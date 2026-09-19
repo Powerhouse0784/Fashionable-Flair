@@ -44,28 +44,38 @@ export default function Footer() {
   return (
     <View style={styles.wrap}>
       <View style={[styles.inner, { paddingHorizontal: sidePadding }]}>
-        <View style={styles.brandBlock}>
-          <Logo variant="full" height={40} style={{ alignSelf: 'flex-start' }} />
-          <Text style={styles.tagline}>Jewellery that speaks your style.</Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://www.meesho.com/h6z4l')}>
-            <Text style={styles.storeLink}>Visit our Meesho store →</Text>
-          </TouchableOpacity>
-
-          <DownloadAppButton style={{ marginTop: spacing.md, alignSelf: 'flex-start' }} />
-
-          <View style={styles.contactBlock}>
-            <TouchableOpacity style={styles.contactRow} onPress={() => Linking.openURL(`tel:${PHONE}`)}>
-              <Ionicons name="call-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.contactText}>{PHONE}</Text>
+        <View style={styles.topRow}>
+          <View style={styles.brandBlock}>
+            <Logo variant="full" height={40} style={{ alignSelf: 'flex-start' }} />
+            <Text style={styles.tagline}>Jewellery that speaks your style.</Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://www.meesho.com/h6z4l')}>
+              <Text style={styles.storeLink}>Visit our Meesho store →</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.contactRow} onPress={() => Linking.openURL(`mailto:${EMAIL}`)}>
-              <Ionicons name="mail-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.contactText}>{EMAIL}</Text>
-            </TouchableOpacity>
-            <View style={styles.contactRow}>
-              <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.contactText}>{ADDRESS}</Text>
+
+            <View style={styles.contactBlock}>
+              <TouchableOpacity style={styles.contactRow} onPress={() => Linking.openURL(`tel:${PHONE}`)}>
+                <Ionicons name="call-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.contactText}>{PHONE}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.contactRow} onPress={() => Linking.openURL(`mailto:${EMAIL}`)}>
+                <Ionicons name="mail-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.contactText}>{EMAIL}</Text>
+              </TouchableOpacity>
+              <View style={styles.contactRow}>
+                <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.contactText}>{ADDRESS}</Text>
+              </View>
             </View>
+          </View>
+
+          {/* Fills the empty space a short brand block otherwise leaves on
+              a wide screen, rather than burying the download button under
+              the contact details on the left. */}
+          <View style={styles.downloadCol}>
+            <Ionicons name="phone-portrait-outline" size={28} color={colors.primary} />
+            <Text style={styles.downloadColTitle}>Get the App</Text>
+            <Text style={styles.downloadColSubtitle}>Shop faster with our Android app.</Text>
+            <DownloadAppButton style={{ marginTop: spacing.md }} />
           </View>
         </View>
 
@@ -131,6 +141,10 @@ function makeStyles(colors: ColorTheme) {
       paddingVertical: spacing.xxl,
     },
     brandBlock: { maxWidth: 420 },
+    topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: spacing.xl },
+    downloadCol: { alignItems: 'flex-start', maxWidth: 260 },
+    downloadColTitle: { ...typography.h3, fontFamily: fonts.headingMedium, color: colors.textPrimary, marginTop: spacing.sm },
+    downloadColSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs },
     brand: { ...typography.h3, color: colors.textPrimary },
     tagline: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs },
     storeLink: { ...typography.bodySmall, color: colors.primary, fontFamily: fonts.bodySemiBold, marginTop: spacing.md },

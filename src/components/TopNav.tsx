@@ -29,9 +29,13 @@ export default function TopNav() {
   const { sidePadding } = useContentMetrics();
 
   // Read the currently active bottom-tab route name (if any) so we can
-  // highlight the matching nav link.
+  // highlight the matching nav link. Searches from the end in case more
+  // than one "Tabs" entry ever ends up in the stack's route list — using
+  // .find() from the front would keep matching a stale first occurrence
+  // instead of the current one, which is exactly the kind of thing that
+  // would make one link (e.g. Home) look permanently "active".
   const activeTab = useNavigationState((state) => {
-    const tabsRoute = state.routes.find((r) => r.name === 'Tabs');
+    const tabsRoute = [...state.routes].reverse().find((r) => r.name === 'Tabs');
     // @ts-ignore - nested navigator state
     return tabsRoute?.state?.routes?.[tabsRoute.state.index ?? 0]?.name;
   });

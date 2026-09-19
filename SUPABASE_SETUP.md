@@ -281,3 +281,48 @@ create policy "Admins can delete reviews"
   using (exists (select 1 from admins where user_id = auth.uid()));
 ```
 
+## 10. Push notifications
+
+Lets you send a broadcast notification (e.g. "New arrivals are live!") to
+everyone who has the Android/iOS app installed, from a new "Notify"
+section in the admin dashboard. Native app only — there's no web push
+here, since browser push works completely differently.
+
+**Step 1 — table for registered devices:**
+
+```sql
+create table push_tokens (
+  token text primary key,
+  platform text not null,
+  "updatedAt" timestamptz default now()
+);
+
+alter table push_tokens enable row level security;
+
+-- Any app user (even signed out) can register their own device.
+create policy "Anyone can register a push token"
+  on push_tokens for insert
+  to anon, authenticated
+  with check (true);
+
+create policy "Anyone can refresh their own token"
+  on push_tokens for update
+  to anon, authenticated
+  using (true);
+
+-- Deliberately no select policy for anon/authenticated — only the
+-- send-notification Edge Function (using the service role key, which
+-- bypasses RLS entirely) ever reads the token list back out.
+```
+
+**Step 2 — deploy the Edge Function** (from `supabase/functions/send-notification`):
+
+```bash
+supabase functions deploy send-notification
+```
+
+That's it — no extra secrets needed, since it calls Expo's push service
+directly with the tokens already in your database. Sending a notification
+costs nothing beyond your existing Supabase plan.
+
+

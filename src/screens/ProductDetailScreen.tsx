@@ -19,6 +19,7 @@ import { getProductImages } from '@/utils/productImages';
 import { goBackOrTo } from '@/utils/navigation';
 import WebPageWrapper from '@/components/WebPageWrapper';
 import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import PriceTag from '@/components/PriceTag';
 import RatingStars from '@/components/RatingStars';
 import Badge from '@/components/Badge';
@@ -43,6 +44,11 @@ export default function ProductDetailScreen() {
   const { productId } = route.params;
   const { products } = useProducts();
   const product = getProductById(products, productId);
+  useDocumentMeta({
+    title: product ? product.title : 'Product',
+    description: product?.description || product?.subtitle,
+    image: product?.image || product?.images?.[0],
+  });
   const { isWishlisted, toggleWishlist } = useWishlist();
   const { trackView } = useRecentlyViewed();
   const isWide = useIsWideScreen();
@@ -67,8 +73,7 @@ export default function ProductDetailScreen() {
   }, [productId]);
 
   useEffect(() => {
-    if (product) trackView(product.id);
-  }, [product?.id]);
+    if (product) trackView(product.id);  }, [product?.id]);
 
   useFocusEffect(
     React.useCallback(() => {

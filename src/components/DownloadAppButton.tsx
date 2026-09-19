@@ -66,7 +66,13 @@ function makeStyles(colors: ColorTheme) {
       alignItems: 'center',
       justifyContent: 'center',
       gap: spacing.sm,
-      backgroundColor: colors.textPrimary,
+      // Was colors.textPrimary — that's meant for text sitting ON a
+      // background, not as a fill color itself, and in the dark theme it's
+      // a near-white (#F4F8FC) meant to read against a dark surface. Used
+      // as this button's own background, it turned the button itself
+      // near-white with white text on top — invisible. colors.primary is
+      // a proper accent in both themes and always contrasts with white text.
+      backgroundColor: colors.primary,
       paddingVertical: spacing.sm + 2,
       paddingHorizontal: spacing.lg,
       borderRadius: radius.pill,

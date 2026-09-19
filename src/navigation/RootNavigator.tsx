@@ -11,6 +11,7 @@ import AdminLoginScreen from '@/screens/admin/AdminLoginScreen';
 import AdminDashboardScreen from '@/screens/admin/AdminDashboardScreen';
 import AdminProductFormScreen from '@/screens/admin/AdminProductFormScreen';
 import AdminReviewsScreen from '@/screens/admin/AdminReviewsScreen';
+import AdminNotifyScreen from '@/screens/admin/AdminNotifyScreen';
 import AboutScreen from '@/screens/info/AboutScreen';
 import ContactScreen from '@/screens/info/ContactScreen';
 import FAQScreen from '@/screens/info/FAQScreen';
@@ -46,6 +47,11 @@ export default function RootNavigator() {
       <Stack.Screen
         name="AdminReviews"
         component={AdminReviewsScreen}
+        options={{ presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="AdminNotify"
+        component={AdminNotifyScreen}
         options={{ presentation: 'modal' }}
       />
       <Stack.Screen name="About" component={AboutScreen} />

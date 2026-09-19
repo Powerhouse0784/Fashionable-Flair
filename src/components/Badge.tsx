@@ -14,7 +14,12 @@ export default function Badge({ label, variant = 'primary' }: Props) {
   const bg =
     variant === 'gold' ? colors.goldLight : variant === 'success' ? colors.successLight : colors.primaryLight;
   const fg =
-    variant === 'gold' ? colors.primaryDark : variant === 'success' ? colors.success : colors.primaryDark;
+    // textPrimary (not primaryDark) for gold specifically — goldLight is a
+    // dark brown tint in the dark theme, and primaryDark (a mid-blue) had
+    // poor contrast against it there, on top of just looking odd next to
+    // gold. textPrimary is built to contrast against each theme's own
+    // surface tones, which goldLight closely tracks in both themes.
+    variant === 'gold' ? colors.textPrimary : variant === 'success' ? colors.success : colors.primaryDark;
   const styles = makeStyles(colors);
 
   return (

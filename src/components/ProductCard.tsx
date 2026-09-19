@@ -101,6 +101,8 @@ export default function ProductCard({ product, compact, columns }: Props) {
           ) : null}
           <View style={styles.bottomRow}>
             <PriceTag amount={product.price} compareAtAmount={product.compareAtPrice} style={{ fontSize: 15 }} hideBadge />
+          </View>
+          <View style={styles.ratingRow}>
             <RatingStars rating={product.rating} size={11} />
           </View>
         </View>
@@ -172,10 +174,10 @@ function makeStyles(colors: ColorTheme) {
     title: { ...typography.bodySmall, fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
     subtitle: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
     bottomRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
       marginTop: spacing.sm,
+    },
+    ratingRow: {
+      marginTop: spacing.xs,
     },
   });
 }

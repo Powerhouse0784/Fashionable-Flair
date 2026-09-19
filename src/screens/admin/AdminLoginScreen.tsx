@@ -103,11 +103,6 @@ export default function AdminLoginScreen() {
             <TouchableOpacity style={styles.button} onPress={handleSignIn} disabled={loading} activeOpacity={0.85}>
               {loading ? <ActivityIndicator color={colors.textInverse} /> : <Text style={styles.buttonText}>Sign In</Text>}
             </TouchableOpacity>
-
-            <Text style={styles.hint}>
-              Admin accounts are created in the Supabase dashboard, not here — see SUPABASE_SETUP.md.{'\n'}
-              Forgot your password? Reset it from Supabase → Authentication → Users.
-            </Text>
           </View>
         </Container>
       </KeyboardAvoidingView>

@@ -1,7 +1,8 @@
 import '@/utils/suppressKnownWarnings';
 import 'react-native-url-polyfill/auto';
 import React, { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
+import { inject as injectVercelAnalytics } from '@vercel/analytics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, LinkingOptions, useNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -20,10 +21,22 @@ import OnboardingScreen from '@/screens/OnboardingScreen';
 import RootNavigator from '@/navigation/RootNavigator';
 import { RootStackParamList } from '@/types/navigation';
 import { useAppFonts } from '@/hooks/useAppFonts';
+import { registerForPushNotifications } from '@/services/pushService';
 
 const ONBOARDING_KEY = '@fashionable_flair/onboarding_complete';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Vercel Analytics — page-view tracking on the web build only (native
+// obviously isn't served from Vercel). React Navigation's `linking` config
+// below keeps the browser's URL bar in sync via the History API, so
+// Analytics' built-in SPA route-change detection picks up screen changes
+// automatically with no extra wiring per screen. Requires Analytics to be
+// turned on once in the Vercel project's dashboard (Project → Analytics →
+// Enable) — this call alone doesn't do that.
+if (Platform.OS === 'web') {
+  injectVercelAnalytics();
+}
 
 // Enables real URLs on web: yoursite.com/admin opens the admin dashboard
 // directly (redirecting to sign-in if needed), /product/:id deep-links a
@@ -64,6 +77,13 @@ function AppNavigation() {
   const [isAdminScreen, setIsAdminScreen] = useState(false);
   const [isMeeshoRedirect, setIsMeeshoRedirect] = useState(false);
   const [isProductDetail, setIsProductDetail] = useState(false);
+
+  // Register for push once the app's up — silently no-ops on web and on
+  // simulators, and re-registering an already-known device just refreshes
+  // its saved token rather than creating a duplicate.
+  useEffect(() => {
+    registerForPushNotifications();
+  }, []);
 
   // QuickActionsSidebar (chat + WhatsApp + Instagram + call) sits as a
   // sibling of RootNavigator, not inside any of its screens — so it can't
