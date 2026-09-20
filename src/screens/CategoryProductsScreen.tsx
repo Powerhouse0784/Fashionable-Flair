@@ -24,6 +24,17 @@ import { goBackOrTo } from '@/utils/navigation';
 
 type CategoryRoute = RouteProp<RootStackParamList, 'CategoryProducts'>;
 
+/** Split a flat list into fixed-size rows — see HomeScreen.tsx for why this
+ * replaces a flexWrap grid (flexWrap collapsed to a single column on some
+ * mobile browsers). */
+function chunk<T>(items: T[], size: number): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    rows.push(items.slice(i, i + size));
+  }
+  return rows;
+}
+
 function matchesPriceRange(price: number, range: FilterState['priceRange']): boolean {
   if (range === 'under-200') return price < 200;
   if (range === '200-400') return price >= 200 && price <= 400;
@@ -143,9 +154,13 @@ export default function CategoryProductsScreen() {
               {loading && products.length === 0 ? (
                 <ProductGridSkeleton count={6} />
               ) : items.length > 0 ? (
-                <View style={[styles.grid, { gap: GRID_GAP }]}>
-                  {items.map((item) => (
-                    <ProductCard key={item.id} product={item} />
+                <View style={{ gap: GRID_GAP }}>
+                  {chunk(items, columns).map((row, rowIndex) => (
+                    <View key={rowIndex} style={[styles.gridRow, { gap: GRID_GAP }]}>
+                      {row.map((item) => (
+                        <ProductCard key={item.id} product={item} columns={columns} />
+                      ))}
+                    </View>
                   ))}
                 </View>
               ) : (
@@ -233,6 +248,6 @@ function makeStyles(colors: ColorTheme) {
     toolbarTextActive: { color: colors.textInverse, fontFamily: fonts.bodySemiBold },
     toolbarDivider: { width: 1, height: 20, backgroundColor: colors.border },
     resultCount: { ...typography.caption, color: colors.textMuted, marginLeft: 'auto' },
-    grid: { flexDirection: 'row', flexWrap: 'wrap' },
+    gridRow: { flexDirection: 'row' },
   });
 }

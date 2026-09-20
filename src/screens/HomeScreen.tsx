@@ -13,7 +13,7 @@ import { useRecentlyViewed } from '@/context/RecentlyViewedContext';
 import { getFeaturedProducts, getNewArrivals, getBestSellers } from '@/utils/productHelpers';
 import { Product } from '@/types/product';
 import { RootStackParamList } from '@/types/navigation';
-import { useIsWideScreen } from '@/hooks/useResponsive';
+import { useIsWideScreen, useColumns } from '@/hooks/useResponsive';
 import { GRID_GAP } from '@/constants/layout';
 import ProductCard from '@/components/ProductCard';
 import CategoryPill from '@/components/CategoryPill';
@@ -31,6 +31,22 @@ import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+/** Split a flat list into fixed-size rows. Used to render the "All Products"
+ * grid as deterministic rows of exactly `size` cards instead of relying on
+ * CSS flexWrap to break the line — flexWrap-based wrapping was found to
+ * collapse to a single column on some mobile browsers, since it depends on
+ * every card's computed pixel width lining up exactly with the row's
+ * available width. Chunking into rows up front guarantees the right number
+ * of cards per row on every device, matching how FlatList's numColumns
+ * already works elsewhere in the app (e.g. CategoryProductsScreen). */
+function chunk<T>(items: T[], size: number): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    rows.push(items.slice(i, i + size));
+  }
+  return rows;
+}
 
 function ProductRow({ items, isWide }: { items: Product[]; isWide: boolean }) {
   if (isWide) {
@@ -67,6 +83,7 @@ export default function HomeScreen() {
     .map((id) => products.find((p) => p.id === id))
     .filter((p): p is Product => !!p);
   const isWide = useIsWideScreen();
+  const columns = useColumns();
   const handleScroll = useScrollVisibilityHandler();
   useDocumentMeta({
     title: 'Fashionable Flair',
@@ -235,11 +252,15 @@ export default function HomeScreen() {
           <View ref={allProductsRef}>
             <SectionHeader title="All Products" />
             {loading && products.length === 0 ? (
-              <ProductGridSkeleton count={6} />
+              <ProductGridSkeleton count={6} columns={columns} />
             ) : products.length > 0 ? (
-              <View style={[styles.grid, { gap: GRID_GAP }]}>
-                {products.map((item) => (
-                  <ProductCard key={item.id} product={item} />
+              <View style={{ gap: GRID_GAP }}>
+                {chunk(products, columns).map((row, rowIndex) => (
+                  <View key={rowIndex} style={[styles.gridRow, { gap: GRID_GAP }]}>
+                    {row.map((item) => (
+                      <ProductCard key={item.id} product={item} columns={columns} />
+                    ))}
+                  </View>
                 ))}
               </View>
             ) : (
@@ -374,9 +395,8 @@ function makeStyles(colors: ColorTheme) {
       flexDirection: 'row',
       flexWrap: 'wrap',
     },
-    grid: {
+    gridRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
     },
   });
 }
