@@ -21,6 +21,7 @@ import OnboardingScreen from '@/screens/OnboardingScreen';
 import RootNavigator from '@/navigation/RootNavigator';
 import { RootStackParamList } from '@/types/navigation';
 import { useAppFonts } from '@/hooks/useAppFonts';
+import { useWebThemeBackground } from '@/hooks/useWebThemeBackground';
 import { registerForPushNotifications } from '@/services/pushService';
 
 const ONBOARDING_KEY = '@fashionable_flair/onboarding_complete';
@@ -72,11 +73,13 @@ const linking: LinkingOptions<RootStackParamList> = {
 // dark-on-light) can react to the theme — it needs to live below
 // ThemeProvider in the tree to call useTheme().
 function AppNavigation() {
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const [isAdminScreen, setIsAdminScreen] = useState(false);
   const [isMeeshoRedirect, setIsMeeshoRedirect] = useState(false);
   const [isProductDetail, setIsProductDetail] = useState(false);
+
+  useWebThemeBackground(colors.background);
 
   // Register for push once the app's up — silently no-ops on web and on
   // simulators, and re-registering an already-known device just refreshes

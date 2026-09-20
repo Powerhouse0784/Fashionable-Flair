@@ -31,7 +31,7 @@ export default function CategoryPill({ category, onPress }: Props) {
     <TouchableOpacity style={styles.pill} activeOpacity={0.75} onPress={onPress}>
       <View style={[styles.iconCircle, { backgroundColor: tint }, Platform.OS === 'web' && styles.iconCircleWeb]}>
         {category.image ? (
-          <Image source={category.image} style={styles.image} contentFit="cover" />
+          <Image source={category.image} style={styles.image as any} contentFit="cover" />
         ) : (
           <Ionicons name={category.icon as any} size={24} color={colors.primaryDark} />
         )}
