@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -11,6 +11,7 @@ import { useProducts } from '@/context/ProductsContext';
 import { useToast } from '@/context/ToastContext';
 import { deleteProduct } from '@/services/productService';
 import { hapticSuccess } from '@/utils/haptics';
+import { confirmAsync } from '@/utils/confirm';
 import { formatPrice } from '@/utils/formatPrice';
 import { getPrimaryImage } from '@/utils/productImages';
 import Container from '@/components/Container';
@@ -71,35 +72,31 @@ export default function AdminDashboardScreen() {
     );
   }
 
-  const handleDelete = (id: string, title: string) => {
-    Alert.alert('Delete product?', `"${title}" will be removed for everyone immediately.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setDeletingId(id);
-          applyLocalDelete(id); // optimistic — instant in this admin's list
-          try {
-            await deleteProduct(id);
-            showToast('Product deleted', 'success');
-            hapticSuccess();
-          } catch (err: any) {
-            showToast('Delete failed — restoring item', 'error');
-            refresh(); // roll back the optimistic removal by re-syncing from the server
-          } finally {
-            setDeletingId(null);
-          }
-        },
-      },
-    ]);
+  const handleDelete = async (id: string, title: string) => {
+    const confirmed = await confirmAsync('Delete product?', `"${title}" will be removed for everyone immediately.`, 'Delete');
+    if (!confirmed) return;
+
+    setDeletingId(id);
+    applyLocalDelete(id); // optimistic — instant in this admin's list
+    try {
+      await deleteProduct(id);
+      showToast('Product deleted', 'success');
+      hapticSuccess();
+    } catch (err: any) {
+      showToast('Delete failed — restoring item', 'error');
+      refresh(); // roll back the optimistic removal by re-syncing from the server
+    } finally {
+      setDeletingId(null);
+    }
   };
 
-  const handleSignOut = () => {
-    Alert.alert('Sign out?', undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => signOut().then(() => navigation.replace('AdminLogin')) },
-    ]);
+  const handleSignOut = async () => {
+    const confirmed = await confirmAsync('Sign out?', undefined, 'Sign Out');
+    if (!confirmed) return;
+    await signOut();
+    // Home, not AdminLogin — signing out is "leave the admin panel", not
+    // "come straight back to log in again".
+    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
   };
 
   return (

@@ -1,16 +1,16 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
-import { useProducts } from '@/context/ProductsContext';
 import { useAuth } from '@/context/AuthContext';
 import Container from '@/components/Container';
 import Logo from '@/components/Logo';
 import DownloadAppButton from '@/components/DownloadAppButton';
+import { confirmAsync, alertInfo } from '@/utils/confirm';
 
 interface MenuItemProps {
   icon: string;
@@ -33,23 +33,12 @@ function MenuItem({ icon, label, onPress, rightSlot }: MenuItemProps) {
   );
 }
 
-function formatSyncTime(date: Date | null): string {
-  if (!date) return 'Not synced yet';
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return 'Just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours} hr ago`;
-}
-
 const SECRET_TAP_COUNT = 5;
 const SECRET_TAP_WINDOW_MS = 2500;
 
 export default function ProfileScreen() {
   const { colors, preference, setPreference } = useTheme();
   const styles = makeStyles(colors);
-  const { isLive, lastSynced, refreshing, refresh } = useProducts();
   const { isAdmin, signOut } = useAuth();
   const navigation = useNavigation<any>();
   const tapCountRef = useRef(0);
@@ -74,14 +63,18 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleAdminSignOut = () => {
-    Alert.alert('Sign out of admin?', undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
-    ]);
+  const handleAdminSignOut = async () => {
+    const confirmed = await confirmAsync('Sign out of admin?', undefined, 'Sign Out');
+    if (confirmed) signOut();
   };
 
-  const handleOffersPress = () => {
+  const handleOffersPress = async () => {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm('Check out our latest offers and deals on Meesho!')) {
+        Linking.openURL('https://www.meesho.com/h6z4l');
+      }
+      return;
+    }
     Alert.alert('Offers & Deals', 'Check out our latest offers and deals on Meesho!', [
       { 
         text: 'View on Meesho', 
@@ -92,7 +85,7 @@ export default function ProfileScreen() {
   };
 
   const handleNotificationsPress = () => {
-    Alert.alert('Notifications', 'You have no new notifications at this time.');
+    alertInfo('Notifications', 'You have no new notifications at this time.');
   };
 
   return (
@@ -122,21 +115,6 @@ export default function ProfileScreen() {
               </View>
             </>
           )}
-
-          <Text style={styles.sectionTitle}>Catalog</Text>
-          <View style={styles.card}>
-            <MenuItem
-              icon={isLive ? 'cloud-done-outline' : 'cloud-offline-outline'}
-              label={isLive ? 'Live catalog — synced' : 'Using local catalog'}
-              rightSlot={<Text style={styles.syncTime}>{formatSyncTime(lastSynced)}</Text>}
-            />
-            <MenuItem
-              icon="refresh-outline"
-              label={refreshing ? 'Refreshing…' : 'Refresh Catalog Now'}
-              onPress={refreshing ? undefined : refresh}
-              rightSlot={refreshing ? <ActivityIndicator size="small" color={colors.primary} /> : undefined}
-            />
-          </View>
 
           <Text style={styles.sectionTitle}>Shop</Text>
           <View style={styles.card}>
@@ -243,7 +221,6 @@ function makeStyles(colors: ColorTheme) {
     },
     menuLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     menuLabel: { ...typography.body, color: colors.textPrimary, marginLeft: spacing.sm },
-    syncTime: { ...typography.caption, color: colors.textMuted },
     themeRow: {
       flexDirection: 'row',
       alignItems: 'center',

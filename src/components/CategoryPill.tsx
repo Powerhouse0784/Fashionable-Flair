@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
@@ -29,7 +30,11 @@ export default function CategoryPill({ category, onPress }: Props) {
   return (
     <TouchableOpacity style={styles.pill} activeOpacity={0.75} onPress={onPress}>
       <View style={[styles.iconCircle, { backgroundColor: tint }, Platform.OS === 'web' && styles.iconCircleWeb]}>
-        <Ionicons name={category.icon as any} size={24} color={colors.primaryDark} />
+        {category.image ? (
+          <Image source={category.image} style={styles.image} contentFit="cover" />
+        ) : (
+          <Ionicons name={category.icon as any} size={24} color={colors.primaryDark} />
+        )}
       </View>
       <Text style={styles.label} numberOfLines={2}>
         {category.label}
@@ -51,6 +56,11 @@ function makeStyles(colors: ColorTheme) {
       borderRadius: radius.pill,
       alignItems: 'center',
       justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    image: {
+      width: '100%',
+      height: '100%',
     },
     iconCircleWeb: {
       // @ts-ignore - web-only, no-op on native

@@ -4,6 +4,7 @@ import {
   View,
   FlatList,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   Animated,
   PanResponder,
@@ -37,6 +38,23 @@ function distanceBetween(touches: GestureResponderEvent['nativeEvent']['touches'
  * Built on the core PanResponder API (no gesture-handler/reanimated
  * dependency) — deliberately self-contained per image so paging between
  * photos (the parent FlatList) and zoom gestures never fight each other.
+ *
+ * The tricky part, and worth explaining since it's easy to get subtly
+ * wrong: at rest (1x), a single finger touching down must be left
+ * completely alone so the parent FlatList's own native swipe-to-page
+ * gesture can claim it — grabbing it here even briefly (the previous
+ * version's onStartShouldSetPanResponder returning true unconditionally)
+ * silently breaks paging, since only one gesture responder can own a
+ * touch stream at a time. But a *second* finger joining mid-gesture (the
+ * start of a pinch) needs to be claimed immediately and reliably even if
+ * it lands a beat after the first — which is what the *Capture variants
+ * below are for: they run before the normal claim negotiation and fire
+ * again on every new touch, so the moment a touch count hits 2 they grab
+ * it, regardless of how the gesture started. Once truly zoomed in (>1x),
+ * single-finger touches ARE claimed immediately (for panning) — safe to
+ * do since the parent disables its own scroll entirely at that point (see
+ * `scrollEnabled={!zoomedIn}` below), so there's no competing gesture to
+ * step on.
  */
 function ZoomableImage({
   uri,
@@ -93,11 +111,30 @@ function ZoomableImage({
     animateTo(DOUBLE_TAP_SCALE, focusX, focusY);
   };
 
+  // Tap detection (for double-tap-to-zoom-IN) lives here, on a plain
+  // TouchableWithoutFeedback wrapping the image, completely separate from
+  // the PanResponder below — since at 1x the PanResponder deliberately
+  // never claims single-finger touches (see the big comment above), it
+  // would never see a simple tap to detect a double-tap from in the first
+  // place. Touchable's own lighter-weight tap handling coexists with the
+  // parent FlatList's swipe far better than a manual responder claim would.
+  const handlePress = (e: GestureResponderEvent) => {
+    const now = Date.now();
+    const { locationX, locationY } = e.nativeEvent;
+    if (now - lastTap.current < DOUBLE_TAP_WINDOW_MS) {
+      handleDoubleTap(locationX, locationY);
+      lastTap.current = 0;
+    } else {
+      lastTap.current = now;
+    }
+  };
+
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_e, gesture) =>
-        current.current.scale > 1.01 || Math.abs(gesture.dx) > 6 || Math.abs(gesture.dy) > 6 || gesture.numberActiveTouches === 2,
+      onStartShouldSetPanResponderCapture: (e) => e.nativeEvent.touches.length === 2,
+      onStartShouldSetPanResponder: (e) => e.nativeEvent.touches.length === 2 || current.current.scale > 1.01,
+      onMoveShouldSetPanResponderCapture: (e) => e.nativeEvent.touches.length === 2,
+      onMoveShouldSetPanResponder: (e) => e.nativeEvent.touches.length === 2 || current.current.scale > 1.01,
 
       onPanResponderGrant: (e) => {
         const touches = e.nativeEvent.touches;
@@ -165,15 +202,17 @@ function ZoomableImage({
 
   return (
     <View style={{ width, height, overflow: 'hidden' }} {...panResponder.panHandlers}>
-      <Animated.View
-        style={{
-          width,
-          height,
-          transform: [{ translateX }, { translateY }, { scale }],
-        }}
-      >
-        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
-      </Animated.View>
+      <TouchableWithoutFeedback onPress={handlePress}>
+        <Animated.View
+          style={{
+            width,
+            height,
+            transform: [{ translateX }, { translateY }, { scale }],
+          }}
+        >
+          <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+        </Animated.View>
+      </TouchableWithoutFeedback>
     </View>
   );
 }

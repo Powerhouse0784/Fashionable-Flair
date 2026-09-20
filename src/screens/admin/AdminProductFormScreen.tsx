@@ -8,7 +8,6 @@ import {
   ScrollView,
   Switch,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -29,6 +28,7 @@ import { getProductById } from '@/utils/productHelpers';
 import { getProductImages } from '@/utils/productImages';
 import { createProduct, updateProduct, uploadProductImage, ProductInput } from '@/services/productService';
 import { hapticSuccess } from '@/utils/haptics';
+import { alertInfo } from '@/utils/confirm';
 import { goBackOrTo } from '@/utils/navigation';
 import Container from '@/components/Container';
 import ProductPlaceholder from '@/components/ProductPlaceholder';
@@ -129,12 +129,12 @@ export default function AdminProductFormScreen() {
   const pickImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission needed', 'Allow photo library access to add product photos.');
+      alertInfo('Permission needed', 'Allow photo library access to add product photos.');
       return;
     }
     const remainingSlots = MAX_IMAGES - photos.length;
     if (remainingSlots <= 0) {
-      Alert.alert('Limit reached', `You can add up to ${MAX_IMAGES} photos per product.`);
+      alertInfo('Limit reached', `You can add up to ${MAX_IMAGES} photos per product.`);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({

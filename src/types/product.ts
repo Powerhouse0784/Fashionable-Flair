@@ -36,7 +36,8 @@ export interface Product {
 export interface Category {
   key: CategoryKey;
   label: string;
-  icon: string; // Ionicons name
+  icon: string; // Ionicons name (fallback if no image)
+  image?: any; // require() image source shown in the category circle
 }
 
 /** Admin-curated customer review, shown on a product's detail page. Since

@@ -162,7 +162,7 @@ export default function ProductDetailScreen() {
           onPress={handleBuyNow}
           disabled={product.isAvailable === false}
         >
-          <Text style={styles.ctaButtonText}>
+          <Text style={styles.ctaButtonText} numberOfLines={1}>
             {product.isAvailable === false ? 'Out of Stock' : 'Buy Now on Meesho'}
           </Text>
           {product.isAvailable !== false && <Ionicons name="arrow-forward" size={18} color={colors.textInverse} />}
@@ -291,7 +291,12 @@ export default function ProductDetailScreen() {
         <SafeAreaView edges={['bottom']} style={styles.ctaBar}>
           <View style={styles.ctaPriceWrap}>
             <Text style={styles.ctaPriceLabel}>Price</Text>
-            <PriceTag amount={product.price} compareAtAmount={product.compareAtPrice} style={{ fontSize: 18 }} />
+            {/* Deliberately just the current price here, no strikethrough/
+                badge — those already show prominently in the price section
+                above, and showing the full discount treatment again in
+                this narrow bottom bar was squeezing "Buy Now on Meesho"
+                into wrapping onto two lines. */}
+            <PriceTag amount={product.price} style={{ fontSize: 18 }} />
           </View>
           <TouchableOpacity
             style={[styles.ctaButton, product.isAvailable === false && styles.ctaButtonDisabled]}
@@ -299,7 +304,7 @@ export default function ProductDetailScreen() {
             onPress={handleBuyNow}
             disabled={product.isAvailable === false}
           >
-            <Text style={styles.ctaButtonText}>
+            <Text style={styles.ctaButtonText} numberOfLines={1}>
               {product.isAvailable === false ? 'Out of Stock' : 'Buy Now on Meesho'}
             </Text>
             {product.isAvailable !== false && <Ionicons name="arrow-forward" size={18} color={colors.textInverse} />}

@@ -7,7 +7,6 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -23,6 +22,7 @@ import { fetchReviews, createReview, deleteReview } from '@/services/reviewServi
 import { useToast } from '@/context/ToastContext';
 import { hapticSuccess } from '@/utils/haptics';
 import { goBackOrTo } from '@/utils/navigation';
+import { confirmAsync, alertInfo } from '@/utils/confirm';
 import RatingStars from '@/components/RatingStars';
 
 type ReviewsRoute = RouteProp<RootStackParamList, 'AdminReviews'>;
@@ -61,7 +61,7 @@ export default function AdminReviewsScreen() {
 
   const handleAdd = async () => {
     if (!authorName.trim() || !body.trim()) {
-      Alert.alert('Missing info', 'Enter both a name and the review text.');
+      alertInfo('Missing info', 'Enter both a name and the review text.');
       return;
     }
     setSaving(true);
@@ -74,29 +74,22 @@ export default function AdminReviewsScreen() {
       showToast('Review added', 'success');
       load();
     } catch (e: any) {
-      Alert.alert('Couldn\u2019t add review', e?.message || 'Something went wrong.');
+      alertInfo('Couldn\u2019t add review', e?.message || 'Something went wrong.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Delete review?', 'This can\u2019t be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteReview(id);
-            showToast('Review deleted', 'success');
-            load();
-          } catch (e: any) {
-            Alert.alert('Couldn\u2019t delete', e?.message || 'Something went wrong.');
-          }
-        },
-      },
-    ]);
+  const handleDelete = async (id: string) => {
+    const confirmed = await confirmAsync('Delete review?', 'This can\u2019t be undone.', 'Delete');
+    if (!confirmed) return;
+    try {
+      await deleteReview(id);
+      showToast('Review deleted', 'success');
+      load();
+    } catch (e: any) {
+      alertInfo('Couldn\u2019t delete', e?.message || 'Something went wrong.');
+    }
   };
 
   return (

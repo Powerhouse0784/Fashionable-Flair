@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { sendBroadcastNotification } from '@/services/notifyService';
 import { useToast } from '@/context/ToastContext';
 import { hapticSuccess } from '@/utils/haptics';
 import { goBackOrTo } from '@/utils/navigation';
+import { confirmAsync, alertInfo } from '@/utils/confirm';
 import Container from '@/components/Container';
 
 const TITLE_LIMIT = 120;
@@ -17,8 +18,9 @@ const BODY_LIMIT = 500;
 /**
  * Sends a push notification to every device that has the native app
  * installed and has granted notification permission — new arrivals,
- * sales, restocks, whatever's worth a nudge. Native app only; there's no
- * web push counterpart registered, so this only ever reaches phones.
+ * sales, restocks, whatever's worth a nudge. Composable from web too
+ * (an admin can be on their browser while targeting phone users) — only
+ * the notifications themselves are native-only, not this screen.
  */
 export default function AdminNotifyScreen() {
   const { colors } = useTheme();
@@ -30,19 +32,17 @@ export default function AdminNotifyScreen() {
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!title.trim() || !body.trim()) {
-      Alert.alert('Missing info', 'Enter both a title and a message.');
+      alertInfo('Missing info', 'Enter both a title and a message.');
       return;
     }
-    Alert.alert(
+    const confirmed = await confirmAsync(
       'Send to everyone?',
-      `This goes out immediately to every device with the app installed. This can\u2019t be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Send', style: 'destructive', onPress: doSend },
-      ]
+      'This goes out immediately to every device with the app installed. This can\u2019t be undone.',
+      'Send'
     );
+    if (confirmed) doSend();
   };
 
   const doSend = async () => {
@@ -54,7 +54,7 @@ export default function AdminNotifyScreen() {
       setTitle('');
       setBody('');
     } catch (e: any) {
-      Alert.alert('Couldn\u2019t send', e?.message || 'Something went wrong.');
+      alertInfo('Couldn\u2019t send', e?.message || 'Something went wrong.');
     } finally {
       setSending(false);
     }
