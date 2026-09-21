@@ -147,7 +147,7 @@ function makeStyles(colors: ColorTheme) {
     downloadColSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs },
     brand: { ...typography.h3, color: colors.textPrimary },
     tagline: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs },
-    storeLink: { ...typography.bodySmall, color: colors.primary, fontFamily: fonts.bodySemiBold, marginTop: spacing.md },
+    storeLink: { ...typography.bodySmall, color: colors.gold, fontFamily: fonts.bodySemiBold, marginTop: spacing.md },
     contactBlock: { marginTop: spacing.lg, gap: spacing.xs },
     contactRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
     contactText: { ...typography.caption, color: colors.textSecondary, flex: 1 },

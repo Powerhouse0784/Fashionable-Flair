@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { View, Text, ScrollView, FlatList, StyleSheet, TouchableOpacity, RefreshControl, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -72,7 +73,7 @@ function ProductRow({ items, isWide }: { items: Product[]; isWide: boolean }) {
 
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = makeStyles(colors);
   const { products, loading, refreshing, refresh } = useProducts();
   const { recentlyViewedIds } = useRecentlyViewed();
@@ -141,30 +142,36 @@ export default function HomeScreen() {
           )}
 
           {/* Hero banner */}
-          <LinearGradient
-            colors={[colors.primary, colors.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.hero, isWide && styles.heroWide]}
-          >
-            <View style={[styles.heroDecorOuter, { pointerEvents: 'none' }]} />
-            <View style={[styles.heroDecorInner, { pointerEvents: 'none' }]} />
-            {isWide && (
-              <View style={[styles.heroIconCluster, { pointerEvents: 'none' }]}>
-                <Ionicons name="diamond" size={64} color="rgba(255,255,255,0.14)" style={styles.heroIcon1} />
-                <Ionicons name="heart" size={44} color="rgba(255,255,255,0.14)" style={styles.heroIcon2} />
-                <Ionicons name="sparkles" size={52} color="rgba(255,255,255,0.14)" style={styles.heroIcon3} />
-                <Ionicons name="infinite" size={40} color="rgba(255,255,255,0.14)" style={styles.heroIcon4} />
-              </View>
-            )}
+          <View style={[styles.hero, isWide && styles.heroWide]}>
+            <Image
+              source={require('@/assets/hero-background.jpg')}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              contentPosition="right"
+              transition={200}
+            />
+            {/* Scrim so the copy stays legible over whatever's behind it in
+                the photo — heavier on the left where the text sits, fading
+                out toward the right so the jewellery in the image stays
+                fully visible. */}
+            <LinearGradient
+              colors={[
+                isDark ? 'rgba(7,17,31,0.82)' : 'rgba(15,28,46,0.78)',
+                isDark ? 'rgba(7,17,31,0.35)' : 'rgba(15,28,46,0.4)',
+                'rgba(0,0,0,0)',
+              ]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
             <View style={styles.heroContent}>
               <View style={styles.heroBadge}>
-                <Text style={styles.heroBadgeText}>NEW SEASON</Text>
+                <Text style={styles.heroBadgeText}>HANDPICKED COLLECTION</Text>
               </View>
-              <Text style={[styles.heroTitle, isWide && styles.heroTitleWide]}>New Season, New Sparkle</Text>
+              <Text style={[styles.heroTitle, isWide && styles.heroTitleWide]}>Jewellery That Feels Like You</Text>
               <Text style={styles.heroSubtitle}>
                 {products.length > 0
-                  ? `${products.length}+ handpicked pieces${products[0]?.rating ? ` · rated ${products[0].rating.toFixed(1)}★ by shoppers` : ''}`
+                  ? `${products.length}+ pieces, handpicked — not mass-imported`
                   : 'New pieces coming soon'}
               </Text>
               <TouchableOpacity
@@ -172,12 +179,12 @@ export default function HomeScreen() {
                 activeOpacity={0.85}
                 onPress={handleExplorePress}
               >
-                <Text style={styles.heroCtaText}>Explore the Collection</Text>
+                <Text style={styles.heroCtaText}>Shop the Collection</Text>
                 <Ionicons name="arrow-forward" size={16} color={colors.primary} />
               </TouchableOpacity>
               <TrustBar variant="light" />
             </View>
-          </LinearGradient>
+          </View>
 
           {/* Categories */}
           <View style={styles.categorySection}>
@@ -325,41 +332,15 @@ function makeStyles(colors: ColorTheme) {
       padding: spacing.xl,
       overflow: 'hidden',
       position: 'relative',
+      minHeight: 300,
+      justifyContent: 'center',
     },
     heroWide: {
       marginTop: spacing.xl,
       paddingVertical: spacing.xxl,
       paddingHorizontal: spacing.xxl,
+      minHeight: 400,
     },
-    heroDecorOuter: {
-      position: 'absolute',
-      top: -60,
-      right: -60,
-      width: 220,
-      height: 220,
-      borderRadius: 999,
-      backgroundColor: 'rgba(255,255,255,0.08)',
-    },
-    heroDecorInner: {
-      position: 'absolute',
-      bottom: -80,
-      right: 60,
-      width: 160,
-      height: 160,
-      borderRadius: 999,
-      backgroundColor: 'rgba(255,255,255,0.06)',
-    },
-    heroIconCluster: {
-      position: 'absolute',
-      right: '8%',
-      top: 0,
-      bottom: 0,
-      width: 320,
-    },
-    heroIcon1: { position: 'absolute', top: '18%', left: '40%' },
-    heroIcon2: { position: 'absolute', top: '50%', left: '10%' },
-    heroIcon3: { position: 'absolute', top: '65%', left: '55%' },
-    heroIcon4: { position: 'absolute', top: '30%', left: '75%' },
     heroContent: { maxWidth: 560 },
     heroBadge: {
       alignSelf: 'flex-start',
@@ -372,7 +353,7 @@ function makeStyles(colors: ColorTheme) {
     heroBadgeText: { ...typography.caption, color: colors.textInverse, letterSpacing: 1 },
     heroTitle: { ...typography.h2, color: colors.textInverse },
     heroTitleWide: { fontSize: 38 },
-    heroSubtitle: { ...typography.body, color: colors.primaryLight, marginTop: spacing.xs },
+    heroSubtitle: { ...typography.body, color: 'rgba(255,255,255,0.88)', marginTop: spacing.xs },
     heroCta: {
       flexDirection: 'row',
       alignItems: 'center',

@@ -262,7 +262,7 @@ function makeStyles(colors: ColorTheme) {
     },
     noteTitle: { ...typography.bodySmall, fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
     noteText: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
-    noteLink: { ...typography.bodySmall, color: colors.primary, fontFamily: fonts.bodySemiBold, marginTop: spacing.xs },
+    noteLink: { ...typography.bodySmall, color: colors.gold, fontFamily: fonts.bodySemiBold, marginTop: spacing.xs },
     formTitle: { ...typography.h3, fontFamily: fonts.heading, color: colors.textPrimary, marginBottom: spacing.md },
     field: { marginTop: spacing.md },
     label: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xs, textTransform: 'uppercase' },

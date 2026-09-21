@@ -1,24 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useIsWideScreen } from '@/hooks/useResponsive';
 
-const FEATURES: { icon: string; title: string; body: string }[] = [
+// Each feature has its own badge artwork (transparent round PNGs in
+// src/assets/features). They already include their own gold rim and blue
+// centre, so they are shown as-is — no extra circle behind them.
+const FEATURES: { image: any; alt: string; title: string; body: string }[] = [
   {
-    icon: 'sparkles-outline',
+    image: require('@/assets/features/feature-crafted.png'),
+    alt: 'Sparkling diamond badge',
     title: 'Crafted to Shine',
     body: 'Every piece is hand-checked before it ships, so what lands on your doorstep looks every bit as brilliant as what caught your eye online.',
   },
   {
-    icon: 'pricetag-outline',
+    image: require('@/assets/features/feature-style.png'),
+    alt: 'Rising arrow of diamonds badge',
     title: 'Style Without the Splurge',
     body: 'Gorgeous designs at prices that let you treat yourself a little more often — beautiful jewellery was never meant to be out of reach.',
   },
   {
-    icon: 'rocket-outline',
+    image: require('@/assets/features/feature-delivery.png'),
+    alt: 'Delivery van with lock and India map badge',
     title: 'Doorstep, Guaranteed',
     body: "From our hands to yours — every order is packed with care and tracked all the way, wherever you are in India.",
   },
@@ -39,9 +44,13 @@ export default function WhyChooseUs() {
     <View style={styles.wrap}>
       {FEATURES.map((f) => (
         <View key={f.title} style={[styles.card, isWide && styles.cardWide]}>
-          <View style={styles.iconWrap}>
-            <Ionicons name={f.icon as any} size={26} color={colors.primary} />
-          </View>
+          <Image
+            source={f.image}
+            style={styles.icon}
+            resizeMode="contain"
+            accessibilityLabel={f.alt}
+            accessibilityIgnoresInvertColors
+          />
           <Text style={styles.title}>{f.title}</Text>
           <Text style={styles.body}>{f.body}</Text>
         </View>
@@ -70,19 +79,17 @@ function makeStyles(colors: ColorTheme) {
     cardWide: {
       flexBasis: '31%',
     },
-    iconWrap: {
-      width: 52,
-      height: 52,
-      borderRadius: radius.pill,
-      backgroundColor: colors.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
+    // Badge artwork: a true circle, sitting top-left where the old line icon
+    // was, at about the same size (56 vs the old 52px circle).
+    icon: {
+      width: 56,
+      height: 56,
       marginBottom: spacing.md,
     },
     title: {
       ...typography.h3,
       fontFamily: fonts.headingMedium,
-      color: colors.primaryDark,
+      color: colors.textPrimary,
       marginBottom: spacing.xs,
     },
     body: { ...typography.bodySmall, color: colors.textSecondary, lineHeight: 19 },
