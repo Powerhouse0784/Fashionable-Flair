@@ -80,10 +80,11 @@ function makeStyles(colors: ColorTheme) {
       flexBasis: '31%',
     },
     // Badge artwork: a true circle, sitting top-left where the old line icon
-    // was, at about the same size (56 vs the old 52px circle).
+    // was — sized down from the original 56px so it reads as an icon accent,
+    // not a competing visual.
     icon: {
-      width: 56,
-      height: 56,
+      width: 40,
+      height: 40,
       marginBottom: spacing.md,
     },
     title: {
