@@ -21,6 +21,10 @@ import Logo from '@/components/Logo';
 interface Slide {
   title: string;
   description: string;
+  /** Two or three short supporting chips shown under the description — fills
+   * the plain part of the background with a bit more brand-relevant content
+   * instead of leaving it empty. */
+  highlights: string[];
   /** Wide (landscape) background — used on desktop, laptop and any wider-than-tall screen. */
   image: any;
   /** Tall version for tablets / squarish windows (keeps the full-width photo). */
@@ -34,6 +38,7 @@ const SLIDES: Slide[] = [
     title: '✨ Welcome to\nFashionable Flair',
     description:
       'Discover jewellery that speaks your style — explore our handpicked collection.',
+    highlights: ['New arrivals weekly', 'Handpicked designs'],
     image: require('@/assets/onboarding/slide-1.jpg'),
     imageTablet: require('@/assets/onboarding/slide-1-tablet.jpg'),
     imagePortrait: require('@/assets/onboarding/slide-1-portrait.jpg'),
@@ -42,6 +47,7 @@ const SLIDES: Slide[] = [
     title: '❤️ Save What You Love',
     description:
       'Tap the heart on any product to add it to your Wishlist — saved right on your device.',
+    highlights: ['One-tap wishlist', 'Synced to your device'],
     image: require('@/assets/onboarding/slide-2.jpg'),
     imageTablet: require('@/assets/onboarding/slide-2-tablet.jpg'),
     imagePortrait: require('@/assets/onboarding/slide-2-portrait.jpg'),
@@ -50,6 +56,7 @@ const SLIDES: Slide[] = [
     title: '🛡️ Secure Checkout',
     description:
       'Ready to buy? "Buy Now" takes you to our Meesho store for secure purchase.',
+    highlights: ['Verified Meesho store', 'Buyer protection'],
     image: require('@/assets/onboarding/slide-3.jpg'),
     imageTablet: require('@/assets/onboarding/slide-3-tablet.jpg'),
     imagePortrait: require('@/assets/onboarding/slide-3-portrait.jpg'),
@@ -58,6 +65,7 @@ const SLIDES: Slide[] = [
     title: '💬 Have Questions?',
     description:
       'Our AI assistant can answer anything about products, orders, or our app.',
+    highlights: ['Always available', 'Instant answers'],
     image: require('@/assets/onboarding/slide-4.jpg'),
     imageTablet: require('@/assets/onboarding/slide-4-tablet.jpg'),
     imagePortrait: require('@/assets/onboarding/slide-4-portrait.jpg'),
@@ -170,20 +178,34 @@ export default function OnboardingScreen({ onDone }: Props) {
         ]}
       >
         <View style={styles.contentInner}>
-          <View
-            style={[
-              styles.logoCircle,
-              { width: logoSize, height: logoSize, borderRadius: logoSize / 2 },
-            ]}
-          >
-            <Logo variant="mark" height={isWeb ? 84 : 70} />
+          {/* Frosted glass panel: gives the plain part of the photo a designed
+              surface to sit on (instead of bare gradient), and holds the
+              highlight chips that add a bit more context per slide. */}
+          <View style={styles.glassCard}>
+            <View
+              style={[
+                styles.logoCircle,
+                { width: logoSize, height: logoSize, borderRadius: logoSize / 2 },
+              ]}
+            >
+              <Logo variant="mark" height={isWeb ? 84 : 70} />
+            </View>
+
+            <Text style={[styles.title, isWeb && styles.titleWeb]}>{item.title}</Text>
+
+            <Text style={[styles.description, isWeb && styles.descriptionWeb]}>
+              {item.description}
+            </Text>
+
+            <View style={styles.highlightRow}>
+              {item.highlights.map((h) => (
+                <View key={h} style={styles.highlightChip}>
+                  <Ionicons name="sparkles" size={11} color={colors.primary} />
+                  <Text style={styles.highlightText}>{h}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-
-          <Text style={[styles.title, isWeb && styles.titleWeb]}>{item.title}</Text>
-
-          <Text style={[styles.description, isWeb && styles.descriptionWeb]}>
-            {item.description}
-          </Text>
         </View>
       </View>
     </View>
@@ -352,6 +374,62 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       width: '100%',
       maxWidth: isWeb ? 600 : '100%',
       paddingHorizontal: isWeb ? spacing.xxl : spacing.xl,
+    },
+
+    // Frosted-glass surface behind the logo/title/description. Translucent
+    // rather than solid so the photo still reads through it — it just gives
+    // the plain part of the background a deliberate, designed surface
+    // instead of leaving it bare.
+    glassCard: {
+      alignItems: 'center',
+      width: '100%',
+      borderRadius: 28,
+      paddingVertical: isWeb ? 32 : 26,
+      paddingHorizontal: isWeb ? 36 : 22,
+      backgroundColor: isDark ? 'rgba(15,26,43,0.55)' : 'rgba(255,255,255,0.38)',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.65)',
+
+      ...(isWeb
+        ? ({
+            boxShadow: isDark
+              ? '0 12px 32px rgba(0,0,0,0.35)'
+              : '0 12px 32px rgba(40,108,176,0.14)',
+            backdropFilter: 'blur(18px)',
+          } as any)
+        : {
+            shadowColor: '#0B1A2E',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: isDark ? 0.3 : 0.1,
+            shadowRadius: 24,
+            elevation: 5,
+          }),
+    },
+
+    highlightRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      marginTop: spacing.sm,
+    },
+
+    highlightChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(40,108,176,0.09)',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(40,108,176,0.18)',
+      borderRadius: radius.pill,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+    },
+
+    highlightText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: isDark ? colors.textSecondary : '#2E3E56',
     },
 
     logoCircle: {
