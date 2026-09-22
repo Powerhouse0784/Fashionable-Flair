@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, radius, ColorTheme } from '@/theme';
@@ -31,6 +32,10 @@ interface Slide {
   imageTablet: any;
   /** Tall version for phones and narrow windows (photo re-composed to fit a tall screen). */
   imagePortrait: any;
+  /** Two-tone gradient sampled from this slide's own photo. Painted immediately, behind
+   * everything, so the slide never looks blank — on a slow connection the photo fades in
+   * on top of a colour that already matches it, instead of leaving plain white. */
+  fallback: [string, string];
 }
 
 const SLIDES: Slide[] = [
@@ -42,6 +47,7 @@ const SLIDES: Slide[] = [
     image: require('@/assets/onboarding/slide-1.jpg'),
     imageTablet: require('@/assets/onboarding/slide-1-tablet.jpg'),
     imagePortrait: require('@/assets/onboarding/slide-1-portrait.jpg'),
+    fallback: ['#CED7E0', '#AEBAC9'],
   },
   {
     title: '❤️ Save What You Love',
@@ -51,6 +57,7 @@ const SLIDES: Slide[] = [
     image: require('@/assets/onboarding/slide-2.jpg'),
     imageTablet: require('@/assets/onboarding/slide-2-tablet.jpg'),
     imagePortrait: require('@/assets/onboarding/slide-2-portrait.jpg'),
+    fallback: ['#CEDAE5', '#BCC9D6'],
   },
   {
     title: '🛡️ Secure Checkout',
@@ -60,6 +67,7 @@ const SLIDES: Slide[] = [
     image: require('@/assets/onboarding/slide-3.jpg'),
     imageTablet: require('@/assets/onboarding/slide-3-tablet.jpg'),
     imagePortrait: require('@/assets/onboarding/slide-3-portrait.jpg'),
+    fallback: ['#BBCBDC', '#B5C5D9'],
   },
   {
     title: '💬 Have Questions?',
@@ -69,6 +77,7 @@ const SLIDES: Slide[] = [
     image: require('@/assets/onboarding/slide-4.jpg'),
     imageTablet: require('@/assets/onboarding/slide-4-tablet.jpg'),
     imagePortrait: require('@/assets/onboarding/slide-4-portrait.jpg'),
+    fallback: ['#BFCDDF', '#94A1BA'],
   },
 ];
 
@@ -146,21 +155,43 @@ export default function OnboardingScreen({ onDone }: Props) {
     });
   };
 
-  const renderSlide = ({ item }: { item: Slide }) => (
+  const renderSlide = ({ item, index: i }: { item: Slide; index: number }) => {
+    // Only the current slide and its immediate neighbours actually start
+    // downloading their photo. On a slow connection this stops all four
+    // photos competing for bandwidth at once, so the one the user is
+    // looking at is not left waiting behind three it can't see yet.
+    const shouldLoadPhoto = Math.abs(i - index) <= 1;
+
+    return (
     // Every slide is exactly one full screen (width x height). The photo is
     // stretched over ALL of it — behind the Skip row and the footer too — so
     // the background reaches every edge of the page with no bands of plain
     // colour above or below it.
     <View style={{ width, height }}>
-      <Image
-        source={pickImage(item)}
+      {/* Always-on colour base, sampled from this slide's own photo. Guarantees
+          the slide is never plain white/blank — on a slow connection or if the
+          photo fails outright, this is what the user sees instead. */}
+      <LinearGradient
+        colors={item.fallback}
         style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        // Tall art has its jewellery at the bottom, so anchor it there when the
-        // screen is not exactly the artwork's shape.
-        contentPosition={shape === 'wide' ? 'center' : 'bottom'}
-        transition={200}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
       />
+
+      {shouldLoadPhoto && (
+        <Image
+          source={pickImage(item)}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          // Tall art has its jewellery at the bottom, so anchor it there when the
+          // screen is not exactly the artwork's shape.
+          contentPosition={shape === 'wide' ? 'center' : 'bottom'}
+          transition={250}
+          cachePolicy="memory-disk"
+          priority={i === index ? 'high' : 'low'}
+          recyclingKey={`slide-${i}-${shape}`}
+        />
+      )}
 
       {/* Dark mode only: the photos are bright, so dim them slightly to keep
           the light-coloured text readable. Invisible in light mode. */}
@@ -209,7 +240,8 @@ export default function OnboardingScreen({ onDone }: Props) {
         </View>
       </View>
     </View>
-  );
+    );
+  };
 
   return (
     <View style={[styles.root, { minHeight: height }]}>
@@ -380,22 +412,27 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
     // rather than solid so the photo still reads through it — it just gives
     // the plain part of the background a deliberate, designed surface
     // instead of leaving it bare.
+    //
+    // No backdrop-filter/blur here on purpose: sampling a blur every frame
+    // while the slide is mid-swipe is too expensive for a lot of phone
+    // browsers, and for a moment mid-swipe the blur shows blank/stale
+    // instead of the slide behind it. A plain, slightly more opaque panel
+    // gives the same "frosted card" look without that glitch.
     glassCard: {
       alignItems: 'center',
       width: '100%',
       borderRadius: 28,
       paddingVertical: isWeb ? 32 : 26,
       paddingHorizontal: isWeb ? 36 : 22,
-      backgroundColor: isDark ? 'rgba(15,26,43,0.55)' : 'rgba(255,255,255,0.38)',
+      backgroundColor: isDark ? 'rgba(15,26,43,0.72)' : 'rgba(255,255,255,0.62)',
       borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.65)',
+      borderColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.75)',
 
       ...(isWeb
         ? ({
             boxShadow: isDark
               ? '0 12px 32px rgba(0,0,0,0.35)'
               : '0 12px 32px rgba(40,108,176,0.14)',
-            backdropFilter: 'blur(18px)',
           } as any)
         : {
             shadowColor: '#0B1A2E',
