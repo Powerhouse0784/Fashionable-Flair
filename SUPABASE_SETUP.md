@@ -325,4 +325,134 @@ That's it — no extra secrets needed, since it calls Expo's push service
 directly with the tokens already in your database. Sending a notification
 costs nothing beyond your existing Supabase plan.
 
+## 11. Testimonials (no login required)
+
+The Testimonials screen (linked from Profile → Testimonials, and from the
+"Loved by Shoppers Like You" block on Home) ships with ~20 bundled launch
+reviews so it never looks empty — those are plain text in
+`src/data/testimonialsSeed.ts`, not stored here, and aren't affected by
+anything below. This section is what powers the real "Share Your
+Experience" form, letting any shopper add their own without creating an
+account.
+
+Since there's no login system, "can this person edit/delete this
+testimonial later" is answered by a random `ownerToken` generated once on
+their device and stored locally — never shown anywhere, closer to a
+secret edit-link than a real identity. That's why the update/delete logic
+below lives in two Postgres functions instead of a normal RLS policy: a
+plain "anyone can update/delete" policy would let anyone who inspects a
+network request edit *any* testimonial, not just their own, once they
+know its id. Routing those two actions through a function means the token
+match happens on the server, every time, no matter how the request is made.
+
+```sql
+create table testimonials (
+  id uuid primary key default gen_random_uuid(),
+  "ownerToken" uuid not null,
+  name text not null,
+  city text,
+  rating numeric not null check (rating >= 1 and rating <= 5),
+  product text,
+  body text not null,
+  "avatarIndex" integer not null check ("avatarIndex" between 1 and 50),
+  "createdAt" timestamptz default now()
+);
+
+alter table testimonials enable row level security;
+
+create policy "Public can read testimonials"
+  on testimonials for select
+  using (true);
+
+create policy "Public can add testimonials"
+  on testimonials for insert
+  to anon, authenticated
+  with check (true);
+
+-- Admin moderation (the "Testimonials" icon in the admin dashboard) goes
+-- through this policy directly, since an admin's session is already a
+-- real, verified identity — no token needed.
+create policy "Admins can delete any testimonial"
+  on testimonials for delete
+  to authenticated
+  using (exists (select 1 from admins where user_id = auth.uid()));
+
+-- A shopper editing/deleting their own testimonial instead goes through
+-- these two functions, which check the private ownerToken before
+-- touching anything. SECURITY DEFINER lets them bypass RLS internally —
+-- but only after the token check passes, so this isn't a backdoor.
+create or replace function update_own_testimonial(
+  p_id uuid,
+  p_owner_token uuid,
+  p_name text,
+  p_city text,
+  p_rating numeric,
+  p_product text,
+  p_body text,
+  p_avatar_index integer
+) returns testimonials
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated testimonials;
+begin
+  update testimonials
+  set name = p_name,
+      city = p_city,
+      rating = p_rating,
+      product = p_product,
+      body = p_body,
+      "avatarIndex" = p_avatar_index
+  where id = p_id and "ownerToken" = p_owner_token
+  returning * into updated;
+
+  if updated.id is null then
+    raise exception 'Not found, or not yours to edit.';
+  end if;
+
+  return updated;
+end;
+$$;
+
+create or replace function delete_own_testimonial(
+  p_id uuid,
+  p_owner_token uuid
+) returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from testimonials where id = p_id and "ownerToken" = p_owner_token;
+  return found;
+end;
+$$;
+
+grant execute on function update_own_testimonial to anon, authenticated;
+grant execute on function delete_own_testimonial to anon, authenticated;
+
+-- Server-side backstop for the "2 testimonials per device" limit shown
+-- in the app — without this, the limit is only a UI nicety that a direct
+-- API call could skip straight past.
+create or replace function enforce_testimonial_limit() returns trigger
+language plpgsql as $$
+begin
+  if (select count(*) from testimonials where "ownerToken" = new."ownerToken") >= 2 then
+    raise exception 'Maximum of 2 testimonials per device.';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger testimonial_limit_trigger
+before insert on testimonials
+for each row execute function enforce_testimonial_limit();
+```
+
+No storage bucket needed — avatars are 50 preset illustrations bundled
+with the app itself (`src/assets/avatars`), picked by index rather than
+uploaded.
+
 

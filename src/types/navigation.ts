@@ -10,6 +10,8 @@ export type RootStackParamList = {
   AdminProductForm: { productId?: string };
   AdminReviews: { productId: string; productTitle: string };
   AdminNotify: undefined;
+  AdminTestimonials: undefined;
+  Testimonials: undefined;
   About: undefined;
   Contact: undefined;
   FAQ: undefined;

@@ -26,7 +26,7 @@ import EmptyState from '@/components/EmptyState';
 import { ProductGridSkeleton } from '@/components/ProductCardSkeleton';
 import BannerCarousel from '@/components/BannerCarousel';
 import WhyChooseUs from '@/components/WhyChooseUs';
-import GoogleReviewsSection from '@/components/GoogleReviewsSection';
+import TestimonialsTeaser from '@/components/TestimonialsTeaser';
 import Logo from '@/components/Logo';
 import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
@@ -283,7 +283,7 @@ export default function HomeScreen() {
           <WhyChooseUs />
 
           {/* Google reviews CTA */}
-          <GoogleReviewsSection />
+          <TestimonialsTeaser />
 
           {!isWide && <View style={{ height: spacing.xxl }} />}
         </Container>

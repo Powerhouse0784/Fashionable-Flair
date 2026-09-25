@@ -121,6 +121,7 @@ export default function ProfileScreen() {
             <MenuItem icon="storefront-outline" label="Visit our Meesho Store" onPress={() => Linking.openURL('https://www.meesho.com/h6z4l')} />
             <MenuItem icon="heart-outline" label="My Wishlist" onPress={() => navigation.navigate('Tabs', { screen: 'Wishlist' })} />
             <MenuItem icon="pricetag-outline" label="Offers & Deals" onPress={handleOffersPress} />
+            <MenuItem icon="star-outline" label="Testimonials" onPress={() => navigation.navigate('Testimonials')} />
           </View>
 
           <Text style={styles.sectionTitle}>Preferences</Text>

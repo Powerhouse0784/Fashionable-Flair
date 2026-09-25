@@ -12,6 +12,8 @@ import AdminDashboardScreen from '@/screens/admin/AdminDashboardScreen';
 import AdminProductFormScreen from '@/screens/admin/AdminProductFormScreen';
 import AdminReviewsScreen from '@/screens/admin/AdminReviewsScreen';
 import AdminNotifyScreen from '@/screens/admin/AdminNotifyScreen';
+import AdminTestimonialsScreen from '@/screens/admin/AdminTestimonialsScreen';
+import TestimonialsScreen from '@/screens/TestimonialsScreen';
 import AboutScreen from '@/screens/info/AboutScreen';
 import ContactScreen from '@/screens/info/ContactScreen';
 import FAQScreen from '@/screens/info/FAQScreen';
@@ -54,6 +56,12 @@ export default function RootNavigator() {
         component={AdminNotifyScreen}
         options={{ presentation: 'modal' }}
       />
+      <Stack.Screen
+        name="AdminTestimonials"
+        component={AdminTestimonialsScreen}
+        options={{ presentation: 'modal' }}
+      />
+      <Stack.Screen name="Testimonials" component={TestimonialsScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
       <Stack.Screen name="Contact" component={ContactScreen} />
       <Stack.Screen name="FAQ" component={FAQScreen} />

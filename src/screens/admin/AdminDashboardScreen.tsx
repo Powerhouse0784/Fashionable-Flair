@@ -110,6 +110,9 @@ export default function AdminDashboardScreen() {
             </Text>
           </View>
           <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => navigation.navigate('AdminTestimonials')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="star-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('AdminNotify')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="notifications-outline" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
