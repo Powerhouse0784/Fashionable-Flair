@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +39,7 @@ const MAX_BODY_LENGTH = 500;
 export default function TestimonialFormModal({ visible, initial, saving, onSubmit, onClose }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const { height: windowHeight } = useWindowDimensions();
 
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
@@ -56,6 +58,19 @@ export default function TestimonialFormModal({ visible, initial, saving, onSubmi
     setBody(initial?.body ?? '');
     setAvatarIndex(initial?.avatarIndex ?? null);
   }, [visible, initial]);
+
+  useEffect(() => {
+    // Defensive cleanup only: react-native-web's Modal disables page scroll
+    // while open by setting the body's overflow, and is meant to restore it
+    // on close. If that restore is ever skipped — e.g. the component
+    // unmounts mid-close, or two modals briefly overlap — the whole page is
+    // left unable to scroll until it's refreshed. Re-asserting it here every
+    // time this modal closes costs nothing when everything already worked,
+    // and rescues the page when it didn't.
+    if (Platform.OS !== 'web' || visible) return;
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+  }, [visible]);
 
   const handleSubmit = () => {
     if (!name.trim()) {
@@ -79,8 +94,21 @@ export default function TestimonialFormModal({ visible, initial, saving, onSubmi
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+        <KeyboardAvoidingView
+          // 'undefined' on Android means this modal's own window never
+          // adjusts for the keyboard — Android normally resizes the screen
+          // for you, but a Modal opens its own window that doesn't inherit
+          // that behaviour, so the keyboard was free to cover the lower half
+          // of the form (submit button included) with no way to scroll it
+          // back into view. 'height' makes this modal shrink like iOS's
+          // 'padding' does.
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ width: '100%' }}
+        >
+          <Pressable
+            style={[styles.sheet, { maxHeight: Math.round(windowHeight * 0.92) }]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <View style={styles.handle} />
             <View style={styles.headerRow}>
               <Text style={styles.title}>{initial ? 'Edit Your Review' : 'Share Your Experience'}</Text>
@@ -89,7 +117,16 @@ export default function TestimonialFormModal({ visible, initial, saving, onSubmi
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              // flexShrink lets this area give up height to the keyboard (or
+              // to a short screen) instead of pushing the header and submit
+              // button off-screen with no way to reach them — the fixed
+              // 480 alone had no give, which is what made the sheet feel
+              // "stuck" on shorter phones or once the keyboard opened.
+              style={{ maxHeight: 480, flexShrink: 1 }}
+              keyboardShouldPersistTaps="handled"
+            >
               <TouchableOpacity style={styles.avatarPicker} activeOpacity={0.85} onPress={() => setAvatarPickerOpen(true)}>
                 <Image
                   source={avatarIndex ? getAvatarByIndex(avatarIndex) : undefined}
@@ -202,6 +239,11 @@ function makeStyles(colors: ColorTheme) {
       paddingBottom: spacing.xl,
       maxWidth: 480,
       width: '100%',
+      // Caps the whole sheet — handle, header, scrollable fields and the
+      // submit button together — to just under the full screen, so on a
+      // short device the submit button is always inside that cap rather
+      // than being pushed past the bottom edge.
+      maxHeight: '92%', // fallback if the JS-computed inline value below can't apply for any reason
       alignSelf: 'center',
     },
     handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md },

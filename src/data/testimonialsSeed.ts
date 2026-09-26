@@ -60,16 +60,6 @@ export const testimonialsSeed: Testimonial[] = [
     createdAt: '2026-08-05T08:15:00.000Z',
   },
   {
-    id: 'seed-06',
-    name: 'Khushi Jha',
-    city: 'Patna',
-    rating: 5,
-    product: 'Pendants & Chains',
-    body: 'Absolutely in love with the heart pendant. Was a bit skeptical ordering jewellery online but the finish is clean, no tarnishing after a few weeks of regular wear, and it arrived exactly as shown in the pictures. Highly recommend.',
-    avatarIndex: 3,
-    createdAt: '2026-07-22T14:50:00.000Z',
-  },
-  {
     id: 'seed-07',
     name: 'Kamaljeet Singh',
     city: 'Amritsar',
