@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { WishlistProvider } from '@/context/WishlistContext';
 import { ProductsProvider } from '@/context/ProductsContext';
+import { ProfileProvider } from '@/context/ProfileContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
@@ -165,13 +166,15 @@ export default function App() {
             <ToastProvider>
               <AuthProvider>
                 <ProductsProvider>
-                  <WishlistProvider>
-                    <RecentlyViewedProvider>
-                      <ScrollVisibilityProvider>
-                        <AppNavigation />
-                      </ScrollVisibilityProvider>
-                    </RecentlyViewedProvider>
-                  </WishlistProvider>
+                  <ProfileProvider>
+                    <WishlistProvider>
+                      <RecentlyViewedProvider>
+                        <ScrollVisibilityProvider>
+                          <AppNavigation />
+                        </ScrollVisibilityProvider>
+                      </RecentlyViewedProvider>
+                    </WishlistProvider>
+                  </ProfileProvider>
                 </ProductsProvider>
               </AuthProvider>
             </ToastProvider>
