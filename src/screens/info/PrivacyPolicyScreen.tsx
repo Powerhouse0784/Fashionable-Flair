@@ -1,125 +1,694 @@
-import React from 'react';
-import InfoPageLayout from '@/components/InfoPageLayout';
-import InfoSection from '@/components/InfoSection';
+import React, { useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  LayoutChangeEvent,
+  Image,
+  Platform,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { typography, spacing, radius, ColorTheme } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { useIsWideScreen } from '@/hooks/useResponsive';
+import { fonts } from '@/hooks/useAppFonts';
+import { goBackOrTo } from '@/utils/navigation';
+import Container from '@/components/Container';
+import WebPageWrapper from '@/components/WebPageWrapper';
+import Footer from '@/components/Footer';
+import { PRIVACY_SECTIONS, PRIVACY_LAST_UPDATED } from '@/data/privacyPolicy';
+
+const isWeb = Platform.OS === 'web';
+
+// How far above a section's true top the "activate" line sits, and how much
+// breathing room to leave above it when scrolling there from a tap — both
+// tuned so a section feels "current" a little before it's flush with the
+// top of the screen, not only once it's already scrolled past.
+const ACTIVATE_LOOKAHEAD = 160;
+const SCROLL_TOP_OFFSET = 96;
+// TopNav is ~59px tall (34px logo + 24px vertical padding + 1px border) —
+// used to pin the sidebar just below it instead of under it.
+const NAV_HEIGHT = 59;
+
+const heroLockLight = require('@/assets/privacy/privacy-hero-lock-light.png');
+const heroLockDark = require('@/assets/privacy/privacy-hero-lock-dark.png');
+const leafLight = require('@/assets/privacy/privacy-leaf-light.png');
+const leafDark = require('@/assets/privacy/privacy-leaf-dark.png');
 
 export default function PrivacyPolicyScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = makeStyles(colors, isDark);
+  const navigation = useNavigation<any>();
+  const isWide = useIsWideScreen();
+
+  const scrollRef = useRef<ScrollView>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Three layers of "where am I within the scroll content" — see the layout
+  // note above sectionsColumn below for why this combination is enough to
+  // locate every section regardless of whether the sidebar sits beside the
+  // content (wide) or above it (narrow).
+  const bodyWrapY = useRef(0);
+  const sectionsColumnY = useRef(0);
+  const sectionYs = useRef<number[]>(PRIVACY_SECTIONS.map(() => 0));
+
+  const absoluteY = (i: number) => bodyWrapY.current + sectionsColumnY.current + sectionYs.current[i];
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const scrollY = e.nativeEvent.contentOffset.y;
+    const line = scrollY + ACTIVATE_LOOKAHEAD;
+    let next = 0;
+    for (let i = 0; i < PRIVACY_SECTIONS.length; i++) {
+      if (absoluteY(i) <= line) next = i;
+      else break;
+    }
+    setActiveIndex((prev) => (prev === next ? prev : next));
+  };
+
+  const scrollToSection = (i: number) => {
+    const y = Math.max(0, absoluteY(i) - SCROLL_TOP_OFFSET);
+    scrollRef.current?.scrollTo({ y, animated: true });
+  };
+
   return (
-    <InfoPageLayout title="Privacy Policy" subtitle={`Last updated ${new Date().getFullYear()}`} icon="lock-closed">
-      <InfoSection heading="1. Overview">
-        This policy explains what information Fashionable Flair collects, what it doesn't, and how each
-        part of the app and website handles it. We've written it to describe exactly what this specific
-        app does — not a generic template — because most of what people assume an app collects (accounts,
-        payment details, browsing trackers), this one simply doesn't.
-      </InfoSection>
+    <WebPageWrapper>
+      <SafeAreaView style={styles.safe} edges={isWide ? [] : ['top']}>
+        {!isWide && (
+          <View style={styles.mobileHeader}>
+            <TouchableOpacity
+              onPress={() => goBackOrTo(navigation, 'Tabs')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.mobileHeaderTitle}>Privacy Policy</Text>
+            <View style={{ width: 22 }} />
+          </View>
+        )}
 
-      <InfoSection heading="2. Information We Collect — and Don't">
-        Browsing this app doesn't require creating an account. Your Wishlist and Recently Viewed items
-        are stored only on your own device (using standard on-device app storage), and are never
-        transmitted to any server or shared with anyone — uninstalling the app removes them completely.
-        {'\n\n'}
-        We don't collect your name, phone number, or payment details through this app, and we don't
-        require an email address to browse or shop. The only place personal information is collected at
-        all is if you choose to use the Contact form or the chat assistant (see Section 4 below), or if
-        you're store staff signing in to manage the catalog (Section 5).
-      </InfoSection>
+        <ScrollView
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={32}
+          contentContainerStyle={{ paddingBottom: spacing.xxl }}
+        >
+          {/* ---------- Hero ---------- */}
+          <Container>
+            <View style={[styles.hero, isWide && styles.heroWide]}>
+              <View style={[styles.heroText, isWide && styles.heroTextWide]}>
+                <Text style={styles.eyebrow}>OUR COMMITMENT</Text>
+                <Text style={[styles.heroTitle, isWide && styles.heroTitleWide]}>Privacy Policy</Text>
+                <Text style={styles.heroSubtitle}>Your trust matters to us</Text>
+                <View style={styles.heroRule} />
+                <Text style={styles.heroBody}>
+                  We value your privacy and are committed to protecting your personal information. This
+                  policy explains how we collect, use, and safeguard your data when you use our app and
+                  website.
+                </Text>
+                <Text style={styles.lastUpdated}>Last updated {PRIVACY_LAST_UPDATED}</Text>
+              </View>
 
-      <InfoSection heading="3. Purchases Happen on Meesho, Not Here">
-        We don't process payments or collect payment details, and we don't see your order history. Tapping
-        "Buy Now" takes you to our storefront on Meesho, where the purchase, your shipping details, and
-        payment are handled entirely by Meesho under its own privacy policy. Anything you'd consider a
-        purchase record — what you bought, when, for how much, delivered where — lives with Meesho, not
-        with us.
-      </InfoSection>
+              <View style={[styles.heroImageWrap, isWide && styles.heroImageWrapWide]}>
+                {/* Soft glow so the art reads as part of the scene rather
+                    than a photo dropped on top of it — sized bigger than
+                    the image itself and blurred well past its edges. */}
+                <View style={styles.heroGlow} pointerEvents="none" />
+                <Image
+                  source={isDark ? heroLockDark : heroLockLight}
+                  style={[styles.heroImage, isWide && styles.heroImageWide]}
+                  resizeMode="contain"
+                  accessibilityLabel="A padlock with the Fashionable Flair lotus shield, representing data protection"
+                />
+              </View>
+            </View>
+          </Container>
 
-      <InfoSection heading="4. Third-Party Services We Use">
-        A few features in this app work by sending your input to a specific third-party service to do
-        their job. Here's exactly which ones, and what each one sees.
-      </InfoSection>
+          {/* ---------- Body: Contents (sidebar on wide / chips+callout on narrow) + Sections ---------- */}
+          <Container>
+            <View
+              style={[styles.bodyWrap, isWide && styles.bodyWrapWide]}
+              onLayout={(e: LayoutChangeEvent) => {
+                bodyWrapY.current = e.nativeEvent.layout.y;
+              }}
+            >
+              {isWide ? (
+                <View style={styles.sidebar}>
+                  <View style={styles.tocCard}>
+                    <View style={styles.tocHeader}>
+                      <Ionicons name="reader-outline" size={18} color={colors.primary} />
+                      <Text style={styles.tocHeaderText}>Contents</Text>
+                    </View>
 
-      <InfoSection heading="4a. Contact Form — Brevo">
-        If you submit the Contact Us form, your name, email address, and message are sent via Brevo (an
-        email delivery service) to our support inbox, and Brevo sends you an automated confirmation.
-        Brevo processes this only to deliver that email.
-      </InfoSection>
+                    {/* Only this list scrolls internally, and only on a
+                        short window where it genuinely can't all fit — the
+                        callout and leaf below are never pushed into that
+                        scroll area, so they stay visible without scrolling. */}
+                    <ScrollView
+                      style={styles.tocList}
+                      showsVerticalScrollIndicator={false}
+                      nestedScrollEnabled
+                    >
+                      {PRIVACY_SECTIONS.map((s, i) => {
+                        const active = i === activeIndex;
+                        return (
+                          <TouchableOpacity
+                            key={s.id}
+                            style={[styles.tocItem, active && styles.tocItemActive]}
+                            onPress={() => scrollToSection(i)}
+                            activeOpacity={0.8}
+                          >
+                            <View style={[styles.tocNumber, active && styles.tocNumberActive]}>
+                              <Text style={[styles.tocNumberText, active && styles.tocNumberTextActive]}>
+                                {s.number}
+                              </Text>
+                            </View>
+                            <Text
+                              style={[styles.tocLabel, active && styles.tocLabelActive]}
+                              numberOfLines={2}
+                            >
+                              {s.title}
+                            </Text>
+                            <Ionicons
+                              name="arrow-forward"
+                              size={14}
+                              color={active ? colors.textInverse : colors.textMuted}
+                            />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
 
-      <InfoSection heading="4b. Chat Assistant — Google Gemini">
-        If you use the "Flair Assistant" chat bubble, your message (and recent chat history in that
-        conversation) is sent to Google's Gemini API to generate a response. We don't attach your name or
-        any other identifying information to these messages beyond what you type. The assistant is scoped
-        to only discuss this app and store, and doesn't have access to your Wishlist, location, or device
-        information.
-      </InfoSection>
+                  <PriorityCallout colors={colors} isDark={isDark} style={styles.calloutSpacing} />
 
-      <InfoSection heading="4c. Store Catalog & Admin — Supabase">
-        Product data (what's shown in the app) and store-staff sign-ins are handled through Supabase, our
-        backend provider. This has no connection to how shoppers browse — it only comes into play for the
-        people managing the catalog.
-      </InfoSection>
+                  <View style={styles.leafWrap} pointerEvents="none">
+                    <Image
+                      source={isDark ? leafDark : leafLight}
+                      style={styles.leafImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.chipRow}
+                    contentContainerStyle={{ paddingRight: spacing.lg, gap: spacing.sm }}
+                  >
+                    {PRIVACY_SECTIONS.map((s, i) => {
+                      const active = i === activeIndex;
+                      return (
+                        <TouchableOpacity
+                          key={s.id}
+                          style={[styles.chip, active && styles.chipActive]}
+                          onPress={() => scrollToSection(i)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[styles.chipNumber, active && styles.chipNumberActive]}>
+                            <Text style={[styles.chipNumberText, active && styles.chipNumberTextActive]}>
+                              {s.number}
+                            </Text>
+                          </View>
+                          <Text style={[styles.chipLabel, active && styles.chipLabelActive]} numberOfLines={1}>
+                            {s.title}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
 
-      <InfoSection heading="4d. Quick Contact — WhatsApp, Instagram & Phone">
-        The chat, WhatsApp, Instagram, and call icons available throughout the app are quick links to
-        reach us on each of those channels — tapping one opens that service directly (e.g. a WhatsApp
-        chat with our number, our Instagram profile, or your phone's dialer). We don't see or store
-        anything from those conversations within this app; once you leave to WhatsApp or Instagram, your
-        communication is governed by Meta's own privacy policy for that service, not this one.
-      </InfoSection>
+                  <PriorityCallout colors={colors} isDark={isDark} style={styles.calloutSpacingNarrow} />
+                </>
+              )}
 
-      <InfoSection heading="5. Store Admin Accounts">
-        Sign-in exists only for store management (adding, editing, or removing products) and is limited
-        to specifically approved store staff. Regular shoppers never create or need an account, and this
-        sign-in system has no bearing on anyone just browsing or buying.
-      </InfoSection>
+              <View
+                style={[styles.sectionsColumn, isWide && styles.sectionsColumnWide]}
+                onLayout={(e: LayoutChangeEvent) => {
+                  sectionsColumnY.current = e.nativeEvent.layout.y;
+                }}
+              >
+                {/* Continuous connector line, painted first so every card
+                    (opaque background) sits on top of it except in the gaps
+                    between cards — that's what makes it read as a timeline
+                    threading circle-to-circle instead of one long line
+                    overlapping the text. */}
+                <View style={styles.timelineTrack} pointerEvents="none" />
 
-      <InfoSection heading="6. Cookies & Local Storage">
-        On the web version, this app doesn't use tracking cookies. It does use your browser's local
-        storage (the web equivalent of on-device app storage) to remember your Wishlist, Recently Viewed
-        items, and appearance preference (light/dark mode) between visits — the same on-device-only
-        approach as the mobile app, just using the browser's version of it.
-      </InfoSection>
+                {PRIVACY_SECTIONS.map((s, i) => (
+                  <View
+                    key={s.id}
+                    style={styles.sectionRow}
+                    onLayout={(e: LayoutChangeEvent) => {
+                      sectionYs.current[i] = e.nativeEvent.layout.y;
+                    }}
+                  >
+                    <View style={styles.numberCircle}>
+                      <Text style={styles.numberCircleText}>{s.number}</Text>
+                    </View>
 
-      <InfoSection heading="7. Data Retention">
-        Your Wishlist and Recently Viewed items stay on your device for as long as you keep the app
-        installed (or the site data in your browser). Contact form messages are kept only as long as
-        needed to respond to your query. We don't retain chat assistant conversations after your session
-        ends — each conversation exists only in the app's memory while you're using it.
-      </InfoSection>
+                    <View style={styles.card}>
+                      <View style={styles.cardHeaderRow}>
+                        <Text style={styles.cardTitle}>{s.title}</Text>
+                        <View style={styles.cardIconBadge}>
+                          <Ionicons name={s.icon as any} size={16} color={colors.primary} />
+                        </View>
+                      </View>
 
-      <InfoSection heading="8. Children's Privacy">
-        This app is not directed at children, and we don't knowingly collect personal information from
-        anyone under 18. Since browsing doesn't require any personal information in the first place, this
-        is naturally the case for the vast majority of how the app is used.
-      </InfoSection>
+                      <Text style={styles.cardBody}>{s.body}</Text>
 
-      <InfoSection heading="9. Your Choices">
-        You can clear your Wishlist at any time from within the app. Uninstalling the app (or clearing
-        your browser's site data, on web) removes all locally-stored information immediately and
-        completely. Since we don't hold an account or profile for you, there's nothing further to request
-        deletion of on our end beyond any contact-form message you may have sent us.
-      </InfoSection>
+                      {s.subsections && (
+                        <View style={styles.subsectionList}>
+                          {s.subsections.map((sub) => (
+                            <View key={sub.title} style={styles.subsectionItem}>
+                              <Text style={styles.subsectionTitle}>{sub.title}</Text>
+                              <Text style={styles.subsectionBody}>{sub.body}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </Container>
 
-      <InfoSection heading="10. Security">
-        Store-admin access is protected by authentication and is restricted to approved staff only.
-        Because shopper browsing doesn't involve sending personal data to us, there's very little
-        shopper-side data to secure in the first place — which is itself a deliberate privacy choice, not
-        an oversight.
-      </InfoSection>
-
-      <InfoSection heading="11. International Data Transfers">
-        The third-party services this app relies on (Supabase, Google Gemini, Brevo) may process data on
-        servers located outside India. Each operates under its own privacy and security practices; we've
-        chosen providers with established, standard safeguards for handling data of this kind.
-      </InfoSection>
-
-      <InfoSection heading="12. Changes to This Policy">
-        If how we handle information ever changes — for example, if we add a new feature that uses a new
-        third-party service — this page will be updated to reflect it, and the "Last updated" date above
-        will change accordingly.
-      </InfoSection>
-
-      <InfoSection heading="13. Contact Us">
-        Questions about this policy, or about how any of the above works, are welcome any time through
-        the Contact Us page — see there for phone, email, and address details.
-      </InfoSection>
-    </InfoPageLayout>
+          {isWide && <Footer />}
+        </ScrollView>
+      </SafeAreaView>
+    </WebPageWrapper>
   );
+}
+
+/** "Your privacy is our priority" reassurance card — shown in the sidebar on
+ * wide screens, and inline (full width) on narrow ones. */
+function PriorityCallout({
+  colors,
+  isDark,
+  style,
+}: {
+  colors: ColorTheme;
+  isDark: boolean;
+  style?: any;
+}) {
+  const styles = makeStyles(colors, isDark);
+  return (
+    <View style={[styles.callout, style]}>
+      <View style={styles.calloutIcon}>
+        <Ionicons name="shield-checkmark" size={18} color={isDark ? colors.gold : colors.primary} />
+      </View>
+      <Text style={styles.calloutTitle}>Your privacy{'\n'}is our priority</Text>
+      <Text style={styles.calloutBody}>
+        We never sell or share your personal data with third parties for marketing purposes.
+      </Text>
+    </View>
+  );
+}
+
+function makeStyles(colors: ColorTheme, isDark: boolean) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+
+    mobileHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+    },
+    mobileHeaderTitle: {
+      fontSize: 16,
+      fontFamily: fonts.headingMedium,
+      color: colors.textPrimary,
+    },
+
+    // ---------- Hero ----------
+    hero: {
+      marginTop: spacing.md,
+      borderRadius: radius.lg,
+      backgroundColor: isDark ? colors.surface : colors.surfaceAlt,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : 'transparent',
+      padding: spacing.xl,
+      overflow: 'hidden',
+    },
+    heroWide: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: spacing.xxl,
+      padding: spacing.xxl,
+    },
+    heroText: {},
+    heroTextWide: { flex: 1, paddingRight: spacing.xxl, maxWidth: 560 },
+    eyebrow: {
+      fontSize: 12,
+      fontFamily: fonts.bodySemiBold,
+      letterSpacing: 1.2,
+      color: isDark ? colors.gold : colors.primary,
+      marginBottom: spacing.sm,
+    },
+    heroTitle: {
+      fontSize: 32,
+      fontFamily: fonts.headingBold,
+      color: colors.textPrimary,
+    },
+    heroTitleWide: { fontSize: 44 },
+    heroSubtitle: {
+      fontSize: 16,
+      fontFamily: fonts.body,
+      color: colors.textSecondary,
+      marginTop: spacing.xs,
+    },
+    heroRule: {
+      width: 56,
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: colors.gold,
+      marginVertical: spacing.md,
+    },
+    heroBody: {
+      ...typography.body,
+      color: colors.textSecondary,
+      lineHeight: 22,
+      maxWidth: 520,
+    },
+    lastUpdated: {
+      ...typography.caption,
+      color: colors.textMuted,
+      marginTop: spacing.md,
+    },
+    heroImageWrap: {
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: spacing.lg,
+    },
+    heroImageWrapWide: {
+      width: 300,
+      height: 260,
+      marginTop: 0,
+    },
+    heroGlow: {
+      position: 'absolute',
+      width: 260,
+      height: 260,
+      borderRadius: 140,
+      backgroundColor: isDark ? colors.gold : colors.primary,
+      opacity: isDark ? 0.16 : 0.1,
+      ...(isWeb ? ({ filter: 'blur(50px)' } as any) : {}),
+    },
+    heroImage: {
+      width: '100%',
+      height: 180,
+    },
+    heroImageWide: {
+      width: 300,
+      height: 240,
+    },
+
+    // ---------- Body wrap ----------
+    // NOTE on scrollspy math: bodyWrap is a direct child of the (single)
+    // Container/ScrollView content, so its onLayout.y IS the section's
+    // absolute offset within the scroll. sectionsColumn's onLayout.y is
+    // relative to bodyWrap — 0 on wide (it sits beside the sidebar), or
+    // "however tall the chips row + callout are" on narrow, because Yoga
+    // already accounts for the siblings before it in the column. Adding
+    // those two plus each section's own onLayout.y (relative to
+    // sectionsColumn) locates every section without hard-coded constants.
+    bodyWrap: { marginTop: spacing.xl },
+    bodyWrapWide: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xl },
+
+    sectionsColumn: { position: 'relative' },
+    sectionsColumnWide: { flex: 1 },
+
+    // ---------- Sidebar (wide) ----------
+    // Pinned while the (much taller) sections column scrolls past it — this
+    // is the fix for the sidebar disappearing off the top of the page after
+    // a few sections' worth of scrolling, which is what made the active-item
+    // highlight look like it "stopped working" past section 4: the sidebar
+    // itself had already scrolled out of view, not the highlight logic.
+    // NAV_HEIGHT below is TopNav's own height (see TopNav.tsx: ~34px logo +
+    // 24px vertical padding + 1px border) plus a little breathing room.
+    sidebar: {
+      width: 300,
+      ...(isWeb ? ({ position: 'sticky', top: NAV_HEIGHT + spacing.lg } as any) : {}),
+    },
+    tocCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.lg,
+      ...(isWeb
+        ? ({ boxShadow: `0 8px 24px ${colors.shadow}` } as any)
+        : { shadowColor: '#0B1A2E', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 2 }),
+    },
+    tocHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    tocHeaderText: {
+      fontSize: 15,
+      fontFamily: fonts.headingMedium,
+      color: colors.textPrimary,
+    },
+    // Fixed-height overhead above (tocCard header) and below (gap, the
+    // callout, gap, the leaf) this list adds up to roughly 500px once the
+    // sidebar is pinned — so on any normal window the list needs no
+    // scrolling at all, and on a short one only the numbers scroll while
+    // the callout and leaf stay put and fully visible.
+    tocList: {
+      ...(isWeb
+        ? ({ maxHeight: 'calc(100vh - 500px)', overflowY: 'auto' } as any)
+        : {}),
+      minHeight: 160,
+    },
+    tocItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: 9,
+      paddingHorizontal: spacing.sm,
+      borderRadius: radius.md,
+      marginBottom: 4,
+    },
+    tocItemActive: {
+      backgroundColor: isDark ? colors.gold : colors.primary,
+    },
+    tocNumber: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? colors.surfaceAlt : colors.primaryLight,
+    },
+    tocNumberActive: {
+      backgroundColor: 'rgba(255,255,255,0.25)',
+    },
+    tocNumberText: {
+      fontSize: 11,
+      fontFamily: fonts.bodySemiBold,
+      color: isDark ? colors.gold : colors.primary,
+    },
+    tocNumberTextActive: {
+      color: isDark ? '#1A1300' : colors.textInverse,
+    },
+    tocLabel: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: fonts.bodyMedium,
+      color: colors.textSecondary,
+      lineHeight: 17,
+    },
+    tocLabelActive: {
+      color: isDark ? '#1A1300' : colors.textInverse,
+      fontFamily: fonts.bodySemiBold,
+    },
+
+    calloutSpacing: { marginTop: spacing.lg },
+    calloutSpacingNarrow: { marginTop: spacing.lg, marginBottom: spacing.xl },
+
+    callout: {
+      backgroundColor: isDark ? colors.surface : colors.primaryLight,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : 'transparent',
+      padding: spacing.lg,
+    },
+    calloutIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? colors.goldLight : colors.surface,
+      marginBottom: spacing.sm,
+    },
+    calloutTitle: {
+      fontSize: 15,
+      fontFamily: fonts.headingMedium,
+      color: isDark ? colors.gold : colors.textPrimary,
+      lineHeight: 19,
+      marginBottom: 6,
+    },
+    calloutBody: {
+      fontSize: 12.5,
+      fontFamily: fonts.body,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+
+    leafWrap: {
+      height: 130,
+      marginTop: spacing.lg,
+      justifyContent: 'flex-end',
+    },
+    leafImage: { width: 170, height: 120, opacity: isDark ? 0.9 : 0.85 },
+
+    // ---------- Mobile Contents chips ----------
+    chipRow: { marginBottom: 0 },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      maxWidth: 190,
+    },
+    chipActive: {
+      backgroundColor: isDark ? colors.gold : colors.primary,
+      borderColor: 'transparent',
+    },
+    chipNumber: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? colors.surfaceAlt : colors.primaryLight,
+    },
+    chipNumberActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+    chipNumberText: {
+      fontSize: 10,
+      fontFamily: fonts.bodySemiBold,
+      color: isDark ? colors.gold : colors.primary,
+    },
+    chipNumberTextActive: { color: isDark ? '#1A1300' : colors.textInverse },
+    chipLabel: {
+      fontSize: 12.5,
+      fontFamily: fonts.bodyMedium,
+      color: colors.textSecondary,
+    },
+    chipLabelActive: {
+      color: isDark ? '#1A1300' : colors.textInverse,
+      fontFamily: fonts.bodySemiBold,
+    },
+
+    // ---------- Section timeline + cards ----------
+    timelineTrack: {
+      position: 'absolute',
+      left: 17,
+      top: 18,
+      bottom: 18,
+      width: 2,
+      backgroundColor: isDark ? colors.border : colors.divider,
+    },
+    sectionRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: spacing.lg,
+      gap: spacing.md,
+    },
+    numberCircle: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? colors.gold : colors.primary,
+    },
+    numberCircleText: {
+      fontSize: 14,
+      fontFamily: fonts.headingBold,
+      color: isDark ? '#1A1300' : colors.textInverse,
+    },
+    card: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.lg,
+      ...(isWeb
+        ? ({ boxShadow: `0 6px 20px ${colors.shadow}` } as any)
+        : { shadowColor: '#0B1A2E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 1 }),
+    },
+    cardHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    cardTitle: {
+      flex: 1,
+      fontSize: 17,
+      fontFamily: fonts.headingMedium,
+      color: colors.textPrimary,
+      paddingRight: spacing.sm,
+    },
+    cardIconBadge: {
+      width: 30,
+      height: 30,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? colors.surfaceAlt : colors.primaryLight,
+    },
+    cardBody: {
+      ...typography.body,
+      color: colors.textSecondary,
+      lineHeight: 22,
+    },
+
+    subsectionList: {
+      marginTop: spacing.md,
+      gap: spacing.sm,
+    },
+    subsectionItem: {
+      backgroundColor: isDark ? colors.surfaceAlt : colors.background,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.md,
+    },
+    subsectionTitle: {
+      fontSize: 13.5,
+      fontFamily: fonts.bodySemiBold,
+      color: colors.textPrimary,
+      marginBottom: 4,
+    },
+    subsectionBody: {
+      fontSize: 13,
+      fontFamily: fonts.body,
+      color: colors.textSecondary,
+      lineHeight: 19,
+    },
+  });
 }
