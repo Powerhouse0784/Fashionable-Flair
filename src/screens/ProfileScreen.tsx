@@ -16,7 +16,7 @@ import { getAvatarByIndex } from '@/data/avatars';
 import { getOwnedTestimonialIds, MAX_TESTIMONIALS_PER_DEVICE } from '@/utils/testimonialOwnership';
 import { useIsWideScreen } from '@/hooks/useResponsive';
 import Container from '@/components/Container';
-import Logo from '@/components/Logo';
+import MobileTopBar from '@/components/MobileTopBar';
 import DownloadAppButton from '@/components/DownloadAppButton';
 import AvatarPickerModal from '@/components/AvatarPickerModal';
 import EditProfileModal from '@/components/EditProfileModal';
@@ -192,22 +192,12 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* On wide/web layouts TopNav (see AppShell) already shows the logo
-          and brand name at the very top of the page, so this compact bar
-          — logo mark + name + tagline, nothing else — only appears on
-          narrow layouts where there's no TopNav at all. It sits outside
-          Container/ScrollView so it spans the full width like a real
-          navbar, with the divider line reaching both edges. */}
-      {!isWide && (
-        <View style={styles.navbar}>
-          <View style={styles.navbarLogo}>
-            <Logo variant="mark" height={20} />
-          </View>
-          <View style={styles.navbarTextCol}>
-            <Text style={styles.navbarTitle} numberOfLines={1}>Fashionable Flair</Text>
-            <Text style={styles.navbarSubtitle} numberOfLines={1}>Jewellery That Speaks Your Style</Text>
-          </View>
-        </View>
-      )}
+          and brand name at the very top of the page, so this shared bar —
+          identical across Search, Wishlist, and Profile — only appears on
+          narrow layouts where there's no TopNav at all. See MobileTopBar
+          for why it's one shared component rather than each screen having
+          its own slightly-different header. */}
+      {!isWide && <MobileTopBar />}
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <Container style={{ paddingTop: spacing.lg }}>
@@ -400,39 +390,6 @@ function makeStyles(colors: ColorTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
 
-    // Compact, narrow-screen-only navbar: logo mark + name + tagline and
-    // nothing else — deliberately no settings/notification icons here.
-    navbar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm + 2,
-      backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    navbarLogo: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: colors.surfaceAlt,
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      borderWidth: 1.5,
-      borderColor: colors.gold,
-    },
-    navbarTextCol: { flex: 1, minWidth: 0 },
-    navbarTitle: { ...typography.body, fontFamily: fonts.headingMedium, color: colors.textPrimary },
-    navbarSubtitle: {
-      ...typography.caption,
-      color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 1,
-      fontSize: 9.5,
-      marginTop: 1,
-    },
 
     appPromoCard: {
       alignItems: 'center',
