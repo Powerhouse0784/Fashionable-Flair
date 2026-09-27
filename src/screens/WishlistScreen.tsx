@@ -195,7 +195,7 @@ export default function WishlistScreen() {
               {rows.map((row, i) => (
                 <View key={i} style={styles.gridRow}>
                   {row.map((item) => (
-                    <WishlistItemCard key={item.id} product={item} style={columns > 1 ? { flex: 1 } : undefined} />
+                    <WishlistItemCard key={item.id} product={item} style={{ flex: 1 }} />
                   ))}
                   {columns > 1 &&
                     row.length < columns &&
@@ -265,21 +265,26 @@ function makeStyles(colors: ColorTheme) {
     },
     countPillText: { ...typography.caption, color: colors.textPrimary, fontFamily: fonts.bodySemiBold },
 
-    filterRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg, marginBottom: spacing.md },
+    // flexShrink on the chips (and maxWidth capping how big they're even
+    // allowed to get) is what keeps "Clear All" from being the thing that
+    // gets pushed off the edge of narrow phones — the chips give up space
+    // and truncate their label first, Clear All never shrinks or moves.
+    filterRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.lg, marginBottom: spacing.md },
     filterChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      flexShrink: 1,
+      gap: 4,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surface,
       borderRadius: radius.pill,
-      paddingHorizontal: spacing.sm + 2,
+      paddingHorizontal: spacing.sm,
       paddingVertical: spacing.xs + 3,
-      maxWidth: 180,
+      maxWidth: 132,
     },
     filterChipText: { ...typography.caption, color: colors.textSecondary, fontFamily: fonts.bodySemiBold, flexShrink: 1 },
-    clear: { ...typography.bodySmall, color: colors.danger, fontFamily: fonts.bodySemiBold },
+    clear: { ...typography.bodySmall, color: colors.danger, fontFamily: fonts.bodySemiBold, flexShrink: 0 },
 
     gridRow: { flexDirection: 'row', gap: GRID_GAP, alignItems: 'stretch' },
     emptyWrap: { flex: 1, alignItems: 'center' },

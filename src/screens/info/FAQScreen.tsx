@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, LayoutAnimation, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, LayoutAnimation, ScrollView, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
@@ -11,6 +12,21 @@ import { goBackOrTo } from '@/utils/navigation';
 import Container from '@/components/Container';
 import WebPageWrapper from '@/components/WebPageWrapper';
 import Footer from '@/components/Footer';
+
+const isWeb = Platform.OS === 'web';
+
+const bgLight = require('@/assets/faq/faq-background-light.png');
+const bgDark = require('@/assets/faq/faq-background-dark.png');
+const heroPhotoLight = require('@/assets/faq/faq-hero-light.jpg');
+const heroPhotoDark = require('@/assets/faq/faq-hero-dark.jpg');
+const dividerLight = require('@/assets/faq/faq-divider-light.png');
+const dividerDark = require('@/assets/faq/faq-divider-dark.png');
+
+// How tall a slice of the decorative background art to show behind the top
+// of the page before it fades into the flat page color — comfortably
+// shorter than the page's real content height (hero + search + categories)
+// so it never forces extra empty scroll space, on any screen size.
+const BG_HEIGHT = 900;
 
 interface FaqItem {
   question: string;
@@ -102,11 +118,12 @@ const CATEGORIES: FaqCategory[] = [
 ];
 
 export default function FAQScreen() {
-  const { colors } = useTheme();
-  const styles = makeStyles(colors);
+  const { colors, isDark } = useTheme();
+  const styles = makeStyles(colors, isDark);
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
   const [query, setQuery] = useState('');
+  const [openCategory, setOpenCategory] = useState<string | null>(CATEGORIES[0].title);
   const [openKey, setOpenKey] = useState<string | null>(null);
 
   const filteredCategories = useMemo(() => {
@@ -118,15 +135,31 @@ export default function FAQScreen() {
     })).filter((cat) => cat.items.length > 0);
   }, [query]);
 
-  const toggle = (key: string) => {
+  const isSearching = query.trim().length > 0;
+
+  const toggleCategory = (title: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpenKey(openKey === key ? null : key);
+    setOpenCategory((prev) => (prev === title ? null : title));
+  };
+
+  const toggleItem = (key: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpenKey((prev) => (prev === key ? null : key));
   };
 
   return (
     <WebPageWrapper>
       <SafeAreaView style={styles.safe} edges={isWide ? [] : ['top']}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
+          <View style={styles.bgWrap} pointerEvents="none">
+            <Image source={isDark ? bgDark : bgLight} style={styles.bgImage} resizeMode="cover" />
+            <LinearGradient
+              colors={['transparent', colors.background]}
+              locations={[0.72, 1]}
+              style={styles.bgFade}
+            />
+          </View>
+
           {!isWide && (
             <View style={styles.header}>
               <TouchableOpacity onPress={() => goBackOrTo(navigation, 'Tabs')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -134,17 +167,34 @@ export default function FAQScreen() {
               </TouchableOpacity>
             </View>
           )}
+
           <Container>
+            {/* ---------- Hero ---------- */}
             <View style={[styles.hero, isWide && styles.heroWide]}>
-              <View style={styles.heroIcon}>
-                <Ionicons name="help-circle" size={22} color={colors.textInverse} />
+              <View style={[styles.heroText, isWide && styles.heroTextWide]}>
+                <View style={styles.eyebrowBadge}>
+                  <Text style={styles.eyebrowText}>HELP & SUPPORT</Text>
+                </View>
+                <Text style={[styles.heroTitle, isWide && styles.heroTitleWide]}>Frequently Asked Questions</Text>
+                <View style={styles.heroRule} />
+                <Text style={styles.heroSubtitle}>
+                  Quick answers, grouped by topic.{'\n'}Can't find it? Contact us directly.
+                </Text>
               </View>
-              <Text style={[styles.title, isWide && styles.titleWide]}>Frequently Asked Questions</Text>
-              <Text style={[styles.subtitle, isWide && styles.subtitleWide]}>
-                Quick answers, grouped by topic. Can't find it? Contact us directly.
-              </Text>
+
+              <View style={[styles.heroArtShadowWrap, isWide && styles.heroArtShadowWrapWide]}>
+                <View style={styles.heroArtWrap}>
+                  <Image
+                    source={isDark ? heroPhotoDark : heroPhotoLight}
+                    style={styles.heroArt}
+                    resizeMode="cover"
+                    accessibilityLabel="A jewellery necklace, earrings, bracelet and ring displayed on velvet stands"
+                  />
+                </View>
+              </View>
             </View>
 
+            {/* ---------- Search ---------- */}
             <View style={[styles.searchBar, isWide && styles.searchBarWide]}>
               <Ionicons name="search" size={18} color={colors.textMuted} />
               <TextInput
@@ -155,41 +205,92 @@ export default function FAQScreen() {
                 placeholderTextColor={colors.textMuted}
               />
               {query.length > 0 && (
-                <TouchableOpacity onPress={() => setQuery('')}>
+                <TouchableOpacity onPress={() => setQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Ionicons name="close-circle" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               )}
             </View>
 
+            {/* ---------- Categories ---------- */}
             {filteredCategories.length === 0 ? (
-              <Text style={styles.noResults}>No matching questions — try a different search, or Contact Us directly.</Text>
+              <View style={styles.noResultsWrap}>
+                <Ionicons name="search-outline" size={28} color={colors.textMuted} />
+                <Text style={styles.noResults}>No matching questions — try a different search, or Contact Us directly.</Text>
+              </View>
             ) : (
-              filteredCategories.map((cat) => (
-                <View key={cat.title} style={styles.categoryBlock}>
-                  <View style={styles.categoryHeader}>
-                    <Ionicons name={cat.icon as any} size={18} color={colors.primary} />
-                    <Text style={styles.categoryTitle}>{cat.title}</Text>
-                  </View>
-                  {cat.items.map((item) => {
-                    const key = `${cat.title}-${item.question}`;
-                    const isOpen = openKey === key;
-                    return (
-                      <TouchableOpacity key={key} style={styles.item} activeOpacity={0.8} onPress={() => toggle(key)}>
-                        <View style={styles.itemHeader}>
-                          <Text style={styles.question}>{item.question}</Text>
-                          <Ionicons
-                            name={isOpen ? 'remove-circle-outline' : 'add-circle-outline'}
-                            size={20}
-                            color={colors.primary}
-                          />
+              <View style={styles.categoryList}>
+                {filteredCategories.map((cat) => {
+                  const expanded = isSearching || openCategory === cat.title;
+                  return (
+                    <View key={cat.title} style={styles.categoryCard}>
+                      <TouchableOpacity
+                        style={styles.categoryHeader}
+                        activeOpacity={0.75}
+                        onPress={() => toggleCategory(cat.title)}
+                        disabled={isSearching}
+                      >
+                        <View style={styles.categoryIconCircle}>
+                          <Ionicons name={cat.icon as any} size={17} color={isDark ? '#1A1300' : colors.textInverse} />
                         </View>
-                        {isOpen && <Text style={styles.answer}>{item.answer}</Text>}
+                        <Text style={styles.categoryTitle}>{cat.title}</Text>
+                        {!isSearching && (
+                          <Ionicons
+                            name={expanded ? 'chevron-up' : 'chevron-down'}
+                            size={18}
+                            color={colors.textSecondary}
+                          />
+                        )}
                       </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              ))
+
+                      {expanded && (
+                        <View style={styles.itemList}>
+                          {cat.items.map((item) => {
+                            const key = `${cat.title}-${item.question}`;
+                            const isOpen = openKey === key;
+                            return (
+                              <TouchableOpacity
+                                key={key}
+                                style={styles.item}
+                                activeOpacity={0.8}
+                                onPress={() => toggleItem(key)}
+                              >
+                                <View style={styles.itemHeader}>
+                                  <View style={styles.questionIconCircle}>
+                                    <Ionicons name="help-outline" size={13} color={isDark ? colors.gold : colors.primary} />
+                                  </View>
+                                  <Text style={styles.question}>{item.question}</Text>
+                                  <Ionicons
+                                    name={isOpen ? 'remove-circle-outline' : 'add-circle-outline'}
+                                    size={21}
+                                    color={isDark ? colors.gold : colors.primary}
+                                  />
+                                </View>
+                                {isOpen && <Text style={styles.answer}>{item.answer}</Text>}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
             )}
+
+            {/* ---------- Still have questions? ---------- */}
+            <View style={styles.stillHave}>
+              <Text style={styles.stillHaveScript}>Still have questions?</Text>
+              <Text style={styles.stillHaveSubtext}>Our support team is here to help</Text>
+              <Image
+                source={isDark ? dividerDark : dividerLight}
+                style={styles.dividerImage}
+                resizeMode="contain"
+              />
+              <TouchableOpacity style={styles.contactCta} onPress={() => navigation.navigate('Contact')} activeOpacity={0.85}>
+                <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.textInverse} />
+                <Text style={styles.contactCtaText}>Contact Us</Text>
+              </TouchableOpacity>
+            </View>
           </Container>
           {isWide && <Footer />}
         </ScrollView>
@@ -198,25 +299,92 @@ export default function FAQScreen() {
   );
 }
 
-function makeStyles(colors: ColorTheme) {
+function makeStyles(colors: ColorTheme, isDark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
     header: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-    hero: { marginTop: spacing.sm },
-    heroWide: { marginTop: spacing.xxl, alignItems: 'center' },
-    heroIcon: {
-      width: 52,
-      height: 52,
-      borderRadius: radius.pill,
-      backgroundColor: colors.primary,
+
+    // ---------- Decorative background ----------
+    bgWrap: { position: 'absolute', top: 0, left: 0, right: 0, height: BG_HEIGHT },
+    bgImage: { width: '100%', height: '100%' },
+    bgFade: { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0 },
+
+    // ---------- Hero ----------
+    hero: {
+      marginTop: spacing.md,
+      borderRadius: radius.lg,
+      backgroundColor: isDark ? colors.surface : colors.surfaceAlt,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : 'transparent',
+      padding: spacing.xl,
+      overflow: 'hidden',
+      ...(isWeb
+        ? ({ boxShadow: `0 8px 24px ${colors.shadow}` } as any)
+        : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 2 }),
+    },
+    heroWide: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
+      marginTop: spacing.xl,
+      padding: spacing.xxl,
+    },
+    heroText: {},
+    heroTextWide: { flex: 1, paddingRight: spacing.xxl, maxWidth: 620 },
+    eyebrowBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: isDark ? 'rgba(147, 197, 253, 0.16)' : '#E3F0FD',
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 5,
       marginBottom: spacing.md,
     },
-    title: { ...typography.h1, color: colors.textPrimary },
-    titleWide: { fontSize: 36, textAlign: 'center' },
-    subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.xs },
-    subtitleWide: { textAlign: 'center' },
+    eyebrowText: {
+      fontSize: 11,
+      fontFamily: fonts.bodyBold,
+      letterSpacing: 1,
+      color: isDark ? '#8FC1FA' : '#1B4F91',
+    },
+    heroTitle: {
+      fontSize: 30,
+      lineHeight: 36,
+      fontFamily: fonts.headingBold,
+      color: colors.textPrimary,
+    },
+    heroTitleWide: { fontSize: 40, lineHeight: 46 },
+    heroRule: {
+      width: 56,
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: colors.gold,
+      marginVertical: spacing.md,
+    },
+    heroSubtitle: {
+      ...typography.body,
+      color: colors.textSecondary,
+      lineHeight: 22,
+    },
+    heroArtShadowWrap: {
+      width: 150,
+      height: 168,
+      alignSelf: 'center',
+      marginTop: spacing.xl,
+      borderRadius: radius.lg,
+      ...(isWeb
+        ? ({ boxShadow: `0 10px 26px ${colors.shadow}` } as any)
+        : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 3 }),
+    },
+    heroArtShadowWrapWide: { width: 240, height: 268, marginTop: 0 },
+    heroArtWrap: {
+      flex: 1,
+      borderRadius: radius.lg,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : 'transparent',
+    },
+    heroArt: { width: '100%', height: '100%' },
+
+    // ---------- Search ----------
     searchBar: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -224,27 +392,79 @@ function makeStyles(colors: ColorTheme) {
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.md,
-      height: 46,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.lg,
+      height: 50,
       marginTop: spacing.xl,
+      ...(isWeb
+        ? ({ boxShadow: `0 2px 10px ${colors.shadow}` } as any)
+        : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 1 }),
     },
     searchBarWide: { maxWidth: 480, alignSelf: 'center', width: '100%' },
     searchInput: { flex: 1, ...typography.body, color: colors.textPrimary },
-    noResults: { ...typography.body, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xxl },
-    categoryBlock: { marginTop: spacing.xl },
-    categoryHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },
-    categoryTitle: { ...typography.h3, fontFamily: fonts.heading, color: colors.textPrimary },
-    item: {
+
+    // ---------- Categories ----------
+    categoryList: { marginTop: spacing.xl, gap: spacing.md },
+    categoryCard: {
+      borderRadius: radius.lg,
       backgroundColor: colors.surface,
-      borderRadius: radius.md,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: spacing.md,
-      marginBottom: spacing.sm,
+      overflow: 'hidden',
     },
-    itemHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+    categoryHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      padding: spacing.md,
+    },
+    categoryIconCircle: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? colors.gold : colors.primary,
+    },
+    categoryTitle: { ...typography.h3, fontFamily: fonts.heading, color: colors.textPrimary, flex: 1 },
+    itemList: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: spacing.sm },
+    item: {
+      backgroundColor: isDark ? colors.background : colors.surfaceAlt,
+      borderRadius: radius.md,
+      padding: spacing.md,
+    },
+    itemHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    questionIconCircle: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? 'rgba(217, 169, 67, 0.16)' : colors.primaryLight,
+    },
     question: { ...typography.body, color: colors.textPrimary, flex: 1 },
-    answer: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.sm, lineHeight: 20 },
+    answer: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.sm, lineHeight: 20, marginLeft: 24 + spacing.sm },
+    noResultsWrap: { alignItems: 'center', gap: spacing.sm, marginTop: spacing.xxl, paddingVertical: spacing.xl },
+    noResults: { ...typography.body, color: colors.textSecondary, textAlign: 'center', maxWidth: 320 },
+
+    // ---------- Still have questions ----------
+    stillHave: { alignItems: 'center', marginTop: spacing.xxl, paddingVertical: spacing.lg },
+    stillHaveScript: {
+      fontFamily: fonts.script,
+      fontSize: 30,
+      color: isDark ? colors.gold : colors.primary,
+    },
+    stillHaveSubtext: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs },
+    dividerImage: { width: 220, height: 20, marginTop: spacing.lg, marginBottom: spacing.lg },
+    contactCta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: isDark ? colors.gold : colors.primary,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.sm + 3,
+      borderRadius: radius.pill,
+    },
+    contactCtaText: { ...typography.bodySmall, fontFamily: fonts.bodySemiBold, color: isDark ? '#1A1300' : colors.textInverse },
   });
 }

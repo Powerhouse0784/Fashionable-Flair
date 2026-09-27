@@ -67,6 +67,26 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
   const [expanded, setExpanded] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
+  // scrollVisibility is a mutable Animated.Value updated directly on every
+  // scroll tick (by design, to skip a re-render per frame) — opacity and
+  // translateY alone track it fine for painting, but neither actually
+  // disables touches. On native, a transformed view's touch target can
+  // stay put at its original, pre-transform position, so once the sidebar
+  // animates off-screen the empty space it used to occupy would still
+  // silently catch taps as if the buttons were sitting right there. This
+  // listener mirrors just the shown/hidden edge (not every frame) into
+  // real state, so pointerEvents can actually switch off while hidden.
+  const [canInteract, setCanInteract] = useState(true);
+  useEffect(() => {
+    const id = scrollVisibility.addListener(({ value }) => {
+      setCanInteract((prev) => {
+        const next = value > 0.5;
+        return prev === next ? prev : next;
+      });
+    });
+    return () => scrollVisibility.removeListener(id);
+  }, [scrollVisibility]);
+
   // React Native Web has no native animation thread, so useNativeDriver
   // does nothing there but log a warning every time — same pattern already
   // used elsewhere in this app (ProductCard, ProductImageGallery, Toast).
@@ -224,7 +244,7 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
         <Animated.View
           style={[
             styles.rail,
-            { bottom: 28 + extraBottomOffset, right: 28, pointerEvents: 'box-none' },
+            { bottom: 28 + extraBottomOffset, right: 28, pointerEvents: canInteract ? 'box-none' : 'none' },
             {
               opacity: Animated.multiply(mountAnim, scrollVisibility),
               transform: [
@@ -284,7 +304,7 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
       <Animated.View
         style={[
           styles.wrap,
-          { bottom, right: 16, pointerEvents: 'box-none' },
+          { bottom, right: 16, pointerEvents: canInteract ? 'box-none' : 'none' },
           {
             opacity: Animated.multiply(mountAnim, scrollVisibility),
             transform: [

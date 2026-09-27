@@ -22,6 +22,7 @@ import { categories } from '@/data/categories';
 import { getAvatarByIndex } from '@/data/avatars';
 import { Testimonial, TestimonialInput } from '@/types/testimonial';
 import { alertInfo } from '@/utils/confirm';
+import { useProfile } from '@/context/ProfileContext';
 import AvatarPickerModal from './AvatarPickerModal';
 
 interface Props {
@@ -40,6 +41,7 @@ export default function TestimonialFormModal({ visible, initial, saving, onSubmi
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const { height: windowHeight } = useWindowDimensions();
+  const profile = useProfile();
 
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
@@ -51,13 +53,30 @@ export default function TestimonialFormModal({ visible, initial, saving, onSubmi
 
   useEffect(() => {
     if (!visible) return;
-    setName(initial?.name ?? '');
-    setCity(initial?.city ?? '');
-    setRating(initial?.rating ?? 5);
-    setProduct(initial?.product ?? null);
-    setBody(initial?.body ?? '');
-    setAvatarIndex(initial?.avatarIndex ?? null);
-  }, [visible, initial]);
+    if (initial) {
+      // Editing an existing review — always the review's own saved details,
+      // never the profile's, so editing your profile later can't silently
+      // rewrite the name on a review you already posted.
+      setName(initial.name);
+      setCity(initial.city ?? '');
+      setRating(initial.rating);
+      setProduct(initial.product ?? null);
+      setBody(initial.body);
+      setAvatarIndex(initial.avatarIndex ?? null);
+    } else {
+      // New review — start pre-filled from whatever's on the shopper's own
+      // Profile tab, if they've set one up, so most people never have to
+      // type their name at all. Both fields stay fully editable: this only
+      // sets the starting value, typing or picking a different avatar here
+      // doesn't touch the saved profile.
+      setName(profile.name || '');
+      setCity('');
+      setRating(5);
+      setProduct(null);
+      setBody('');
+      setAvatarIndex(profile.avatarIndex ?? null);
+    }
+  }, [visible, initial, profile.name, profile.avatarIndex]);
 
   useEffect(() => {
     // Defensive cleanup only: react-native-web's Modal disables page scroll
@@ -155,6 +174,11 @@ export default function TestimonialFormModal({ visible, initial, saving, onSubmi
                 placeholderTextColor={colors.textMuted}
                 maxLength={40}
               />
+              {!initial && !!profile.name && (
+                <Text style={styles.profileHint}>
+                  Filled in from your profile — change it if you’d like.
+                </Text>
+              )}
 
               <Text style={styles.label}>City (optional)</Text>
               <TextInput
@@ -285,6 +309,7 @@ function makeStyles(colors: ColorTheme) {
       borderColor: colors.surface,
     },
     avatarHint: { ...typography.caption, color: colors.primary, fontFamily: fonts.bodySemiBold, textAlign: 'center', marginTop: spacing.xs, marginBottom: spacing.md },
+    profileHint: { ...typography.caption, color: colors.textMuted, marginTop: spacing.xs, fontSize: 11.5 },
     label: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.xs, marginTop: spacing.md },
     labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md },
     charCount: { ...typography.caption, color: colors.textMuted },

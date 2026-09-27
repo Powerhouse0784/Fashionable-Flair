@@ -111,170 +111,156 @@ export default function SearchScreen() {
     addSearch(query);
   };
 
+  const header = (
+    <View>
+      {!isWide && <MobileQuickNav />}
+
+      <View style={[styles.searchBar, inputFocused && styles.searchBarFocused]}>
+        <Ionicons name="search" size={19} color={inputFocused ? colors.primary : colors.textMuted} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder={isListening ? 'Listening…' : 'Search earrings, pendants, sets...'}
+          placeholderTextColor={isListening ? colors.primary : colors.textMuted}
+          style={styles.input}
+          autoCorrect={false}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
+          onSubmitEditing={submitSearch}
+          returnKeyType="search"
+        />
+        {query.length > 0 && (
+          <TouchableOpacity
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => setQuery('')}
+            style={styles.clearButton}
+          >
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
+        {micSupported && (
+          <TouchableOpacity
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+            onPress={toggleVoice}
+            style={styles.micButton}
+            accessibilityLabel={isListening ? 'Stop voice search' : 'Search by voice'}
+          >
+            <Animated.View
+              style={[
+                styles.micPulse,
+                isListening && { backgroundColor: isDark ? colors.gold : colors.primary },
+                { transform: [{ scale: pulse }] },
+              ]}
+            >
+              <Ionicons
+                name={isListening ? 'mic' : 'mic-outline'}
+                size={17}
+                color={isListening ? (isDark ? colors.textPrimary : colors.textInverse) : colors.textSecondary}
+              />
+            </Animated.View>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {voiceError && (
+        <View style={styles.voiceErrorBanner}>
+          <Ionicons name="alert-circle-outline" size={14} color={colors.danger} />
+          <Text style={styles.voiceErrorText}>{voiceError}</Text>
+        </View>
+      )}
+
+      <View style={styles.categoryRowWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+          <SearchCategoryChip
+            label="All"
+            icon="grid-outline"
+            active={!filters.category}
+            onPress={() => selectCategory(null)}
+          />
+          {categories.map((c) => (
+            <SearchCategoryChip
+              key={c.key}
+              label={c.label.split(' & ')[0]}
+              icon={c.icon}
+              active={filters.category === c.key}
+              onPress={() => selectCategory(c.key)}
+            />
+          ))}
+        </ScrollView>
+        {Platform.OS !== 'web' && (
+          <LinearGradient
+            pointerEvents="none"
+            colors={['transparent', colors.background]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.categoryFade}
+          />
+        )}
+      </View>
+
+      {query.length === 0 && history.length > 0 && (
+        <View style={styles.historyRow}>
+          <View style={styles.historyHeader}>
+            <Text style={styles.historyTitle}>Recent Searches</Text>
+            <TouchableOpacity onPress={clearHistory}>
+              <Text style={styles.historyClear}>Clear</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.historyChips}>
+            {history.map((term) => (
+              <TouchableOpacity key={term} style={styles.historyChip} onPress={() => setQuery(term)}>
+                <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                <Text style={styles.historyChipText}>{term}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      <View style={styles.toolbar}>
+        <TouchableOpacity
+          style={[styles.toolbarButton, activeFilterCount > 0 && styles.toolbarButtonActive]}
+          onPress={() => setFilterSheetVisible(true)}
+        >
+          <Ionicons
+            name="options-outline"
+            size={16}
+            color={activeFilterCount > 0 ? colors.textInverse : colors.textSecondary}
+          />
+          <Text style={[styles.toolbarText, activeFilterCount > 0 && styles.toolbarTextActive]}>
+            Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.toolbarDivider} />
+
+        <TouchableOpacity
+          style={[styles.toolbarButton, sortOption !== 'default' && styles.toolbarButtonActive]}
+          onPress={() => setSortSheetVisible(true)}
+        >
+          <Ionicons
+            name="swap-vertical"
+            size={16}
+            color={sortOption !== 'default' ? colors.textInverse : colors.textSecondary}
+          />
+          <Text style={[styles.toolbarText, sortOption !== 'default' && styles.toolbarTextActive]}>{sortLabel}</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.resultCount}>
+          {results.length} {results.length === 1 ? 'result' : 'results'}
+        </Text>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <Container>
-        {!isWide && <MobileQuickNav />}
-
-        <View style={[styles.searchBar, inputFocused && styles.searchBarFocused]}>
-          <Ionicons name="search" size={19} color={inputFocused ? colors.primary : colors.textMuted} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={isListening ? 'Listening…' : 'Search earrings, pendants, sets...'}
-            placeholderTextColor={isListening ? colors.primary : colors.textMuted}
-            style={styles.input}
-            autoCorrect={false}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
-            onSubmitEditing={submitSearch}
-            returnKeyType="search"
-          />
-          {query.length > 0 && (
-            <TouchableOpacity
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={() => setQuery('')}
-              style={styles.clearButton}
-            >
-              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
-          {micSupported && (
-            <TouchableOpacity
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
-              onPress={toggleVoice}
-              style={styles.micButton}
-              accessibilityLabel={isListening ? 'Stop voice search' : 'Search by voice'}
-            >
-              <Animated.View
-                style={[
-                  styles.micPulse,
-                  isListening && { backgroundColor: isDark ? colors.gold : colors.primary },
-                  { transform: [{ scale: pulse }] },
-                ]}
-              >
-                <Ionicons
-                  name={isListening ? 'mic' : 'mic-outline'}
-                  size={17}
-                  color={isListening ? (isDark ? colors.textPrimary : colors.textInverse) : colors.textSecondary}
-                />
-              </Animated.View>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {voiceError && (
-          <View style={styles.voiceErrorBanner}>
-            <Ionicons name="alert-circle-outline" size={14} color={colors.danger} />
-            <Text style={styles.voiceErrorText}>{voiceError}</Text>
-          </View>
-        )}
-
-        <View style={styles.categoryRowWrap}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoryRow}
-          >
-            <SearchCategoryChip
-              label="All"
-              icon="grid-outline"
-              active={!filters.category}
-              onPress={() => selectCategory(null)}
-            />
-            {categories.map((c) => (
-              <SearchCategoryChip
-                key={c.key}
-                label={c.label.split(' & ')[0]}
-                icon={c.icon}
-                active={filters.category === c.key}
-                onPress={() => selectCategory(c.key)}
-              />
-            ))}
-          </ScrollView>
-          {Platform.OS !== 'web' && (
-            <LinearGradient
-              pointerEvents="none"
-              colors={['transparent', colors.background]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.categoryFade}
-            />
-          )}
-        </View>
-
-        {query.length === 0 && history.length > 0 && (
-          <View style={styles.historyRow}>
-            <View style={styles.historyHeader}>
-              <Text style={styles.historyTitle}>Recent Searches</Text>
-              <TouchableOpacity onPress={clearHistory}>
-                <Text style={styles.historyClear}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.historyChips}>
-              {history.map((term) => (
-                <TouchableOpacity key={term} style={styles.historyChip} onPress={() => setQuery(term)}>
-                  <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                  <Text style={styles.historyChipText}>{term}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        <View style={styles.toolbar}>
-          <TouchableOpacity
-            style={[styles.toolbarButton, activeFilterCount > 0 && styles.toolbarButtonActive]}
-            onPress={() => setFilterSheetVisible(true)}
-          >
-            <Ionicons
-              name="options-outline"
-              size={16}
-              color={activeFilterCount > 0 ? colors.textInverse : colors.textSecondary}
-            />
-            <Text style={[styles.toolbarText, activeFilterCount > 0 && styles.toolbarTextActive]}>
-              Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.toolbarDivider} />
-
-          <TouchableOpacity
-            style={[styles.toolbarButton, sortOption !== 'default' && styles.toolbarButtonActive]}
-            onPress={() => setSortSheetVisible(true)}
-          >
-            <Ionicons
-              name="swap-vertical"
-              size={16}
-              color={sortOption !== 'default' ? colors.textInverse : colors.textSecondary}
-            />
-            <Text style={[styles.toolbarText, sortOption !== 'default' && styles.toolbarTextActive]}>
-              {sortLabel}
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={styles.resultCount}>
-            {results.length} {results.length === 1 ? 'result' : 'results'}
-          </Text>
-        </View>
-      </Container>
-
-      <FilterSheet
-        visible={filterSheetVisible}
-        value={filters}
-        onApply={setFilters}
-        onClose={() => setFilterSheetVisible(false)}
-      />
-      <SortSheet
-        visible={sortSheetVisible}
-        value={sortOption}
-        onSelect={setSortOption}
-        onClose={() => setSortSheetVisible(false)}
-      />
-
       <Container style={{ flex: 1 }}>
         {loading && products.length === 0 ? (
-          <ProductGridSkeleton count={6} columns={columns} />
+          <>
+            {header}
+            <ProductGridSkeleton count={6} columns={columns} />
+          </>
         ) : (
           <FlatList
             key={`search-${columns}`}
@@ -282,7 +268,8 @@ export default function SearchScreen() {
             keyExtractor={(item) => item.id}
             numColumns={columns}
             columnWrapperStyle={{ gap: GRID_GAP }}
-            contentContainerStyle={{ gap: GRID_GAP, paddingTop: spacing.sm, paddingBottom: spacing.xxl, flexGrow: 1 }}
+            contentContainerStyle={{ gap: GRID_GAP, paddingBottom: spacing.xxl, flexGrow: 1 }}
+            ListHeaderComponent={header}
             onScroll={handleScroll}
             scrollEventThrottle={16}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
@@ -297,6 +284,19 @@ export default function SearchScreen() {
           />
         )}
       </Container>
+
+      <FilterSheet
+        visible={filterSheetVisible}
+        value={filters}
+        onApply={setFilters}
+        onClose={() => setFilterSheetVisible(false)}
+      />
+      <SortSheet
+        visible={sortSheetVisible}
+        value={sortOption}
+        onSelect={setSortOption}
+        onClose={() => setSortSheetVisible(false)}
+      />
     </SafeAreaView>
   );
 }

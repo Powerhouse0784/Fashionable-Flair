@@ -567,6 +567,18 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       textAlign: 'right',
       color: colors.textSecondary,
       zIndex: 1,
+      // The flowers baked into the hero photo sometimes fall directly
+      // behind this text — a light petal behind light italic text (dark
+      // theme especially) was reading as barely-there. A soft halo the
+      // opposite tone of the text keeps it legible wherever it lands,
+      // without needing a background box.
+      ...(Platform.OS === 'web'
+        ? ({ textShadow: isDark ? '0 1px 6px rgba(5,10,20,0.9)' : '0 1px 6px rgba(255,255,255,0.85)' } as any)
+        : {
+            textShadowColor: isDark ? 'rgba(5,10,20,0.9)' : 'rgba(255,255,255,0.85)',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 6,
+          }),
     },
     // ---- Stats card --------------------------------------------------------
     statsCard: {
