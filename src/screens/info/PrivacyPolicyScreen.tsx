@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,14 @@ const SCROLL_TOP_OFFSET = 96;
 // TopNav is ~59px tall (34px logo + 24px vertical padding + 1px border) —
 // used to pin the sidebar just below it instead of under it.
 const NAV_HEIGHT = 59;
+// The rest of the site intentionally uses the full browser width (more grid
+// columns instead of dead margins — see constants/layout.ts). A dense,
+// two-column document like this one doesn't have an equivalent "more
+// columns" use for extra width though — past a point it just makes card
+// text stretch into uncomfortably long lines — so this page alone caps and
+// centers its content on very wide screens, the same way ContactScreen and
+// FAQScreen already cap a paragraph/search bar's width for readability.
+const MAX_CONTENT_WIDTH = 1240;
 
 const heroLockLight = require('@/assets/privacy/privacy-hero-lock-light.png');
 const heroLockDark = require('@/assets/privacy/privacy-hero-lock-dark.png');
@@ -58,6 +66,13 @@ export default function PrivacyPolicyScreen() {
   const sectionsColumnY = useRef(0);
   const sectionYs = useRef<number[]>(PRIVACY_SECTIONS.map(() => 0));
 
+  // Keyed to the same activeIndex: the Contents list auto-scrolls itself so
+  // the highlighted item is always in view, instead of leaving it to the
+  // person to manually scroll a small internal box to find it.
+  const tocScrollRef = useRef<ScrollView>(null);
+  const tocItemYs = useRef<number[]>(PRIVACY_SECTIONS.map(() => 0));
+  const tocViewportHeight = useRef(0);
+
   const absoluteY = (i: number) => bodyWrapY.current + sectionsColumnY.current + sectionYs.current[i];
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -75,6 +90,17 @@ export default function PrivacyPolicyScreen() {
     const y = Math.max(0, absoluteY(i) - SCROLL_TOP_OFFSET);
     scrollRef.current?.scrollTo({ y, animated: true });
   };
+
+  // Auto-scroll the Contents list so the active item is always in view —
+  // centered in the visible box when there's room, otherwise clamped to
+  // the top/bottom so it never tries to scroll past either end.
+  useEffect(() => {
+    const itemY = tocItemYs.current[activeIndex];
+    const viewport = tocViewportHeight.current;
+    if (!viewport) return;
+    const target = Math.max(0, itemY - viewport / 2 + 22);
+    tocScrollRef.current?.scrollTo({ y: target, animated: true });
+  }, [activeIndex]);
 
   return (
     <WebPageWrapper>
@@ -151,9 +177,13 @@ export default function PrivacyPolicyScreen() {
                         callout and leaf below are never pushed into that
                         scroll area, so they stay visible without scrolling. */}
                     <ScrollView
+                      ref={tocScrollRef}
                       style={styles.tocList}
                       showsVerticalScrollIndicator={false}
                       nestedScrollEnabled
+                      onLayout={(e: LayoutChangeEvent) => {
+                        tocViewportHeight.current = e.nativeEvent.layout.height;
+                      }}
                     >
                       {PRIVACY_SECTIONS.map((s, i) => {
                         const active = i === activeIndex;
@@ -163,6 +193,9 @@ export default function PrivacyPolicyScreen() {
                             style={[styles.tocItem, active && styles.tocItemActive]}
                             onPress={() => scrollToSection(i)}
                             activeOpacity={0.8}
+                            onLayout={(e: LayoutChangeEvent) => {
+                              tocItemYs.current[i] = e.nativeEvent.layout.y;
+                            }}
                           >
                             <View style={[styles.tocNumber, active && styles.tocNumberActive]}>
                               <Text style={[styles.tocNumberText, active && styles.tocNumberTextActive]}>
@@ -333,6 +366,9 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
 
     // ---------- Hero ----------
     hero: {
+      width: '100%',
+      maxWidth: MAX_CONTENT_WIDTH,
+      alignSelf: 'center',
       marginTop: spacing.md,
       borderRadius: radius.lg,
       backgroundColor: isDark ? colors.surface : colors.surfaceAlt,
@@ -425,7 +461,7 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
     // already accounts for the siblings before it in the column. Adding
     // those two plus each section's own onLayout.y (relative to
     // sectionsColumn) locates every section without hard-coded constants.
-    bodyWrap: { marginTop: spacing.xl },
+    bodyWrap: { width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center', marginTop: spacing.xl },
     bodyWrapWide: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xl },
 
     sectionsColumn: { position: 'relative' },

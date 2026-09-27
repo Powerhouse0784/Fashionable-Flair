@@ -23,6 +23,7 @@ import RootNavigator from '@/navigation/RootNavigator';
 import { RootStackParamList } from '@/types/navigation';
 import { useAppFonts } from '@/hooks/useAppFonts';
 import { useWebThemeBackground } from '@/hooks/useWebThemeBackground';
+import { useWebScrollbarStyle } from '@/hooks/useWebScrollbarStyle';
 import { registerForPushNotifications } from '@/services/pushService';
 
 const ONBOARDING_KEY = '@fashionable_flair/onboarding_complete';
@@ -81,6 +82,7 @@ function AppNavigation() {
   const [isProductDetail, setIsProductDetail] = useState(false);
 
   useWebThemeBackground(colors.background);
+  useWebScrollbarStyle();
 
   // Register for push once the app's up — silently no-ops on web and on
   // simulators, and re-registering an already-known device just refreshes

@@ -55,6 +55,14 @@
           "icon": "./src/assets/brand/logo-mark-light.png",
           "color": "#286CB0"
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Fashionable Flair to use the microphone for voice search.",
+          "speechRecognitionPermission": "Allow Fashionable Flair to use speech recognition for voice search.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
       ]
     ],
     "extra": {

@@ -1,13 +1,28 @@
-import React, { useMemo, useState } from 'react';
-import { View, TextInput, FlatList, StyleSheet, Text, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  TextInput,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  RefreshControl,
+  ScrollView,
+  Animated,
+  Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useProducts } from '@/context/ProductsContext';
-import { useColumns } from '@/hooks/useResponsive';
+import { useColumns, useIsWideScreen } from '@/hooks/useResponsive';
 import { useSearchHistory } from '@/hooks/useSearchHistory';
+import { useVoiceSearch } from '@/hooks/useVoiceSearch';
+import { categories } from '@/data/categories';
+import { CategoryKey } from '@/types/product';
 import { GRID_GAP } from '@/constants/layout';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
@@ -16,6 +31,8 @@ import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import Container from '@/components/Container';
 import SortSheet, { SortOption } from '@/components/SortSheet';
 import FilterSheet, { FilterState, DEFAULT_FILTERS, countActiveFilters } from '@/components/FilterSheet';
+import SearchCategoryChip from '@/components/SearchCategoryChip';
+import MobileQuickNav from '@/components/MobileQuickNav';
 
 function matchesPriceRange(price: number, range: FilterState['priceRange']): boolean {
   if (range === 'under-200') return price < 200;
@@ -25,17 +42,46 @@ function matchesPriceRange(price: number, range: FilterState['priceRange']): boo
 }
 
 export default function SearchScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = makeStyles(colors);
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [sortOption, setSortOption] = useState<SortOption>('default');
   const [sortSheetVisible, setSortSheetVisible] = useState(false);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const columns = useColumns();
+  const isWide = useIsWideScreen();
   const handleScroll = useScrollVisibilityHandler();
   const { products, loading, refreshing, refresh } = useProducts();
   const { history, addSearch, clearHistory } = useSearchHistory();
+
+  const {
+    isListening,
+    isSupported: micSupported,
+    error: voiceError,
+    toggle: toggleVoice,
+  } = useVoiceSearch({
+    onResult: (transcript) => setQuery(transcript),
+    onFinalResult: (transcript) => addSearch(transcript),
+  });
+
+  // Gentle pulse behind the mic icon while it's actively listening.
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!isListening) {
+      pulse.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.35, duration: 550, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(pulse, { toValue: 1, duration: 550, useNativeDriver: Platform.OS !== 'web' }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isListening, pulse]);
 
   const results = useMemo(() => {
     const filtered = products.filter((p) => {
@@ -58,24 +104,102 @@ export default function SearchScreen() {
   const sortLabel =
     sortOption === 'price-asc' ? 'Price ↑' : sortOption === 'price-desc' ? 'Price ↓' : 'Sort';
 
+  const selectCategory = (key: CategoryKey | null) =>
+    setFilters((f) => ({ ...f, category: f.category === key ? null : key }));
+
+  const submitSearch = () => {
+    addSearch(query);
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <Container>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color={colors.textMuted} />
+        {!isWide && <MobileQuickNav />}
+
+        <View style={[styles.searchBar, inputFocused && styles.searchBarFocused]}>
+          <Ionicons name="search" size={19} color={inputFocused ? colors.primary : colors.textMuted} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search earrings, pendants, sets..."
-            placeholderTextColor={colors.textMuted}
+            placeholder={isListening ? 'Listening…' : 'Search earrings, pendants, sets...'}
+            placeholderTextColor={isListening ? colors.primary : colors.textMuted}
             style={styles.input}
             autoCorrect={false}
-            onSubmitEditing={() => addSearch(query)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            onSubmitEditing={submitSearch}
+            returnKeyType="search"
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery('')}>
+            <TouchableOpacity
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={() => setQuery('')}
+              style={styles.clearButton}
+            >
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
+          )}
+          {micSupported && (
+            <TouchableOpacity
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+              onPress={toggleVoice}
+              style={styles.micButton}
+              accessibilityLabel={isListening ? 'Stop voice search' : 'Search by voice'}
+            >
+              <Animated.View
+                style={[
+                  styles.micPulse,
+                  isListening && { backgroundColor: isDark ? colors.gold : colors.primary },
+                  { transform: [{ scale: pulse }] },
+                ]}
+              >
+                <Ionicons
+                  name={isListening ? 'mic' : 'mic-outline'}
+                  size={17}
+                  color={isListening ? (isDark ? colors.textPrimary : colors.textInverse) : colors.textSecondary}
+                />
+              </Animated.View>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {voiceError && (
+          <View style={styles.voiceErrorBanner}>
+            <Ionicons name="alert-circle-outline" size={14} color={colors.danger} />
+            <Text style={styles.voiceErrorText}>{voiceError}</Text>
+          </View>
+        )}
+
+        <View style={styles.categoryRowWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryRow}
+          >
+            <SearchCategoryChip
+              label="All"
+              icon="grid-outline"
+              active={!filters.category}
+              onPress={() => selectCategory(null)}
+            />
+            {categories.map((c) => (
+              <SearchCategoryChip
+                key={c.key}
+                label={c.label.split(' & ')[0]}
+                icon={c.icon}
+                active={filters.category === c.key}
+                onPress={() => selectCategory(c.key)}
+              />
+            ))}
+          </ScrollView>
+          {Platform.OS !== 'web' && (
+            <LinearGradient
+              pointerEvents="none"
+              colors={['transparent', colors.background]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.categoryFade}
+            />
           )}
         </View>
 
@@ -186,13 +310,39 @@ function makeStyles(colors: ColorTheme) {
       backgroundColor: colors.surface,
       marginTop: spacing.sm,
       marginBottom: spacing.md,
-      paddingHorizontal: spacing.md,
-      borderRadius: radius.md,
-      borderWidth: 1,
+      paddingHorizontal: spacing.lg,
+      borderRadius: radius.pill,
+      borderWidth: 1.5,
       borderColor: colors.border,
-      height: 46,
+      height: 52,
+      ...(Platform.OS === 'web'
+        ? ({ boxShadow: `0 2px 10px ${colors.shadow}` } as any)
+        : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 2 }),
     },
+    searchBarFocused: { borderColor: colors.primary },
     input: { flex: 1, marginLeft: spacing.sm, ...typography.body, color: colors.textPrimary },
+    clearButton: { marginRight: spacing.xs },
+    micButton: { marginLeft: spacing.xs },
+    micPulse: {
+      width: 32,
+      height: 32,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceAlt,
+    },
+    voiceErrorBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: -spacing.sm,
+      marginBottom: spacing.sm,
+      paddingHorizontal: spacing.sm,
+    },
+    voiceErrorText: { ...typography.caption, color: colors.danger, flexShrink: 1 },
+    categoryRowWrap: { position: 'relative', marginBottom: spacing.md },
+    categoryRow: { paddingRight: spacing.xl },
+    categoryFade: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 28 },
     toolbar: {
       flexDirection: 'row',
       alignItems: 'center',

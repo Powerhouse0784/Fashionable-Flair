@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { fonts } from '@/hooks/useAppFonts';
 import { useProducts } from '@/context/ProductsContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useIsWideScreen } from '@/hooks/useResponsive';
+import { useViewportWidth } from '@/hooks/useViewportWidth';
 import { GRID_GAP } from '@/constants/layout';
 import { categories } from '@/data/categories';
 import { RootStackParamList } from '@/types/navigation';
@@ -46,7 +47,7 @@ export default function WishlistScreen() {
   const navigation = useNavigation<Nav>();
   const { colors } = useTheme();
   const isWide = useIsWideScreen();
-  const { width } = useWindowDimensions();
+  const width = useViewportWidth();
   const styles = makeStyles(colors);
   const { products, loading, refreshing, refresh } = useProducts();
   const { wishlistIds, clearWishlist } = useWishlist();
@@ -121,7 +122,7 @@ export default function WishlistScreen() {
             </View>
           )}
 
-          <View style={styles.titleRow}>
+          <View style={[styles.titleRow, isWide && styles.titleRowWide]}>
             <View style={styles.titleLeft}>
               <View style={styles.titleIconWrap}>
                 <Ionicons name="heart" size={20} color={colors.primary} />
@@ -177,7 +178,7 @@ export default function WishlistScreen() {
               <TouchableOpacity
                 style={styles.browseButton}
                 activeOpacity={0.85}
-                onPress={() => navigation.navigate('Tabs')}
+                onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
               >
                 <Text style={styles.browseButtonText}>Browse Products</Text>
                 <Ionicons name="arrow-forward" size={16} color={colors.textInverse} />
@@ -236,6 +237,11 @@ function makeStyles(colors: ColorTheme) {
     brandTagline: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
 
     titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: spacing.sm, gap: spacing.sm },
+    // On wide/web, this sits directly under the sticky TopNav instead of
+    // under the mobile brand header — spacing.xxl matches the gap every
+    // other screen uses below TopNav (see HomeScreen's heroWide, or
+    // InfoPageLayout's heroWide), so it doesn't feel cramped against it.
+    titleRowWide: { marginTop: spacing.xxl },
     titleLeft: { flexDirection: 'row', alignItems: 'flex-start', flex: 1, gap: spacing.sm },
     titleIconWrap: {
       width: 36,

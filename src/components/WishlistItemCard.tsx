@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal, Pressable } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal, Pressable, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -36,6 +36,12 @@ export default function WishlistItemCard({ product, style }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const primaryImage = getPrimaryImage(product);
   const outOfStock = product.isAvailable === false;
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const pressIn = () =>
+    Animated.spring(scale, { toValue: 0.98, useNativeDriver: Platform.OS !== 'web', speed: 40 }).start();
+  const pressOut = () =>
+    Animated.spring(scale, { toValue: 1, useNativeDriver: Platform.OS !== 'web', speed: 20 }).start();
 
   const openDetail = () => navigation.navigate('ProductDetail', { productId: product.id });
   const handleBuyNow = () => goToMeesho(navigation, product.meeshoUrl, product.title);
@@ -49,11 +55,18 @@ export default function WishlistItemCard({ product, style }: Props) {
   };
 
   return (
-    <View style={[styles.card, Platform.OS === 'web' && styles.webHover, style]}>
-      <TouchableOpacity activeOpacity={0.9} style={styles.mainRow} onPress={openDetail}>
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <View style={[styles.card, Platform.OS === 'web' && styles.webHover]}>
+      <TouchableOpacity
+        activeOpacity={0.92}
+        style={styles.mainRow}
+        onPress={openDetail}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+      >
         <View style={styles.imageWrap}>
           {primaryImage ? (
-            <Image source={{ uri: primaryImage }} style={styles.image} contentFit="cover" transition={200} />
+            <Image source={{ uri: primaryImage }} style={styles.image} contentFit="contain" transition={200} />
           ) : (
             <ProductPlaceholder category={product.category} />
           )}
@@ -144,7 +157,8 @@ export default function WishlistItemCard({ product, style }: Props) {
           </View>
         </Pressable>
       </Modal>
-    </View>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -156,15 +170,25 @@ function makeStyles(colors: ColorTheme) {
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.border,
-      overflow: 'hidden',
+      padding: spacing.md,
       ...(Platform.OS === 'web'
-        ? ({ boxShadow: `0 2px 10px ${colors.shadow}` } as any)
+        ? ({ boxShadow: `0 2px 10px ${colors.shadow}`, transitionProperty: 'box-shadow, border-color', transitionDuration: '150ms' } as any)
         : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.22, shadowRadius: 8, elevation: 2 }),
     },
     webHover: { cursor: 'pointer' } as any,
-    mainRow: { flexDirection: 'row' },
+    mainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+    // Fixed square, contentFit="contain" below — a real photo's own aspect
+    // ratio (a close-up lifestyle shot, a wide flat-lay, whatever a seller
+    // uploaded) used to get forced to cover a tall narrow strip here and
+    // crop into a random zoomed-in sliver of the image. A fixed square with
+    // "contain" instead always shows the whole photo, letterboxed on the
+    // neutral backdrop if its shape doesn't fill the square exactly —
+    // never cropped.
     imageWrap: {
-      width: 116,
+      width: 108,
+      height: 108,
+      borderRadius: radius.md,
+      overflow: 'hidden',
       backgroundColor: colors.surfaceAlt,
       position: 'relative',
     },
@@ -194,7 +218,7 @@ function makeStyles(colors: ColorTheme) {
       alignItems: 'center',
     },
     outOfStockText: { ...typography.caption, color: colors.textInverse, fontFamily: fonts.bodyBold, fontSize: 10 },
-    details: { flex: 1, padding: spacing.md, justifyContent: 'flex-start' },
+    details: { flex: 1, justifyContent: 'flex-start', minWidth: 0 },
     topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     category: { ...typography.caption, color: colors.primary, fontFamily: fonts.bodySemiBold, flex: 1, marginRight: spacing.sm },
     title: { ...typography.bodySmall, fontFamily: fonts.bodySemiBold, color: colors.textPrimary, marginTop: 2, lineHeight: 18 },

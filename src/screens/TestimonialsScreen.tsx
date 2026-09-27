@@ -13,7 +13,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
@@ -51,8 +51,8 @@ const HERO_BG = {
   dark: require('@/assets/testimonials/hero-bg-dark.jpg'),
 };
 const HERO_SCENE = {
-  light: require('@/assets/testimonials/hero-scene-light.jpg'),
-  dark: require('@/assets/testimonials/hero-scene-dark.jpg'),
+  light: require('@/assets/testimonials/hero-scene-light.png'),
+  dark: require('@/assets/testimonials/hero-scene-dark.png'),
 };
 
 const TRUST_ITEMS: { icon: string; label: string }[] = [
@@ -74,6 +74,7 @@ export default function TestimonialsScreen() {
   const { showToast } = useToast();
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
+  const insets = useSafeAreaInsets();
 
   const columns = width >= 1100 ? 3 : width >= 700 ? 2 : 1;
 
@@ -196,25 +197,14 @@ export default function TestimonialsScreen() {
 
   return (
     <WebPageWrapper>
-      <SafeAreaView style={styles.safe} edges={isWide ? [] : ['top']}>
+      <SafeAreaView style={styles.safe} edges={[]}>
         <View style={{ flex: 1 }}>
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={!isWide && { paddingBottom: STICKY_BAR_SPACE }}
           >
-            {!isWide && (
-              <View style={styles.backRow}>
-                <TouchableOpacity
-                  onPress={() => goBackOrTo(navigation, 'Tabs')}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-                </TouchableOpacity>
-              </View>
-            )}
-
             {/* Hero */}
-            <View style={styles.hero}>
+            <View style={[styles.hero, { paddingTop: isWide ? spacing.xl : insets.top + 64 }]}>
               <Image source={heroBg} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
               {/* Guarantees the headline stays readable no matter where the
                   photo's own flowers/highlights happen to fall behind it —
@@ -236,10 +226,27 @@ export default function TestimonialsScreen() {
                 pointerEvents="none"
               />
 
+              {/* Floats directly on the photo, the same way the onboarding
+                  screens float their "Skip" button, so the background runs
+                  edge-to-edge behind the status bar instead of leaving a
+                  blank strip of flat colour above the hero. */}
+              {!isWide && (
+                <View style={[styles.mobileTopBar, { paddingTop: insets.top + spacing.sm }]}>
+                  <TouchableOpacity
+                    style={styles.mobileBackButton}
+                    onPress={() => goBackOrTo(navigation, 'Tabs')}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+
               <Container>
                 <View style={[styles.heroInner, isWide && styles.heroInnerWide]}>
                   <View style={[styles.heroCopy, isWide && styles.heroCopyWide]}>
-                    <View style={styles.eyebrow}>
+                    <View style={[styles.eyebrow, isWide && styles.eyebrowWide]}>
                       <Text style={styles.eyebrowText}>REAL STORIES. REAL PEOPLE.</Text>
                     </View>
 
@@ -265,10 +272,16 @@ export default function TestimonialsScreen() {
                   </View>
 
                   <View style={[styles.heroSceneWrap, isWide && styles.heroSceneWrapWide]}>
+                    {isWide && (
+                      <Text style={styles.scriptTag}>
+                        More Than{'\n'}Just Jewellery{' '}
+                        <Ionicons name="heart-outline" size={14} color={heroAccent} />
+                      </Text>
+                    )}
                     <Image
                       source={heroScene}
                       style={styles.heroScene}
-                      contentFit="cover"
+                      contentFit="contain"
                       transition={200}
                     />
                   </View>
@@ -439,11 +452,27 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
 
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
-    backRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
 
     // ---- Hero ------------------------------------------------------------
-    hero: { position: 'relative', overflow: 'hidden', paddingTop: spacing.xl, paddingBottom: spacing.xxl },
+    // No paddingTop here on purpose — the mobile back button used to sit in
+    // its own row above the hero, on the flat page background, which left a
+    // blank strip before the photo started. It's now painted as an overlay
+    // on top of the photo itself (see mobileTopBar below), the same way the
+    // onboarding screens float their "Skip" button over their background,
+    // so the photo runs edge-to-edge behind the status bar too.
+    hero: { position: 'relative', overflow: 'hidden', paddingBottom: spacing.xxl },
     heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 90 },
+    mobileTopBar: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: spacing.lg, zIndex: 2 },
+    mobileBackButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: pillBg,
+      borderWidth: 1,
+      borderColor: pillBorder,
+    },
     heroInner: { flexDirection: 'column-reverse', alignItems: 'center' },
     heroInnerWide: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xl },
     heroCopy: { width: '100%', marginTop: spacing.xl },
@@ -459,6 +488,11 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       borderRadius: radius.pill,
       marginBottom: spacing.md,
     },
+    // On a laptop the heading below is left-aligned, so a centred pill
+    // above it used to float looking disconnected from anything — pinning
+    // it to the same left edge ties the two together the way the reference
+    // design has it.
+    eyebrowWide: { alignSelf: 'flex-start' },
     eyebrowText: {
       ...typography.caption,
       color: colors.textSecondary,
@@ -512,19 +546,28 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       lineHeight: 15,
     },
 
+    // The image itself already fades to transparent at its own edges (baked
+    // into the PNG), so it dissolves straight into the hero photo behind it
+    // instead of sitting on top of it inside a hard-edged card — no
+    // border-radius, overflow-clip or drop shadow here to undo that.
     heroSceneWrap: {
-      width: '78%',
-      maxWidth: 320,
-      aspectRatio: 0.92,
-      borderRadius: radius.lg,
-      overflow: 'hidden',
-      ...(Platform.OS === 'web'
-        ? ({ boxShadow: `0 20px 44px ${colors.shadow}` } as any)
-        : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 14 }, shadowOpacity: 1, shadowRadius: 30, elevation: 6 }),
+      width: '92%',
+      maxWidth: 380,
     },
-    heroSceneWrapWide: { flex: 0.85, width: undefined, maxWidth: 420, alignSelf: 'stretch', aspectRatio: undefined },
-    heroScene: { width: '100%', height: '100%' },
-
+    heroSceneWrapWide: { flex: 1, width: undefined, maxWidth: 480, alignSelf: 'stretch', justifyContent: 'center' },
+    heroScene: { width: '100%', aspectRatio: 0.92 },
+    scriptTag: {
+      position: 'absolute',
+      top: 4,
+      right: 8,
+      fontFamily: fonts.headingMedium,
+      fontStyle: 'italic',
+      fontSize: 17,
+      lineHeight: 22,
+      textAlign: 'right',
+      color: colors.textSecondary,
+      zIndex: 1,
+    },
     // ---- Stats card --------------------------------------------------------
     statsCard: {
       backgroundColor: glass,
