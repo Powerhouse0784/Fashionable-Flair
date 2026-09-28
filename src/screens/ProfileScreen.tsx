@@ -17,10 +17,16 @@ import { resolveProfileAvatarSource } from '@/data/profileAvatar';
 import { getTestimonialLimit } from '@/utils/testimonialOwnership';
 import { countMyTestimonials } from '@/services/testimonialService';
 import { useIsWideScreen } from '@/hooks/useResponsive';
-import { ACCENT_THEMES } from '@/theme';
-import { PREMIUM_PRICE_INR, PREMIUM_TESTIMONIAL_LIMIT, PREMIUM_AVATAR_COUNT, PREMIUM_THEME_COUNT } from '@/config/premium';
+import { ACCENT_THEMES, PREMIUM_APPEARANCES } from '@/theme';
+import {
+  PREMIUM_PRICE_INR,
+  PREMIUM_TESTIMONIAL_LIMIT,
+  PREMIUM_AVATAR_COUNT,
+  PREMIUM_THEME_COUNT,
+  PREMIUM_APPEARANCE_COUNT,
+} from '@/config/premium';
 import Container from '@/components/Container';
-import Logo from '@/components/Logo';
+import MobileTopBar from '@/components/MobileTopBar';
 import DownloadAppButton from '@/components/DownloadAppButton';
 import ProfileAvatarPickerModal from '@/components/ProfileAvatarPickerModal';
 import EditProfileModal from '@/components/EditProfileModal';
@@ -226,22 +232,12 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* On wide/web layouts TopNav (see AppShell) already shows the logo
-          and brand name at the very top of the page, so this compact bar
-          — logo mark + name + tagline, nothing else — only appears on
-          narrow layouts where there's no TopNav at all. It sits outside
-          Container/ScrollView so it spans the full width like a real
-          navbar, with the divider line reaching both edges. */}
-      {!isWide && (
-        <View style={styles.navbar}>
-          <View style={styles.navbarLogo}>
-            <Logo variant="mark" height={20} />
-          </View>
-          <View style={styles.navbarTextCol}>
-            <Text style={styles.navbarTitle} numberOfLines={1}>Fashionable Flair</Text>
-            <Text style={styles.navbarSubtitle} numberOfLines={1}>Jewellery That Speaks Your Style</Text>
-          </View>
-        </View>
-      )}
+          and brand name at the very top of the page, so this shared bar —
+          identical across Search, Wishlist, and Profile — only appears on
+          narrow layouts where there's no TopNav at all. See MobileTopBar
+          for why it's one shared component rather than each screen having
+          its own slightly-different header. */}
+      {!isWide && <MobileTopBar />}
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <Container style={{ paddingTop: spacing.lg }}>
@@ -329,7 +325,7 @@ export default function ProfileScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.premiumStatusTitle}>Go Premium</Text>
                   <Text style={styles.premiumStatusSubtitle}>
-                    {PREMIUM_TESTIMONIAL_LIMIT} reviews, {PREMIUM_AVATAR_COUNT}+ exclusive avatars & {PREMIUM_THEME_COUNT} exclusive themes
+                    {PREMIUM_TESTIMONIAL_LIMIT} reviews, {PREMIUM_AVATAR_COUNT}+ exclusive avatars, {PREMIUM_THEME_COUNT} themes & {PREMIUM_APPEARANCE_COUNT} appearances
                   </Text>
                 </View>
                 <View style={styles.premiumPricePill}>
@@ -412,14 +408,64 @@ export default function ProfileScreen() {
                 })}
               </View>
             </View>
-            <View style={styles.accentRow}>
+            <View style={styles.appearanceBlock}>
+              <View style={styles.menuLeft}>
+                <View style={styles.menuIconCircle}>
+                  <Ionicons name="contrast-outline" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.menuTextCol}>
+                  <Text style={styles.menuLabel}>Premium Appearances</Text>
+                  <Text style={styles.menuSubtitle}>Ivory, Blush, Twilight & Espresso are Premium-only</Text>
+                </View>
+              </View>
+              <View style={styles.appearanceTileRow}>
+                {PREMIUM_APPEARANCES.map((appearance) => {
+                  const locked = !isPremium;
+                  const active = preference === appearance.id;
+                  return (
+                    <TouchableOpacity
+                      key={appearance.id}
+                      style={[styles.appearanceTile, active && styles.appearanceTileActive]}
+                      activeOpacity={0.85}
+                      onPress={() => (locked ? setPremiumModalVisible(true) : setPreference(appearance.id))}
+                      accessibilityLabel={`${appearance.label} appearance${locked ? ' (Premium)' : ''}`}
+                    >
+                      <View style={[styles.appearancePreview, { backgroundColor: appearance.preview.background }]}>
+                        <View style={[styles.appearancePreviewCard, { backgroundColor: appearance.preview.surface }]}>
+                          <View style={[styles.appearancePreviewLine, { backgroundColor: appearance.preview.text }]} />
+                          <View style={[styles.appearancePreviewLine, styles.appearancePreviewLineShort, { backgroundColor: appearance.preview.text }]} />
+                          <View style={[styles.appearancePreviewDot, { backgroundColor: appearance.preview.accent }]} />
+                        </View>
+                        {locked ? (
+                          <View style={styles.appearanceBadge}>
+                            <Ionicons name="lock-closed" size={10} color="#FFFFFF" />
+                          </View>
+                        ) : (
+                          active && (
+                            <View style={[styles.appearanceBadge, { backgroundColor: colors.primary }]}>
+                              <Ionicons name="checkmark" size={11} color="#FFFFFF" />
+                            </View>
+                          )
+                        )}
+                      </View>
+                      <Text style={[styles.appearanceLabel, active && styles.appearanceLabelActive]} numberOfLines={1}>
+                        {appearance.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+            <View style={styles.accentBlock}>
               <View style={styles.menuLeft}>
                 <View style={styles.menuIconCircle}>
                   <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
                 </View>
                 <View style={styles.menuTextCol}>
                   <Text style={styles.menuLabel}>Theme Colour</Text>
-                  <Text style={styles.menuSubtitle}>Ruby, Emerald & Amethyst are Premium-only</Text>
+                  <Text style={styles.menuSubtitle}>
+                    {ACCENT_THEMES.find((a) => a.id === accentTheme)?.label ?? 'Classic'} · {PREMIUM_THEME_COUNT} gemstone themes are Premium-only
+                  </Text>
                 </View>
               </View>
               <View style={styles.accentSwatchRow}>
@@ -544,39 +590,6 @@ function makeStyles(colors: ColorTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
 
-    // Compact, narrow-screen-only navbar: logo mark + name + tagline and
-    // nothing else — deliberately no settings/notification icons here.
-    navbar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm + 2,
-      backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    navbarLogo: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: colors.surfaceAlt,
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      borderWidth: 1.5,
-      borderColor: colors.gold,
-    },
-    navbarTextCol: { flex: 1, minWidth: 0 },
-    navbarTitle: { ...typography.body, fontFamily: fonts.headingMedium, color: colors.textPrimary },
-    navbarSubtitle: {
-      ...typography.caption,
-      color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 1,
-      fontSize: 9.5,
-      marginTop: 1,
-    },
 
     appPromoCard: {
       alignItems: 'center',
@@ -779,21 +792,62 @@ function makeStyles(colors: ColorTheme) {
     themeOptionActive: { backgroundColor: colors.primary },
     themeOptionText: { ...typography.caption, color: colors.textSecondary, fontFamily: fonts.bodySemiBold },
     themeOptionTextActive: { color: colors.textInverse },
-    accentRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+    appearanceBlock: {
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: colors.divider,
-      gap: spacing.sm,
+      gap: spacing.md,
     },
-    accentSwatchRow: { flexDirection: 'row', gap: 6 },
+    appearanceTileRow: { flexDirection: 'row', gap: spacing.xs },
+    appearanceTile: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 6,
+      padding: 4,
+      borderRadius: radius.md,
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    appearanceTileActive: { borderColor: colors.primary },
+    appearancePreview: {
+      width: '100%',
+      height: 64,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 8,
+      justifyContent: 'center',
+    },
+    appearancePreviewCard: { flex: 1, borderRadius: 6, padding: 6, justifyContent: 'center', gap: 4 },
+    appearancePreviewLine: { height: 4, borderRadius: 2, width: '70%', opacity: 0.55 },
+    appearancePreviewLineShort: { width: '40%', opacity: 0.3 },
+    appearancePreviewDot: { position: 'absolute', right: 6, bottom: 6, width: 10, height: 10, borderRadius: 5 },
+    appearanceBadge: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    appearanceLabel: { ...typography.caption, color: colors.textSecondary, fontFamily: fonts.bodySemiBold },
+    appearanceLabelActive: { color: colors.textPrimary },
+    accentBlock: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+      gap: spacing.md,
+    },
+    accentSwatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     accentSwatch: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 2,

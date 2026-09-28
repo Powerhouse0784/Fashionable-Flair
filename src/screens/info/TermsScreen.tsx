@@ -73,6 +73,16 @@ export default function TermsScreen() {
   const tocItemYs = useRef<number[]>(TERMS_SECTIONS.map(() => 0));
   const tocViewportHeight = useRef(0);
 
+  // Same idea as the Contents sidebar above, but horizontal — the mobile
+  // chip row was never wired up to follow activeIndex at all, so once the
+  // highlighted chip moved past whatever fit in the first screenful
+  // (section 4-5 onward) it stayed off-screen with nothing bringing it
+  // back into view as you kept scrolling the page.
+  const chipScrollRef = useRef<ScrollView>(null);
+  const chipItemXs = useRef<number[]>(TERMS_SECTIONS.map(() => 0));
+  const chipItemWidths = useRef<number[]>(TERMS_SECTIONS.map(() => 0));
+  const chipViewportWidth = useRef(0);
+
   const absoluteY = (i: number) => bodyWrapY.current + sectionsColumnY.current + sectionYs.current[i];
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -100,6 +110,17 @@ export default function TermsScreen() {
     if (!viewport) return;
     const target = Math.max(0, itemY - viewport / 2 + 22);
     tocScrollRef.current?.scrollTo({ y: target, animated: true });
+  }, [activeIndex]);
+
+  // Mobile chip row: center the active chip in the visible strip whenever
+  // it changes, the same way the sidebar above keeps its active item in view.
+  useEffect(() => {
+    const itemX = chipItemXs.current[activeIndex];
+    const itemW = chipItemWidths.current[activeIndex];
+    const viewport = chipViewportWidth.current;
+    if (!viewport || !itemW) return;
+    const target = Math.max(0, itemX - viewport / 2 + itemW / 2);
+    chipScrollRef.current?.scrollTo({ x: target, animated: true });
   }, [activeIndex]);
 
   return (
@@ -235,10 +256,14 @@ export default function TermsScreen() {
                 <>
                   <View style={styles.chipStickyWrap}>
                     <ScrollView
+                      ref={chipScrollRef}
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       style={styles.chipRow}
                       contentContainerStyle={{ paddingRight: spacing.lg, gap: spacing.sm }}
+                      onLayout={(e: LayoutChangeEvent) => {
+                        chipViewportWidth.current = e.nativeEvent.layout.width;
+                      }}
                     >
                       {TERMS_SECTIONS.map((s, i) => {
                         const active = i === activeIndex;
@@ -248,6 +273,10 @@ export default function TermsScreen() {
                             style={[styles.chip, active && styles.chipActive]}
                             onPress={() => scrollToSection(i)}
                             activeOpacity={0.8}
+                            onLayout={(e: LayoutChangeEvent) => {
+                              chipItemXs.current[i] = e.nativeEvent.layout.x;
+                              chipItemWidths.current[i] = e.nativeEvent.layout.width;
+                            }}
                           >
                             <View style={[styles.chipNumber, active && styles.chipNumberActive]}>
                               <Text style={[styles.chipNumberText, active && styles.chipNumberTextActive]}>

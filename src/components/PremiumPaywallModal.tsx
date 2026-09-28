@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, ActivityIndicator, Linking, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
@@ -7,11 +7,20 @@ import { fonts } from '@/hooks/useAppFonts';
 import { useAuth } from '@/context/AuthContext';
 import { usePremium } from '@/context/PremiumContext';
 import { PREMIUM_BENEFITS, PREMIUM_PRICE_INR } from '@/config/premium';
-import { WEBSITE_URL } from '@/config/socialLinks';
-import { startPremiumCheckout, isWebCheckoutSupported, CHECKOUT_DISMISSED } from '@/services/premiumService';
+import {
+  createPremiumOrder,
+  runWebCheckout,
+  verifyPremiumPayment,
+  isWebPlatform,
+  CHECKOUT_DISMISSED,
+  PremiumOrder,
+  PremiumCheckoutResult,
+  RazorpayPaymentResponse,
+} from '@/services/premiumService';
 import { alertInfo } from '@/utils/confirm';
 import { hapticSuccess } from '@/utils/haptics';
 import CustomerAuthModal from './CustomerAuthModal';
+import RazorpayNativeCheckout from './RazorpayNativeCheckout';
 
 interface Props {
   visible: boolean;
@@ -40,30 +49,64 @@ export default function PremiumPaywallModal({ visible, onClose }: Props) {
   const { isPremium, premiumExpiresAt, applyServerPremium } = usePremium();
   const [checkingOut, setCheckingOut] = useState(false);
   const [authModalVisible, setAuthModalVisible] = useState(false);
+  // Mobile app only: the order currently open in the in-app payment window.
+  const [nativeOrder, setNativeOrder] = useState<PremiumOrder | null>(null);
+
+  const finishSuccess = (result: PremiumCheckoutResult) => {
+    applyServerPremium(result.premiumSince, result.premiumExpiresAt);
+    hapticSuccess();
+    onClose();
+    alertInfo('Welcome to Premium! \u2728', 'Your exclusive avatars, themes, appearances and extra reviews are unlocked.');
+  };
+
+  const finishError = (err: unknown) => {
+    const message = err instanceof Error ? err.message : typeof err === 'string' ? err : 'Something went wrong.';
+    if (message !== CHECKOUT_DISMISSED) {
+      alertInfo('Checkout Didn\u2019t Complete', message);
+    }
+  };
 
   const runCheckout = async () => {
     setCheckingOut(true);
     try {
-      const result = await startPremiumCheckout(1);
-      applyServerPremium(result.premiumSince, result.premiumExpiresAt);
-      hapticSuccess();
-      onClose();
-      alertInfo('Welcome to Premium! \u2728', 'Your exclusive avatars, themes and extra reviews are unlocked.');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Something went wrong.';
-      if (message !== CHECKOUT_DISMISSED) {
-        alertInfo('Checkout Didn\u2019t Complete', message);
+      const order = await createPremiumOrder(1);
+      if (isWebPlatform) {
+        finishSuccess(await runWebCheckout(order));
+        setCheckingOut(false);
+      } else {
+        // Mobile app: open the payment window; the callbacks below finish the job.
+        setNativeOrder(order);
       }
+    } catch (err) {
+      finishError(err);
+      setCheckingOut(false);
+    }
+  };
+
+  const handleNativeSuccess = async (payment: RazorpayPaymentResponse) => {
+    const months = nativeOrder?.months ?? 1;
+    setNativeOrder(null);
+    try {
+      finishSuccess(await verifyPremiumPayment(payment, months));
+    } catch (err) {
+      finishError(err);
     } finally {
       setCheckingOut(false);
     }
   };
 
-  const handleSubscribe = async () => {
-    if (!isWebCheckoutSupported) {
-      Linking.openURL(WEBSITE_URL);
-      return;
-    }
+  const handleNativeDismiss = () => {
+    setNativeOrder(null);
+    setCheckingOut(false);
+  };
+
+  const handleNativeFailure = (message: string) => {
+    setNativeOrder(null);
+    setCheckingOut(false);
+    finishError(message);
+  };
+
+  const handleSubscribe = () => {
     if (!session) {
       setAuthModalVisible(true);
       return;
@@ -127,25 +170,26 @@ export default function PremiumPaywallModal({ visible, onClose }: Props) {
                   <ActivityIndicator color={colors.textInverse} />
                 ) : (
                   <Text style={styles.subscribeButtonText}>
-                    {!isWebCheckoutSupported
-                      ? 'Subscribe on Our Website'
-                      : session
-                      ? `Subscribe Now \u2014 \u20b9${PREMIUM_PRICE_INR}/month`
-                      : 'Log In to Subscribe'}
+                    {session ? `Subscribe Now \u2014 \u20b9${PREMIUM_PRICE_INR}/month` : 'Log In to Subscribe'}
                   </Text>
                 )}
               </TouchableOpacity>
               <Text style={styles.disclaimer}>
-                {!isWebCheckoutSupported
-                  ? `In-app purchases aren\u2019t available on ${Platform.OS === 'ios' ? 'iOS' : 'Android'} yet \u2014 you\u2019ll be taken to our website to subscribe.`
-                  : session
-                  ? 'Charged once via Razorpay for one month \u2014 renew anytime after it ends.'
-                  : 'Premium is tied to your account so a real purchase never gets lost \u2014 log in or create one first.'}
+                {session
+                  ? 'Preview mode \u2014 pay with Razorpay\u2019s test details, no real money is charged. One month per payment, renew anytime.'
+                  : 'Premium is tied to your account so your purchase never gets lost \u2014 log in or create one first.'}
               </Text>
             </>
           )}
         </Pressable>
       </Pressable>
+
+      <RazorpayNativeCheckout
+        order={nativeOrder}
+        onSuccess={handleNativeSuccess}
+        onDismiss={handleNativeDismiss}
+        onFailure={handleNativeFailure}
+      />
 
       <CustomerAuthModal
         visible={authModalVisible}

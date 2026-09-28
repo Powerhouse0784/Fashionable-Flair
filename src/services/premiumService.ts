@@ -2,27 +2,38 @@ import { Platform } from 'react-native';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 /**
- * Real ₹-money checkout for Premium, via Razorpay — see RAZORPAY_SETUP.md
- * for what needs to be filled in before this actually charges anyone.
+ * Premium checkout via Razorpay — built for PREVIEW / TEST MODE: put a
+ * Razorpay *test* key pair in the Supabase secrets (see RAZORPAY_SETUP.md)
+ * and a completed test payment unlocks Premium on both the website (the
+ * Razorpay Checkout popup) and the mobile app (the same Checkout, hosted
+ * inside a WebView — see components/RazorpayNativeCheckout.native.tsx).
+ * No real money moves in Test Mode.
  *
- * Requires a signed-in account (see CUSTOMER_ACCOUNTS_SETUP.md) — both
- * edge functions this calls reject an anonymous caller with a 401, since
- * Premium is tracked against an account, never a bare device. The
- * paywall UI is what's responsible for getting someone logged in first;
- * this function assumes that's already true by the time it's called.
+ * Every payment, on either platform, is verified server-side
+ * (verify-razorpay-payment checks Razorpay's HMAC signature and writes
+ * the account's Premium expiry) — the client never grants Premium
+ * itself. Both edge functions require a signed-in account.
  *
- * Web only, and deliberately so: Apple and Google both require digital
- * subscriptions unlocked *inside* a native app to go through their own
- * in-app-purchase systems (App Store/Play Billing), not a third-party
- * gateway like Razorpay — wiring Razorpay directly into the native app
- * for this would risk the app being rejected or pulled. On web there's
- * no such rule, so Premium is sold there, and the native app links out
- * to the website to subscribe (see WEBSITE_URL in config/socialLinks).
- * Adding native billing later means adding `react-native-iap` and
- * configuring subscription products in App Store Connect / Play Console
- * — a separate, deliberate piece of work, not something to fake here.
+ * If this ever goes to production with real money: Apple/Google require
+ * their own in-app-purchase billing for unlocking digital features inside
+ * a store-distributed native app, so the native path here would need to
+ * be replaced (e.g. react-native-iap) before a store release.
  */
-export const isWebCheckoutSupported = Platform.OS === 'web';
+export const isWebPlatform = Platform.OS === 'web';
+
+export interface PremiumOrder {
+  orderId: string;
+  amount: number; // paise
+  currency: string;
+  keyId: string;
+  months: number;
+}
+
+export interface RazorpayPaymentResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
 
 export interface PremiumCheckoutResult {
   months: number;
@@ -30,20 +41,56 @@ export interface PremiumCheckoutResult {
   premiumExpiresAt: string;
 }
 
-/** Thrown when the shopper closes the Razorpay window without paying —
- * not a real error, just "they changed their mind", so callers should
- * check for this and stay quiet rather than showing an error toast. */
+/** Thrown when the shopper closes the payment window without paying —
+ * not a real error, so callers should stay quiet rather than alert. */
 export const CHECKOUT_DISMISSED = 'CHECKOUT_DISMISSED';
+
+/** Razorpay test keys start with "rzp_test_" — lets the UI say plainly
+ * that no real money is involved. */
+export function isTestModeKey(keyId: string | undefined | null): boolean {
+  return !!keyId && keyId.startsWith('rzp_test_');
+}
+
+/** Step 1 — ask the server to create a Razorpay order (needs login). */
+export async function createPremiumOrder(months: 1 | 3 | 12 = 1): Promise<PremiumOrder> {
+  if (!isSupabaseConfigured) {
+    throw new Error('Premium checkout isn\u2019t set up yet \u2014 see RAZORPAY_SETUP.md.');
+  }
+  const { data: order, error } = await supabase.functions.invoke('create-razorpay-order', { body: { months } });
+  if (error || !order || order.error) {
+    throw new Error(order?.error || 'Could not start checkout right now \u2014 please try again shortly.');
+  }
+  return order as PremiumOrder;
+}
+
+/** Final step (both platforms) — server checks the signature and credits
+ * this account's Premium; returns the new dates to show immediately. */
+export async function verifyPremiumPayment(
+  payment: RazorpayPaymentResponse,
+  months: number
+): Promise<PremiumCheckoutResult> {
+  const { data: verification, error } = await supabase.functions.invoke('verify-razorpay-payment', {
+    body: { ...payment, months },
+  });
+  if (error || !verification?.verified) {
+    throw new Error(
+      verification?.error ||
+        'We couldn\u2019t verify that payment \u2014 if money was deducted, contact us and we\u2019ll sort it out.'
+    );
+  }
+  return {
+    months: verification.months,
+    premiumSince: verification.premiumSince,
+    premiumExpiresAt: verification.premiumExpiresAt,
+  };
+}
 
 let razorpayScriptPromise: Promise<void> | null = null;
 
 function loadRazorpayScript(): Promise<void> {
-  if (typeof document === 'undefined') {
-    return Promise.reject(new Error('Razorpay Checkout only runs in a browser.'));
-  }
+  if (typeof document === 'undefined') return Promise.reject(new Error('Razorpay Checkout only runs in a browser.'));
   if ((window as any).Razorpay) return Promise.resolve();
   if (razorpayScriptPromise) return razorpayScriptPromise;
-
   razorpayScriptPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -51,68 +98,33 @@ function loadRazorpayScript(): Promise<void> {
     script.onload = () => resolve();
     script.onerror = () => {
       razorpayScriptPromise = null;
-      reject(new Error('Could not load the payment window — check your connection and try again.'));
+      reject(new Error('Could not load the payment window \u2014 check your connection and try again.'));
     };
     document.body.appendChild(script);
   });
   return razorpayScriptPromise;
 }
 
-/** Opens Razorpay Checkout for `months` of Premium and resolves once the
- * payment is placed AND verified server-side. Rejects with a normal
- * Error for real failures, or an Error whose message is
- * CHECKOUT_DISMISSED if the shopper just closed the window. */
-export async function startPremiumCheckout(months: 1 | 3 | 12 = 1): Promise<PremiumCheckoutResult> {
-  if (!isWebCheckoutSupported) {
-    throw new Error('In-app checkout isn\u2019t available on the app yet \u2014 please subscribe on our website.');
-  }
-  if (!isSupabaseConfigured) {
-    throw new Error('Premium checkout isn\u2019t set up yet \u2014 see RAZORPAY_SETUP.md.');
-  }
-
-  const { data: order, error: orderError } = await supabase.functions.invoke('create-razorpay-order', {
-    body: { months },
-  });
-  if (orderError || !order || order.error) {
-    throw new Error(order?.error || 'Could not start checkout right now \u2014 please try again shortly.');
-  }
-
+/** Web only — opens the Razorpay popup for an order from createPremiumOrder
+ * and resolves once the payment is placed AND verified server-side. Rejects
+ * with CHECKOUT_DISMISSED if the window is simply closed. */
+export async function runWebCheckout(order: PremiumOrder): Promise<PremiumCheckoutResult> {
   await loadRazorpayScript();
-
   return new Promise<PremiumCheckoutResult>((resolve, reject) => {
     let settled = false;
-
     const rzp = new (window as any).Razorpay({
       key: order.keyId,
       amount: order.amount,
       currency: order.currency,
       order_id: order.orderId,
       name: 'Fashionable Flair',
-      description: `Premium \u2014 ${months} month${months > 1 ? 's' : ''}`,
+      description: `Premium \u2014 ${order.months} month${order.months > 1 ? 's' : ''}`,
       theme: { color: '#286CB0' },
-      handler: async (response: any) => {
+      handler: async (response: RazorpayPaymentResponse) => {
+        settled = true;
         try {
-          const { data: verification, error: verifyError } = await supabase.functions.invoke('verify-razorpay-payment', {
-            body: {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              months,
-            },
-          });
-          if (verifyError || !verification?.verified) {
-            settled = true;
-            reject(new Error(verification?.error || 'We couldn\u2019t verify that payment \u2014 if money was deducted, contact us and we\u2019ll sort it out.'));
-            return;
-          }
-          settled = true;
-          resolve({
-            months: verification.months,
-            premiumSince: verification.premiumSince,
-            premiumExpiresAt: verification.premiumExpiresAt,
-          });
+          resolve(await verifyPremiumPayment(response, order.months));
         } catch (err) {
-          settled = true;
           reject(err instanceof Error ? err : new Error('Something went wrong verifying your payment.'));
         }
       },
@@ -122,12 +134,10 @@ export async function startPremiumCheckout(months: 1 | 3 | 12 = 1): Promise<Prem
         },
       },
     });
-
-    rzp.on('payment.failed', () => {
+    rzp.on('payment.failed', (r: any) => {
       settled = true;
-      reject(new Error('Payment failed \u2014 you have not been charged.'));
+      reject(new Error(r?.error?.description || 'Payment failed \u2014 you have not been charged.'));
     });
-
     rzp.open();
   });
 }

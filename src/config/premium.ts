@@ -16,7 +16,8 @@ export const PREMIUM_TESTIMONIAL_LIMIT = 4;
 export const FREE_AVATAR_COUNT = 50; // src/data/avatars.ts
 export const PREMIUM_AVATAR_COUNT = 50; // src/data/premiumAvatars.ts
 
-export const PREMIUM_THEME_COUNT = 3; // src/theme/accentThemes.ts
+export const PREMIUM_THEME_COUNT = 7; // src/theme/accentThemes.ts (every accent except Classic)
+export const PREMIUM_APPEARANCE_COUNT = 4; // src/theme/appearances.ts (Ivory, Blush, Twilight, Espresso)
 
 export interface PremiumBenefit {
   icon: string; // Ionicons name
@@ -24,7 +25,7 @@ export interface PremiumBenefit {
   description: string;
 }
 
-/** Shown on the paywall, in this order. The first three are the
+/** Shown on the paywall, in this order. The first four are the
  * concrete unlocks; the rest are the "why upgrade" extras. */
 export const PREMIUM_BENEFITS: PremiumBenefit[] = [
   {
@@ -40,7 +41,12 @@ export const PREMIUM_BENEFITS: PremiumBenefit[] = [
   {
     icon: 'color-palette',
     title: `${PREMIUM_THEME_COUNT} Exclusive Themes`,
-    description: 'Restyle the entire app in Ruby, Emerald or Amethyst — yours to switch anytime.',
+    description: 'Restyle the whole app in Ruby, Emerald, Amethyst, Rose Quartz, Topaz, Aquamarine or Peridot — yours to switch anytime.',
+  },
+  {
+    icon: 'contrast',
+    title: `${PREMIUM_APPEARANCE_COUNT} Exclusive Appearances`,
+    description: 'Go beyond Light and Dark with Ivory (warm parchment), Blush (soft rose), Twilight (deep plum) and Espresso (velvet brown).',
   },
   {
     icon: 'ribbon',

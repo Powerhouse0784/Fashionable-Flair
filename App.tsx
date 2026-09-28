@@ -11,7 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { WishlistProvider } from '@/context/WishlistContext';
 import { ProductsProvider } from '@/context/ProductsContext';
 import { ProfileProvider } from '@/context/ProfileContext';
-import { PremiumProvider } from '@/context/PremiumContext';
+import { PremiumProvider, usePremium } from '@/context/PremiumContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
@@ -76,7 +76,8 @@ const linking: LinkingOptions<RootStackParamList> = {
 // dark-on-light) can react to the theme — it needs to live below
 // ThemeProvider in the tree to call useTheme().
 function AppNavigation() {
-  const { isDark, colors } = useTheme();
+  const { isDark, colors, setPremiumAccess } = useTheme();
+  const { isPremium, isLoaded: premiumLoaded } = usePremium();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const [isAdminScreen, setIsAdminScreen] = useState(false);
   const [isMeeshoRedirect, setIsMeeshoRedirect] = useState(false);
@@ -84,6 +85,14 @@ function AppNavigation() {
 
   useWebThemeBackground(colors.background);
   useWebScrollbarStyle();
+
+  // Premium-only themes and appearances only apply while Premium is active.
+  // Until the status has loaded we assume "yes" so a member never sees a
+  // flash of the free look on launch; the saved choice is never erased, so
+  // it returns by itself the moment Premium is active again.
+  useEffect(() => {
+    setPremiumAccess(!premiumLoaded || isPremium);
+  }, [premiumLoaded, isPremium, setPremiumAccess]);
 
   // Register for push once the app's up — silently no-ops on web and on
   // simulators, and re-registering an already-known device just refreshes

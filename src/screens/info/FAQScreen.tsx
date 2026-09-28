@@ -118,7 +118,7 @@ const CATEGORIES: FaqCategory[] = [
 ];
 
 export default function FAQScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, isCustomAppearance } = useTheme();
   const styles = makeStyles(colors, isDark);
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
@@ -151,14 +151,18 @@ export default function FAQScreen() {
     <WebPageWrapper>
       <SafeAreaView style={styles.safe} edges={isWide ? [] : ['top']}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
-          <View style={styles.bgWrap} pointerEvents="none">
-            <Image source={isDark ? bgDark : bgLight} style={styles.bgImage} resizeMode="cover" />
-            <LinearGradient
-              colors={['transparent', colors.background]}
-              locations={[0.72, 1]}
-              style={styles.bgFade}
-            />
-          </View>
+          {/* The artwork is painted for the classic blue palette, so it's skipped
+              under a Premium appearance (Ivory / Blush / Twilight / Espresso) rather than clash. */}
+          {!isCustomAppearance && (
+            <View style={styles.bgWrap} pointerEvents="none">
+              <Image source={isDark ? bgDark : bgLight} style={styles.bgImage} resizeMode="cover" />
+              <LinearGradient
+                colors={['transparent', colors.background]}
+                locations={[0.72, 1]}
+                style={styles.bgFade}
+              />
+            </View>
+          )}
 
           {!isWide && (
             <View style={styles.header}>

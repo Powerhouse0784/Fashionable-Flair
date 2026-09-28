@@ -82,7 +82,7 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
     number: 6,
     title: 'Cookies & Local Storage',
     icon: 'save-outline',
-    body: "On the web version, this app doesn't use tracking cookies. It does use your browser's local storage (the web equivalent of on-device app storage) to remember your Wishlist, Recently Viewed items, and appearance preference (light/dark mode) between visits — the same on-device-only approach as the mobile app, just using the browser's version of it.",
+    body: "On the web version, this app doesn't use tracking cookies. It does use your browser's local storage (the web equivalent of on-device app storage) to remember your Wishlist, Recently Viewed items, and appearance and theme preferences (light/dark mode, and any Premium theme or appearance you choose) between visits — the same on-device-only approach as the mobile app, just using the browser's version of it.",
   },
   {
     id: 'retention',
