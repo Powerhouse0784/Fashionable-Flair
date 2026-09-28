@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { WishlistProvider } from '@/context/WishlistContext';
 import { ProductsProvider } from '@/context/ProductsContext';
 import { ProfileProvider } from '@/context/ProfileContext';
+import { PremiumProvider } from '@/context/PremiumContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
@@ -169,13 +170,15 @@ export default function App() {
               <AuthProvider>
                 <ProductsProvider>
                   <ProfileProvider>
-                    <WishlistProvider>
-                      <RecentlyViewedProvider>
-                        <ScrollVisibilityProvider>
-                          <AppNavigation />
-                        </ScrollVisibilityProvider>
-                      </RecentlyViewedProvider>
-                    </WishlistProvider>
+                    <PremiumProvider>
+                      <WishlistProvider>
+                        <RecentlyViewedProvider>
+                          <ScrollVisibilityProvider>
+                            <AppNavigation />
+                          </ScrollVisibilityProvider>
+                        </RecentlyViewedProvider>
+                      </WishlistProvider>
+                    </PremiumProvider>
                   </ProfileProvider>
                 </ProductsProvider>
               </AuthProvider>

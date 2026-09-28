@@ -19,46 +19,46 @@ export async function fetchTestimonials(): Promise<Testimonial[]> {
   return (data as Testimonial[]) || [];
 }
 
-export async function createTestimonial(
-  input: TestimonialInput,
-  ownerToken: string
-): Promise<Testimonial> {
+/** How many reviews this account already has — used to enforce the free
+ * (2) vs Premium (4) limit client-side before even opening the form (the
+ * `testimonial_limit_trigger` in Postgres is what actually enforces it,
+ * this is just for a fast, friendly message). */
+export async function countMyTestimonials(userId: string): Promise<number> {
+  if (!isSupabaseConfigured) return 0;
+  const { count, error } = await supabase
+    .from(TABLE)
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  if (error) {
+    console.warn('Failed to count testimonials', error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+export async function createTestimonial(input: TestimonialInput, userId: string): Promise<Testimonial> {
   const { data, error } = await supabase
     .from(TABLE)
-    .insert([{ ...input, ownerToken, createdAt: new Date().toISOString() }])
+    .insert([{ ...input, user_id: userId, createdAt: new Date().toISOString() }])
     .select()
     .single();
   if (error) throw new Error(error.message);
   return data as Testimonial;
 }
 
-/** Only succeeds if `ownerToken` matches the row's — enforced inside the
- * Postgres function, not just by this call's arguments, so it can't be
- * bypassed by editing someone else's id. */
-export async function updateOwnTestimonial(
-  id: string,
-  ownerToken: string,
-  input: TestimonialInput
-): Promise<Testimonial> {
-  const { data, error } = await supabase.rpc('update_own_testimonial', {
-    p_id: id,
-    p_owner_token: ownerToken,
-    p_name: input.name,
-    p_city: input.city ?? null,
-    p_rating: input.rating,
-    p_product: input.product ?? null,
-    p_body: input.body,
-    p_avatar_index: input.avatarIndex,
-  });
+/** Relies entirely on the "Users can update their own testimonial" RLS
+ * policy (auth.uid() = user_id) — no token to pass, Supabase already
+ * knows who's asking from the logged-in session. */
+export async function updateOwnTestimonial(id: string, input: TestimonialInput): Promise<Testimonial> {
+  const { data, error } = await supabase.from(TABLE).update(input).eq('id', id).select().single();
   if (error) throw new Error(error.message);
   return data as Testimonial;
 }
 
-export async function deleteOwnTestimonial(id: string, ownerToken: string): Promise<void> {
-  const { error } = await supabase.rpc('delete_own_testimonial', {
-    p_id: id,
-    p_owner_token: ownerToken,
-  });
+/** Same as above — RLS (auth.uid() = user_id) is what actually stops
+ * this from deleting someone else's review, not anything in this call. */
+export async function deleteOwnTestimonial(id: string): Promise<void> {
+  const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
 

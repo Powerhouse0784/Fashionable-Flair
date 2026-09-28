@@ -17,15 +17,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
-import { getAvatarByIndex } from '@/data/avatars';
-import AvatarPickerModal from './AvatarPickerModal';
+import { resolveProfileAvatarSource } from '@/data/profileAvatar';
+import ProfileAvatarPickerModal from './ProfileAvatarPickerModal';
 
 interface Props {
   visible: boolean;
   name: string;
   bio: string;
   avatarIndex: number | null;
+  isPremium: boolean;
   onSave: (values: { name: string; bio: string; avatarIndex: number | null }) => void;
+  onRequestUpgrade: () => void;
   onClose: () => void;
 }
 
@@ -35,7 +37,7 @@ const BIO_MAX = 80;
 /** Bottom-sheet editor for the local, on-device profile shown on the
  * Profile tab — name, a short one-line bio, and an avatar picked from the
  * same 50-portrait set testimonials use. Nothing here leaves the device. */
-export default function EditProfileModal({ visible, name, bio, avatarIndex, onSave, onClose }: Props) {
+export default function EditProfileModal({ visible, name, bio, avatarIndex, isPremium, onSave, onRequestUpgrade, onClose }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const { height: windowHeight } = useWindowDimensions();
@@ -88,7 +90,7 @@ export default function EditProfileModal({ visible, name, bio, avatarIndex, onSa
             >
               <TouchableOpacity style={styles.avatarPicker} activeOpacity={0.85} onPress={() => setAvatarPickerOpen(true)}>
                 {draftAvatar ? (
-                  <Image source={getAvatarByIndex(draftAvatar)} style={styles.avatarPreview} contentFit="cover" />
+                  <Image source={resolveProfileAvatarSource(draftAvatar)} style={styles.avatarPreview} contentFit="cover" />
                 ) : (
                   <View style={[styles.avatarPreview, styles.avatarPlaceholder]}>
                     <Ionicons name="person-outline" size={26} color={colors.textMuted} />
@@ -133,10 +135,15 @@ export default function EditProfileModal({ visible, name, bio, avatarIndex, onSa
         </KeyboardAvoidingView>
       </Pressable>
 
-      <AvatarPickerModal
+      <ProfileAvatarPickerModal
         visible={avatarPickerOpen}
         value={draftAvatar}
+        isPremium={isPremium}
         onSelect={setDraftAvatar}
+        onRequestUpgrade={() => {
+          setAvatarPickerOpen(false);
+          onRequestUpgrade();
+        }}
         onClose={() => setAvatarPickerOpen(false)}
       />
     </Modal>

@@ -325,7 +325,14 @@ That's it — no extra secrets needed, since it calls Expo's push service
 directly with the tokens already in your database. Sending a notification
 costs nothing beyond your existing Supabase plan.
 
-## 11. Testimonials (no login required)
+## 11. Testimonials
+
+> **Update:** writing a review now requires a signed-in account instead
+> of being fully anonymous — run this section first to create the table,
+> then see `CUSTOMER_ACCOUNTS_SETUP.md § 4` for the follow-up migration
+> that adds accounts on top of it. The "no login required" description
+> below is the original design and is now out of date for *writing* a
+> review (reading them was, and still is, open to everyone).
 
 The Testimonials screen (linked from Profile → Testimonials, and from the
 "Loved by Shoppers Like You" block on Home) ships with ~20 bundled launch

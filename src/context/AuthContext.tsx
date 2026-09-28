@@ -8,18 +8,23 @@ interface AuthContextValue {
   isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  /** Customer self-registration — a regular signed-up shopper, never an
+   * admin (that still only ever comes from the `admins` table above). */
+  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const CONFIG_ERROR = 'Admin sign-in isn\u2019t configured yet — see SUPABASE_SETUP.md.';
+const CONFIG_ERROR = 'Sign-in isn\u2019t configured yet — see SUPABASE_SETUP.md.';
 
-// There is no customer-facing account system in this app — shoppers just
-// browse, wishlist, and buy on Meesho, no login needed. This context exists
-// solely so the store owner (and anyone they allow-list) can sign in to
-// manage the catalog. Admin accounts are created directly in the Supabase
-// dashboard (see SUPABASE_SETUP.md), not through any screen in the app.
+// Same session/identity for two different audiences: the store owner (and
+// anyone they allow-list in the `admins` table) uses this to reach the
+// admin panel, and — since adding customer accounts, see
+// CUSTOMER_ACCOUNTS_SETUP.md — a regular shopper uses the exact same
+// sign-in/sign-up to keep their Premium purchase and profile synced
+// across devices. Browsing, wishlisting, etc. still need no login at
+// all; this is only ever required at the point of buying Premium.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -67,11 +72,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   };
 
+  const signUp = async (email: string, password: string) => {
+    if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+    const { error } = await supabase.auth.signUp({ email, password });
+    return { error: error?.message ?? null };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
-  const value = useMemo(() => ({ session, isAdmin, loading, signIn, signOut }), [session, isAdmin, loading]);
+  const value = useMemo(() => ({ session, isAdmin, loading, signIn, signUp, signOut }), [session, isAdmin, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

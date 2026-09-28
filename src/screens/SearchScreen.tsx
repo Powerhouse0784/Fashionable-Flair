@@ -113,6 +113,8 @@ export default function SearchScreen() {
 
   const header = (
     <View>
+      {!isWide && <MobileQuickNav />}
+
       <View style={[styles.searchBar, inputFocused && styles.searchBarFocused]}>
         <Ionicons name="search" size={19} color={inputFocused ? colors.primary : colors.textMuted} />
         <TextInput
@@ -253,7 +255,6 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {!isWide && <MobileQuickNav />}
       <Container style={{ flex: 1 }}>
         {loading && products.length === 0 ? (
           <>

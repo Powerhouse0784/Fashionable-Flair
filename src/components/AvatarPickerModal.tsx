@@ -6,6 +6,7 @@ import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { AVATARS, randomAvatarIndex } from '@/data/avatars';
+import { useModalBackClose } from '@/hooks/useModalBackClose';
 
 interface Props {
   visible: boolean;
@@ -21,6 +22,11 @@ interface Props {
 export default function AvatarPickerModal({ visible, value, onSelect, onClose }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  // So a back-press (Android hardware button, or the browser's back/edge-
+  // swipe on web) closes just this picker — it was previously going
+  // straight through to whatever screen opened it (Edit Profile, or the
+  // review form), which looked like the picker had been skipped entirely.
+  useModalBackClose(visible, onClose);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>

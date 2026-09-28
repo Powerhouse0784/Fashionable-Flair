@@ -21,3 +21,13 @@ export const SUPPORT_PHONE = '8448822940';
  * on the web build — native app users obviously don't need it.
  */
 export const APK_DOWNLOAD_URL = 'https://example.com/fashionable-flair.apk';
+
+/**
+ * TODO: replace with your real deployed website URL once you have one.
+ * Used only by the native app's Premium screen — Apple/Google require
+ * digital subscriptions to go through their own in-app-purchase systems,
+ * not a third-party gateway, so the native app links out to the website
+ * to subscribe instead of charging directly in-app (see
+ * services/premiumService.ts and RAZORPAY_SETUP.md).
+ */
+export const WEBSITE_URL = 'https://example.com';

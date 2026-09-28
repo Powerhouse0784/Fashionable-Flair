@@ -19,7 +19,7 @@ import OptionSheet, { SheetOption } from '@/components/OptionSheet';
 import EmptyState from '@/components/EmptyState';
 import { ProductGridSkeleton } from '@/components/ProductCardSkeleton';
 import Container from '@/components/Container';
-import MobileTopBar from '@/components/MobileTopBar';
+import Logo from '@/components/Logo';
 import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import { confirmAsync } from '@/utils/confirm';
 
@@ -104,7 +104,6 @@ export default function WishlistScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {!isWide && <MobileTopBar />}
       <ScrollView
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
@@ -113,6 +112,16 @@ export default function WishlistScreen() {
         contentContainerStyle={{ flexGrow: 1, paddingBottom: spacing.xxl }}
       >
         <Container>
+          {!isWide && (
+            <View style={styles.brandHeader}>
+              <Logo variant="mark" height={40} />
+              <View style={{ marginLeft: spacing.sm }}>
+                <Text style={styles.brand}>Fashionable Flair</Text>
+                <Text style={styles.brandTagline}>Jewellery that speaks your style</Text>
+              </View>
+            </View>
+          )}
+
           <View style={[styles.titleRow, isWide && styles.titleRowWide]}>
             <View style={styles.titleLeft}>
               <View style={styles.titleIconWrap}>
@@ -223,6 +232,10 @@ export default function WishlistScreen() {
 function makeStyles(colors: ColorTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
+    brandHeader: { flexDirection: 'row', alignItems: 'center', paddingTop: spacing.md, paddingBottom: spacing.sm },
+    brand: { ...typography.h3, color: colors.textPrimary, fontFamily: fonts.heading },
+    brandTagline: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
+
     titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: spacing.sm, gap: spacing.sm },
     // On wide/web, this sits directly under the sticky TopNav instead of
     // under the mobile brand header — spacing.xxl matches the gap every

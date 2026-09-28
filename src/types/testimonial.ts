@@ -6,12 +6,14 @@
  * in Supabase. Both render through the exact same card component so
  * there's no visual difference between the two.
  *
- * There's no login system, so a submitted testimonial's "owner" is
- * whoever's device holds its `ownerToken` — a random id generated once
- * per device and stored locally (see `utils/testimonialOwnership.ts`).
- * That token is never shown anywhere; it's the only thing that lets
- * someone edit or delete a testimonial they wrote, later, without an
- * account.
+ * Writing a review requires a signed-in account (see AuthContext and
+ * CUSTOMER_ACCOUNTS_SETUP.md) — a submitted testimonial's "owner" is
+ * simply whoever's `user_id` it carries, enforced by the same Postgres
+ * row-level-security rule that already protects the `profiles` table
+ * (`auth.uid() = user_id`), not a client-side secret. Older rows from
+ * before accounts existed may still carry the legacy `ownerToken`
+ * column instead and have `user_id: null` — those are effectively
+ * read-only now (see the note in utils/testimonialOwnership.ts).
  */
 export interface Testimonial {
   id: string;
@@ -22,7 +24,8 @@ export interface Testimonial {
   body: string;
   avatarIndex: number; // 1-50, see data/avatars.ts
   createdAt: string; // ISO date
-  isSeed?: boolean; // true for the bundled launch reviews — not stored in Supabase, so admin can't delete them and a device never "owns" one
+  isSeed?: boolean; // true for the bundled launch reviews — not stored in Supabase, so admin can't delete them and nobody "owns" one
+  user_id?: string; // the account that wrote it — absent on seed data and on legacy pre-account rows
 }
 
 export type TestimonialInput = {

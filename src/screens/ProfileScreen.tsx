@@ -10,16 +10,22 @@ import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/context/ProfileContext';
+import { usePremium } from '@/context/PremiumContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useRecentlyViewed } from '@/context/RecentlyViewedContext';
-import { getAvatarByIndex } from '@/data/avatars';
-import { getOwnedTestimonialIds, MAX_TESTIMONIALS_PER_DEVICE } from '@/utils/testimonialOwnership';
+import { resolveProfileAvatarSource } from '@/data/profileAvatar';
+import { getTestimonialLimit } from '@/utils/testimonialOwnership';
+import { countMyTestimonials } from '@/services/testimonialService';
 import { useIsWideScreen } from '@/hooks/useResponsive';
+import { ACCENT_THEMES } from '@/theme';
+import { PREMIUM_PRICE_INR, PREMIUM_TESTIMONIAL_LIMIT, PREMIUM_AVATAR_COUNT, PREMIUM_THEME_COUNT } from '@/config/premium';
 import Container from '@/components/Container';
-import MobileTopBar from '@/components/MobileTopBar';
+import Logo from '@/components/Logo';
 import DownloadAppButton from '@/components/DownloadAppButton';
-import AvatarPickerModal from '@/components/AvatarPickerModal';
+import ProfileAvatarPickerModal from '@/components/ProfileAvatarPickerModal';
 import EditProfileModal from '@/components/EditProfileModal';
+import PremiumPaywallModal from '@/components/PremiumPaywallModal';
+import CustomerAuthModal from '@/components/CustomerAuthModal';
 import { confirmAsync, alertInfo } from '@/utils/confirm';
 
 interface MenuItemProps {
@@ -79,6 +85,15 @@ function formatMemberSince(iso: string): string {
   }
 }
 
+function formatExpiryDate(iso: string | null): string {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return '';
+  }
+}
+
 const SECRET_TAP_COUNT = 5;
 const SECRET_TAP_WINDOW_MS = 2500;
 
@@ -92,10 +107,11 @@ function cardShadow(colors: ColorTheme) {
 }
 
 export default function ProfileScreen() {
-  const { colors, preference, setPreference } = useTheme();
+  const { colors, preference, setPreference, accentTheme, setAccentTheme } = useTheme();
   const styles = makeStyles(colors);
-  const { isAdmin, signOut } = useAuth();
+  const { isAdmin, session, signOut } = useAuth();
   const { name, bio, avatarIndex, memberSince, updateProfile } = useProfile();
+  const { isPremium, premiumExpiresAt } = usePremium();
   const { wishlistIds } = useWishlist();
   const { recentlyViewedIds } = useRecentlyViewed();
   const isWide = useIsWideScreen();
@@ -105,20 +121,29 @@ export default function ProfileScreen() {
   const [tapHintVisible, setTapHintVisible] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [premiumModalVisible, setPremiumModalVisible] = useState(false);
+  const [accountAuthModalVisible, setAccountAuthModalVisible] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
+  const testimonialLimit = getTestimonialLimit(isPremium);
 
-  // Re-read on every focus (not just mount) so submitting a testimonial on
+  // Re-read on every focus (not just mount) so submitting a review on
   // another tab is reflected here the moment the shopper comes back.
+  // Reviews are account-based now (see TestimonialsScreen) — a guest
+  // simply has none to count.
   useFocusEffect(
     useCallback(() => {
+      if (!session?.user?.id) {
+        setReviewCount(0);
+        return;
+      }
       let cancelled = false;
-      getOwnedTestimonialIds().then((ids) => {
-        if (!cancelled) setReviewCount(ids.length);
+      countMyTestimonials(session.user.id).then((count) => {
+        if (!cancelled) setReviewCount(count);
       });
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, [session?.user?.id])
   );
 
   const handleSecretTap = () => {
@@ -141,6 +166,15 @@ export default function ProfileScreen() {
 
   const handleAdminSignOut = async () => {
     const confirmed = await confirmAsync('Sign out of admin?', undefined, 'Sign Out');
+    if (confirmed) signOut();
+  };
+
+  const handleAccountSignOut = async () => {
+    const confirmed = await confirmAsync(
+      'Log out?',
+      'Your Premium status and saved profile stay right where they are \u2014 log back in anytime to pick them up again.',
+      'Log Out'
+    );
     if (confirmed) signOut();
   };
 
@@ -192,12 +226,22 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* On wide/web layouts TopNav (see AppShell) already shows the logo
-          and brand name at the very top of the page, so this shared bar —
-          identical across Search, Wishlist, and Profile — only appears on
-          narrow layouts where there's no TopNav at all. See MobileTopBar
-          for why it's one shared component rather than each screen having
-          its own slightly-different header. */}
-      {!isWide && <MobileTopBar />}
+          and brand name at the very top of the page, so this compact bar
+          — logo mark + name + tagline, nothing else — only appears on
+          narrow layouts where there's no TopNav at all. It sits outside
+          Container/ScrollView so it spans the full width like a real
+          navbar, with the divider line reaching both edges. */}
+      {!isWide && (
+        <View style={styles.navbar}>
+          <View style={styles.navbarLogo}>
+            <Logo variant="mark" height={20} />
+          </View>
+          <View style={styles.navbarTextCol}>
+            <Text style={styles.navbarTitle} numberOfLines={1}>Fashionable Flair</Text>
+            <Text style={styles.navbarSubtitle} numberOfLines={1}>Jewellery That Speaks Your Style</Text>
+          </View>
+        </View>
+      )}
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <Container style={{ paddingTop: spacing.lg }}>
@@ -212,7 +256,7 @@ export default function ProfileScreen() {
                 accessibilityLabel="Change your avatar"
               >
                 {avatarIndex ? (
-                  <Image source={getAvatarByIndex(avatarIndex)} style={styles.avatarImage} contentFit="cover" />
+                  <Image source={resolveProfileAvatarSource(avatarIndex)} style={styles.avatarImage} contentFit="cover" />
                 ) : (
                   <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
                     <Ionicons name="person-outline" size={28} color={colors.textMuted} />
@@ -224,9 +268,17 @@ export default function ProfileScreen() {
               </TouchableOpacity>
 
               <View style={styles.profileTextCol}>
-                <Text style={styles.profileName} numberOfLines={1}>
-                  {name || 'Add your name'}
-                </Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.profileName} numberOfLines={1}>
+                    {name || 'Add your name'}
+                  </Text>
+                  {isPremium && (
+                    <View style={styles.premiumBadge}>
+                      <Ionicons name="diamond" size={10} color={colors.gold} />
+                      <Text style={styles.premiumBadgeText}>Premium</Text>
+                    </View>
+                  )}
+                </View>
                 {memberSinceLabel ? (
                   <View style={styles.memberSinceRow}>
                     <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
@@ -253,9 +305,43 @@ export default function ProfileScreen() {
               <View style={styles.statDivider} />
               <StatBox icon="eye-outline" value={String(recentlyViewedIds.length)} label="Products Viewed" />
               <View style={styles.statDivider} />
-              <StatBox icon="star-outline" value={`${reviewCount}/${MAX_TESTIMONIALS_PER_DEVICE}`} label="Reviews" />
+              <StatBox icon="star-outline" value={`${reviewCount}/${testimonialLimit}`} label="Reviews" />
             </View>
           </View>
+
+          {isPremium ? (
+            <TouchableOpacity style={styles.premiumStatusCard} activeOpacity={0.85} onPress={() => setPremiumModalVisible(true)}>
+              <View style={styles.premiumStatusIconWrap}>
+                <Ionicons name="diamond" size={18} color={colors.gold} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.premiumStatusTitle}>Premium Member</Text>
+                <Text style={styles.premiumStatusSubtitle}>Active until {formatExpiryDate(premiumExpiresAt)}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.premiumUpsellCard} activeOpacity={0.9} onPress={() => setPremiumModalVisible(true)}>
+              <View style={styles.premiumUpsellTop}>
+                <View style={styles.premiumStatusIconWrap}>
+                  <Ionicons name="diamond" size={18} color={colors.gold} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.premiumStatusTitle}>Go Premium</Text>
+                  <Text style={styles.premiumStatusSubtitle}>
+                    {PREMIUM_TESTIMONIAL_LIMIT} reviews, {PREMIUM_AVATAR_COUNT}+ exclusive avatars & {PREMIUM_THEME_COUNT} exclusive themes
+                  </Text>
+                </View>
+                <View style={styles.premiumPricePill}>
+                  <Text style={styles.premiumPricePillText}>₹{PREMIUM_PRICE_INR}/mo</Text>
+                </View>
+              </View>
+              <View style={styles.premiumUpsellCta}>
+                <Text style={styles.premiumUpsellCtaText}>View Benefits</Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.gold} />
+              </View>
+            </TouchableOpacity>
+          )}
 
           {isAdmin && (
             <>
@@ -326,12 +412,61 @@ export default function ProfileScreen() {
                 })}
               </View>
             </View>
+            <View style={styles.accentRow}>
+              <View style={styles.menuLeft}>
+                <View style={styles.menuIconCircle}>
+                  <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.menuTextCol}>
+                  <Text style={styles.menuLabel}>Theme Colour</Text>
+                  <Text style={styles.menuSubtitle}>Ruby, Emerald & Amethyst are Premium-only</Text>
+                </View>
+              </View>
+              <View style={styles.accentSwatchRow}>
+                {ACCENT_THEMES.map((accent) => {
+                  const locked = accent.premium && !isPremium;
+                  const active = accentTheme === accent.id;
+                  return (
+                    <TouchableOpacity
+                      key={accent.id}
+                      style={[styles.accentSwatch, { backgroundColor: accent.swatch }, active && styles.accentSwatchActive]}
+                      activeOpacity={0.8}
+                      onPress={() => (locked ? setPremiumModalVisible(true) : setAccentTheme(accent.id))}
+                      accessibilityLabel={`${accent.label}${locked ? ' (Premium)' : ''}`}
+                    >
+                      {locked ? (
+                        <Ionicons name="lock-closed" size={11} color="#FFFFFF" />
+                      ) : (
+                        active && <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
             <MenuItem
               icon="notifications-outline"
               label="Notifications"
               subtitle="New arrivals, offers & updates"
               onPress={handleNotificationsPress}
             />
+          </View>
+
+          <Text style={styles.sectionTitle}>Account</Text>
+          <View style={styles.card}>
+            {session ? (
+              <>
+                <MenuItem icon="person-circle-outline" label="Signed In" subtitle={session.user?.email ?? undefined} />
+                <MenuItem icon="log-out-outline" label="Log Out" onPress={handleAccountSignOut} />
+              </>
+            ) : (
+              <MenuItem
+                icon="log-in-outline"
+                label="Log In / Create Account"
+                subtitle="Keep your Premium & profile synced everywhere"
+                onPress={() => setAccountAuthModalVisible(true)}
+              />
+            )}
           </View>
 
           <Text style={styles.sectionTitle}>Support</Text>
@@ -367,10 +502,15 @@ export default function ProfileScreen() {
         </Container>
       </ScrollView>
 
-      <AvatarPickerModal
+      <ProfileAvatarPickerModal
         visible={avatarPickerOpen}
         value={avatarIndex}
+        isPremium={isPremium}
         onSelect={(index) => updateProfile({ avatarIndex: index })}
+        onRequestUpgrade={() => {
+          setAvatarPickerOpen(false);
+          setPremiumModalVisible(true);
+        }}
         onClose={() => setAvatarPickerOpen(false)}
       />
 
@@ -379,8 +519,22 @@ export default function ProfileScreen() {
         name={name}
         bio={bio}
         avatarIndex={avatarIndex}
+        isPremium={isPremium}
         onSave={(values) => updateProfile(values)}
+        onRequestUpgrade={() => {
+          setEditProfileOpen(false);
+          setPremiumModalVisible(true);
+        }}
         onClose={() => setEditProfileOpen(false)}
+      />
+
+      <PremiumPaywallModal visible={premiumModalVisible} onClose={() => setPremiumModalVisible(false)} />
+
+      <CustomerAuthModal
+        visible={accountAuthModalVisible}
+        reason="Log in or create an account to keep your Premium status and profile synced across every device."
+        onClose={() => setAccountAuthModalVisible(false)}
+        onAuthenticated={() => setAccountAuthModalVisible(false)}
       />
     </SafeAreaView>
   );
@@ -390,6 +544,39 @@ function makeStyles(colors: ColorTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
 
+    // Compact, narrow-screen-only navbar: logo mark + name + tagline and
+    // nothing else — deliberately no settings/notification icons here.
+    navbar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm + 2,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    navbarLogo: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      borderWidth: 1.5,
+      borderColor: colors.gold,
+    },
+    navbarTextCol: { flex: 1, minWidth: 0 },
+    navbarTitle: { ...typography.body, fontFamily: fonts.headingMedium, color: colors.textPrimary },
+    navbarSubtitle: {
+      ...typography.caption,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      fontSize: 9.5,
+      marginTop: 1,
+    },
 
     appPromoCard: {
       alignItems: 'center',
@@ -448,7 +635,18 @@ function makeStyles(colors: ColorTheme) {
       borderColor: colors.surface,
     },
     profileTextCol: { flex: 1, minWidth: 0 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' },
     profileName: { ...typography.h3, color: colors.textPrimary },
+    premiumBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: colors.goldLight,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: radius.pill,
+    },
+    premiumBadgeText: { ...typography.caption, color: colors.gold, fontFamily: fonts.bodySemiBold, fontSize: 10 },
     memberSinceRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
     memberSinceText: { ...typography.caption, color: colors.textMuted },
     profileBio: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs, fontStyle: 'italic' },
@@ -473,6 +671,57 @@ function makeStyles(colors: ColorTheme) {
     statDivider: { width: 1, height: 32, backgroundColor: colors.divider },
     statValue: { ...typography.body, color: colors.textPrimary, fontFamily: fonts.bodySemiBold },
     statLabel: { ...typography.caption, color: colors.textMuted, marginTop: 1, textAlign: 'center' },
+
+    premiumStatusIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.goldLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    premiumStatusTitle: { ...typography.body, color: colors.textPrimary, fontFamily: fonts.bodySemiBold },
+    premiumStatusSubtitle: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
+    premiumStatusCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.gold,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      ...cardShadow(colors),
+    },
+    premiumUpsellCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.gold,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      ...cardShadow(colors),
+    },
+    premiumUpsellTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    premiumPricePill: {
+      backgroundColor: colors.goldLight,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: radius.pill,
+    },
+    premiumPricePillText: { ...typography.caption, color: colors.gold, fontFamily: fonts.bodySemiBold },
+    premiumUpsellCta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      marginTop: spacing.sm,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.divider,
+    },
+    premiumUpsellCtaText: { ...typography.caption, color: colors.gold, fontFamily: fonts.bodySemiBold },
 
     sectionTitle: {
       ...typography.caption,
@@ -530,6 +779,27 @@ function makeStyles(colors: ColorTheme) {
     themeOptionActive: { backgroundColor: colors.primary },
     themeOptionText: { ...typography.caption, color: colors.textSecondary, fontFamily: fonts.bodySemiBold },
     themeOptionTextActive: { color: colors.textInverse },
+    accentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+      gap: spacing.sm,
+    },
+    accentSwatchRow: { flexDirection: 'row', gap: 6 },
+    accentSwatch: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    accentSwatchActive: { borderColor: colors.textPrimary },
     footer: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl, gap: spacing.xs },
     footerText: { ...typography.caption, color: colors.textMuted },
     footerDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primaryLight },

@@ -233,33 +233,35 @@ export default function TermsScreen() {
                 </View>
               ) : (
                 <>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.chipRow}
-                    contentContainerStyle={{ paddingRight: spacing.lg, gap: spacing.sm }}
-                  >
-                    {TERMS_SECTIONS.map((s, i) => {
-                      const active = i === activeIndex;
-                      return (
-                        <TouchableOpacity
-                          key={s.id}
-                          style={[styles.chip, active && styles.chipActive]}
-                          onPress={() => scrollToSection(i)}
-                          activeOpacity={0.8}
-                        >
-                          <View style={[styles.chipNumber, active && styles.chipNumberActive]}>
-                            <Text style={[styles.chipNumberText, active && styles.chipNumberTextActive]}>
-                              {s.number}
+                  <View style={styles.chipStickyWrap}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.chipRow}
+                      contentContainerStyle={{ paddingRight: spacing.lg, gap: spacing.sm }}
+                    >
+                      {TERMS_SECTIONS.map((s, i) => {
+                        const active = i === activeIndex;
+                        return (
+                          <TouchableOpacity
+                            key={s.id}
+                            style={[styles.chip, active && styles.chipActive]}
+                            onPress={() => scrollToSection(i)}
+                            activeOpacity={0.8}
+                          >
+                            <View style={[styles.chipNumber, active && styles.chipNumberActive]}>
+                              <Text style={[styles.chipNumberText, active && styles.chipNumberTextActive]}>
+                                {s.number}
+                              </Text>
+                            </View>
+                            <Text style={[styles.chipLabel, active && styles.chipLabelActive]} numberOfLines={1}>
+                              {s.title}
                             </Text>
-                          </View>
-                          <Text style={[styles.chipLabel, active && styles.chipLabelActive]} numberOfLines={1}>
-                            {s.title}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
 
                   <TrustCallout colors={colors} isDark={isDark} style={styles.calloutSpacingNarrow} />
                 </>
@@ -597,6 +599,25 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
     leafImage: { width: 170, height: 120, opacity: isDark ? 0.9 : 0.85 },
 
     // ---------- Mobile Contents chips ----------
+    // Pinned to the top of the scrollable area on narrow/mobile — same fix
+    // as the wide sidebar, so the only way to jump between sections doesn't
+    // scroll away with the rest of the page. Deliberately `top: 0`, NOT
+    // NAV_HEIGHT: on narrow there's no TopNav (mobileHeader replaces it,
+    // and mobileHeader already sits outside/above this screen's ScrollView,
+    // permanently visible on its own) — so this bar has nothing to clear
+    // and should lock flush with the top of the scroll viewport. Using
+    // NAV_HEIGHT here previously left an unexplained gap above the bar that
+    // scrolling content showed through behind, which is the overlap bug
+    // from before.
+    chipStickyWrap: {
+      ...(isWeb ? ({ position: 'sticky', top: 0, zIndex: 10 } as any) : {}),
+      backgroundColor: colors.background,
+      paddingVertical: spacing.sm,
+      marginHorizontal: -spacing.lg,
+      paddingHorizontal: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
     chipRow: { marginBottom: 0 },
     chip: {
       flexDirection: 'row',

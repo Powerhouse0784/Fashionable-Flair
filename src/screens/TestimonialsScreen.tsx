@@ -32,15 +32,11 @@ import {
   updateOwnTestimonial,
   deleteOwnTestimonial,
 } from '@/services/testimonialService';
-import {
-  getOwnerToken,
-  getOwnedTestimonialIds,
-  rememberOwnedTestimonial,
-  forgetOwnedTestimonial,
-  canAddMoreTestimonials,
-  MAX_TESTIMONIALS_PER_DEVICE,
-} from '@/utils/testimonialOwnership';
+import { getTestimonialLimit } from '@/utils/testimonialOwnership';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
+import { usePremium } from '@/context/PremiumContext';
+import CustomerAuthModal from '@/components/CustomerAuthModal';
 import { confirmAsync, alertInfo } from '@/utils/confirm';
 import { hapticSuccess } from '@/utils/haptics';
 
@@ -75,23 +71,25 @@ export default function TestimonialsScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
+  const { isPremium } = usePremium();
+  const userId = session?.user?.id ?? null;
 
   const columns = width >= 1100 ? 3 : width >= 700 ? 2 : 1;
 
   const [remote, setRemote] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
-  const [ownedIds, setOwnedIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<RatingFilter>('all');
 
   const [formVisible, setFormVisible] = useState(false);
   const [editing, setEditing] = useState<Testimonial | null>(null);
   const [saving, setSaving] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [remoteData, owned] = await Promise.all([fetchTestimonials(), getOwnedTestimonialIds()]);
+    const remoteData = await fetchTestimonials();
     setRemote(remoteData);
-    setOwnedIds(owned);
     setLoading(false);
   }, []);
 
@@ -125,17 +123,32 @@ export default function TestimonialsScreen() {
 
   const rows = useMemo(() => chunk(filtered, columns), [filtered, columns]);
 
-  const handleAddPress = async () => {
-    const canAdd = await canAddMoreTestimonials();
-    if (!canAdd) {
+  // Writing a review needs an account (see AuthContext / CustomerAuthModal)
+  // — this is what actually opens the review form once that's settled,
+  // shared by both the guest-just-logged-in path and the already-logged-in
+  // path below.
+  const proceedToAdd = async () => {
+    if (!userId) return;
+    const myCount = remote.filter((t) => t.user_id === userId).length;
+    const limit = getTestimonialLimit(isPremium);
+    if (myCount >= limit) {
       alertInfo(
         'You\u2019ve reached the limit',
-        `Up to ${MAX_TESTIMONIALS_PER_DEVICE} reviews per device \u2014 edit or delete one of yours below to post a different one.`
+        `Up to ${limit} reviews per account \u2014 edit or delete one of yours below to post a different one.` +
+          (isPremium ? '' : ' Premium members get more.')
       );
       return;
     }
     setEditing(null);
     setFormVisible(true);
+  };
+
+  const handleAddPress = () => {
+    if (!userId) {
+      setAuthModalVisible(true);
+      return;
+    }
+    proceedToAdd();
   };
 
   const handleEditPress = (t: Testimonial) => {
@@ -147,9 +160,7 @@ export default function TestimonialsScreen() {
     const confirmed = await confirmAsync('Delete your review?', 'This can\u2019t be undone.', 'Delete');
     if (!confirmed) return;
     try {
-      const token = await getOwnerToken();
-      await deleteOwnTestimonial(t.id, token);
-      await forgetOwnedTestimonial(t.id);
+      await deleteOwnTestimonial(t.id);
       showToast('Review deleted', 'success');
       load();
     } catch (e: any) {
@@ -158,15 +169,20 @@ export default function TestimonialsScreen() {
   };
 
   const handleSubmit = async (input: TestimonialInput) => {
+    if (!userId) {
+      // Shouldn't happen — the form only opens once logged in — but if a
+      // session ever expires mid-form, fail safely instead of posting an
+      // ownerless review.
+      alertInfo('Please log in', 'Your session expired \u2014 please log in again to post your review.');
+      return;
+    }
     setSaving(true);
     try {
-      const token = await getOwnerToken();
       if (editing) {
-        await updateOwnTestimonial(editing.id, token, input);
+        await updateOwnTestimonial(editing.id, input);
         showToast('Review updated', 'success');
       } else {
-        const created = await createTestimonial(input, token);
-        await rememberOwnedTestimonial(created.id);
+        await createTestimonial(input, userId);
         showToast('Thanks for sharing your experience!', 'success');
       }
       hapticSuccess();
@@ -273,10 +289,12 @@ export default function TestimonialsScreen() {
 
                   <View style={[styles.heroSceneWrap, isWide && styles.heroSceneWrapWide]}>
                     {isWide && (
-                      <Text style={styles.scriptTag}>
-                        More Than{'\n'}Just Jewellery{' '}
-                        <Ionicons name="heart-outline" size={14} color={heroAccent} />
-                      </Text>
+                      <View style={[styles.scriptTagWrap, isDark && styles.scriptTagScrimBg]}>
+                        <Text style={styles.scriptTag}>
+                          More Than{'\n'}Just Jewellery{' '}
+                          <Ionicons name="heart-outline" size={14} color={heroAccent} />
+                        </Text>
+                      </View>
                     )}
                     <Image
                       source={heroScene}
@@ -382,7 +400,7 @@ export default function TestimonialsScreen() {
                         <TestimonialCard
                           key={t.id}
                           testimonial={t}
-                          isOwn={ownedIds.includes(t.id)}
+                          isOwn={!!userId && t.user_id === userId}
                           onEdit={() => handleEditPress(t)}
                           onDelete={() => handleDeletePress(t)}
                           style={{ flex: 1 }}
@@ -433,6 +451,16 @@ export default function TestimonialsScreen() {
           onClose={() => {
             setFormVisible(false);
             setEditing(null);
+          }}
+        />
+
+        <CustomerAuthModal
+          visible={authModalVisible}
+          reason="Log in or create a free account to share a review — it keeps the review limit fair and lets your reviews follow you anywhere."
+          onClose={() => setAuthModalVisible(false)}
+          onAuthenticated={() => {
+            setAuthModalVisible(false);
+            proceedToAdd();
           }}
         />
       </SafeAreaView>
@@ -556,28 +584,48 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
     },
     heroSceneWrapWide: { flex: 1, width: undefined, maxWidth: 480, alignSelf: 'stretch', justifyContent: 'center' },
     heroScene: { width: '100%', aspectRatio: 0.92 },
-    scriptTag: {
+    scriptTagWrap: {
       position: 'absolute',
       top: 4,
       right: 8,
+      zIndex: 1,
+    },
+    // Dark theme only: the light-coloured flowers baked into the photo can
+    // land directly behind this text, and a text-shadow alone wasn't always
+    // enough to separate the two. A soft, low-opacity plate behind the
+    // words guarantees they read clearly regardless of what's in the photo
+    // at that exact spot — light theme didn't have this problem, so it
+    // keeps the plain, unboxed look.
+    scriptTagScrimBg: {
+      backgroundColor: 'rgba(4,9,18,0.5)',
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+      top: -6,
+      right: -8,
+    },
+    scriptTag: {
       fontFamily: fonts.headingMedium,
       fontStyle: 'italic',
       fontSize: 17,
       lineHeight: 22,
       textAlign: 'right',
-      color: colors.textSecondary,
-      zIndex: 1,
-      // The flowers baked into the hero photo sometimes fall directly
-      // behind this text — a light petal behind light italic text (dark
-      // theme especially) was reading as barely-there. A soft halo the
-      // opposite tone of the text keeps it legible wherever it lands,
-      // without needing a background box.
+      // Brighter than the theme's usual secondary-text grey in dark mode —
+      // paired with the scrim above, this is what actually fixed the
+      // legibility complaint; the previous attempt only changed the shadow
+      // and kept the same mid-grey tone, which was still too close to the
+      // photo's own highlights.
+      color: isDark ? '#FFFFFF' : colors.textSecondary,
       ...(Platform.OS === 'web'
-        ? ({ textShadow: isDark ? '0 1px 6px rgba(5,10,20,0.9)' : '0 1px 6px rgba(255,255,255,0.85)' } as any)
+        ? ({
+            textShadow: isDark
+              ? '0 1px 3px rgba(0,0,0,0.9), 0 2px 10px rgba(0,0,0,0.7)'
+              : '0 1px 6px rgba(255,255,255,0.85)',
+          } as any)
         : {
-            textShadowColor: isDark ? 'rgba(5,10,20,0.9)' : 'rgba(255,255,255,0.85)',
+            textShadowColor: isDark ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.85)',
             textShadowOffset: { width: 0, height: 1 },
-            textShadowRadius: 6,
+            textShadowRadius: isDark ? 8 : 6,
           }),
     },
     // ---- Stats card --------------------------------------------------------
