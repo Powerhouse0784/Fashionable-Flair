@@ -2,6 +2,15 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useCall
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/services/supabaseClient';
 
+interface SignInResult {
+  error: string | null;
+  /** The session that was just established — pass this straight to
+   * whatever needs to act on "this exact account, right now" (e.g.
+   * checking Premium status) instead of reading it back from context,
+   * which may not have re-rendered with the new session yet. */
+  session: Session | null;
+}
+
 interface SignUpResult {
   error: string | null;
   /** True if the account was created but needs email confirmation before
@@ -10,6 +19,9 @@ interface SignUpResult {
    * is set, and also false on a normal immediate-session signup (email
    * confirmation turned off in the Supabase project). */
   needsConfirmation: boolean;
+  /** Same idea as SignInResult.session — only set when needsConfirmation
+   * is false and there's no error. */
+  session: Session | null;
 }
 
 interface AuthContextValue {
@@ -17,7 +29,7 @@ interface AuthContextValue {
   /** True only if this user's id is present in the `admins` table — not just "logged in". */
   isAdmin: boolean;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<SignInResult>;
   /** Customer self-registration — a regular signed-up shopper, never an
    * admin (that still only ever comes from the `admins` table above). */
   signUp: (email: string, password: string) => Promise<SignUpResult>;
@@ -78,16 +90,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, [checkAdminStatus]);
 
-  const signIn = async (email: string, password: string) => {
-    if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+  const signIn = async (email: string, password: string): Promise<SignInResult> => {
+    if (!isSupabaseConfigured) return { error: CONFIG_ERROR, session: null };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error?.message ?? null, session: data.session ?? null };
   };
 
   const signUp = async (email: string, password: string): Promise<SignUpResult> => {
-    if (!isSupabaseConfigured) return { error: CONFIG_ERROR, needsConfirmation: false };
+    if (!isSupabaseConfigured) return { error: CONFIG_ERROR, needsConfirmation: false, session: null };
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error: error.message, needsConfirmation: false };
+    if (error) return { error: error.message, needsConfirmation: false, session: null };
 
     // Supabase deliberately returns a "success" here — no error at all —
     // when the email already belongs to a confirmed account, so that a
@@ -97,13 +109,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // since there's still no session, likely show "check your email" for
     // an account whose confirmation email went out days or months ago).
     if (data.user && data.user.identities && data.user.identities.length === 0) {
-      return { error: ALREADY_REGISTERED_ERROR, needsConfirmation: false };
+      return { error: ALREADY_REGISTERED_ERROR, needsConfirmation: false, session: null };
     }
 
     // A session here means the project has email confirmation turned off
     // and this account can be used immediately; no session means a real
     // confirmation email is on its way and there is nothing to log into yet.
-    return { error: null, needsConfirmation: !data.session };
+    return { error: null, needsConfirmation: !data.session, session: data.session ?? null };
   };
 
   const signOut = async () => {

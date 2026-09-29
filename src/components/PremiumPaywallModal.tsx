@@ -12,6 +12,7 @@ import {
   createPremiumOrder,
   runWebCheckout,
   verifyPremiumPayment,
+  fetchPremiumStatusFor,
   isWebPlatform,
   CHECKOUT_DISMISSED,
   PremiumOrder,
@@ -200,8 +201,29 @@ export default function PremiumPaywallModal({ visible, onClose }: Props) {
         visible={authModalVisible}
         reason="Log in or create an account to subscribe to Premium — this keeps your purchase safe even if you clear your browser or switch devices."
         onClose={() => setAuthModalVisible(false)}
-        onAuthenticated={() => {
+        onAuthenticated={async (authSession) => {
           setAuthModalVisible(false);
+          // Check THIS account's Premium status directly, for the session
+          // that literally just came back from signing in — not via
+          // usePremium()'s own state, which reacts to AuthContext and may
+          // not have re-rendered for this exact session yet. Someone who
+          // logs back into an account that's already Premium (e.g. after
+          // testing logout) must never be sent to checkout again for it.
+          setCheckingOut(true);
+          const status = await fetchPremiumStatusFor(authSession.user.id);
+          setCheckingOut(false);
+          if (status.isPremium) {
+            if (status.premiumSince && status.premiumExpiresAt) {
+              applyServerPremium(status.premiumSince, status.premiumExpiresAt);
+            }
+            hapticSuccess();
+            onClose();
+            alertInfo(
+              'You\u2019re Already Premium!',
+              `This account\u2019s subscription is active until ${formatDate(status.premiumExpiresAt)}.`
+            );
+            return;
+          }
           runCheckout();
         }}
       />

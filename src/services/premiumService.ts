@@ -21,6 +21,37 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
  */
 export const isWebPlatform = Platform.OS === 'web';
 
+export interface PremiumStatus {
+  isPremium: boolean;
+  premiumSince: string | null;
+  premiumExpiresAt: string | null;
+}
+
+/**
+ * The one place that reads an account's Premium status from `profiles`.
+ * Shared by PremiumContext (on load, and on refresh()) and by the paywall's
+ * post-login check — that second caller needs the answer for the account
+ * that *just* signed in, before PremiumContext's own effect is guaranteed
+ * to have re-run, so it fetches directly for that user id rather than
+ * trusting context state that may not have caught up yet.
+ */
+export async function fetchPremiumStatusFor(userId: string): Promise<PremiumStatus> {
+  if (!isSupabaseConfigured) return { isPremium: false, premiumSince: null, premiumExpiresAt: null };
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('premium_since, premium_expires_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) {
+    console.warn('Failed to load premium status', error.message);
+    return { isPremium: false, premiumSince: null, premiumExpiresAt: null };
+  }
+  const premiumSince = data?.premium_since ?? null;
+  const premiumExpiresAt = data?.premium_expires_at ?? null;
+  const isPremium = !!premiumExpiresAt && new Date(premiumExpiresAt).getTime() > Date.now();
+  return { isPremium, premiumSince, premiumExpiresAt };
+}
+
 export interface PremiumOrder {
   orderId: string;
   amount: number; // paise

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, ReactNode } from 'react';
-import { supabase, isSupabaseConfigured } from '@/services/supabaseClient';
+import { isSupabaseConfigured } from '@/services/supabaseClient';
+import { fetchPremiumStatusFor, PremiumStatus } from '@/services/premiumService';
 import { useAuth } from './AuthContext';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -11,15 +12,21 @@ interface PremiumContextValue {
   /** Whole days left in the current period, 0 once it's expired or never subscribed. */
   daysRemaining: number;
   isLoaded: boolean;
-  /** Re-fetches this account's premium status from Supabase — call after
-   * a verified payment, or whenever it's worth double-checking. */
-  refresh: () => Promise<void>;
+  /** Re-fetches this account's premium status from Supabase and returns
+   * it directly — call after a verified payment, or whenever it's worth
+   * double-checking. Returns the fetched value (not just updating state)
+   * so a caller that needs the authoritative answer *right now* — e.g.
+   * the paywall, immediately after a fresh login — doesn't have to trust
+   * that this context has already re-rendered with it. */
+  refresh: () => Promise<PremiumStatus>;
   /** Applies the since/expiresAt a payment-verification call just
    * returned, instantly, without waiting on a network round trip —
    * it's the same value the server just wrote, so this is optimistic
    * only in timing, not in trust. */
   applyServerPremium: (since: string, expiresAt: string) => void;
 }
+
+const NOT_PREMIUM: PremiumStatus = { isPremium: false, premiumSince: null, premiumExpiresAt: null };
 
 const PremiumContext = createContext<PremiumContextValue | undefined>(undefined);
 
@@ -36,31 +43,19 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
-  const [since, setSince] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [status, setStatus] = useState<PremiumStatus>(NOT_PREMIUM);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async (): Promise<PremiumStatus> => {
     if (!userId || !isSupabaseConfigured) {
-      setSince(null);
-      setExpiresAt(null);
+      setStatus(NOT_PREMIUM);
       setIsLoaded(true);
-      return;
+      return NOT_PREMIUM;
     }
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('premium_since, premium_expires_at')
-        .eq('user_id', userId)
-        .maybeSingle();
-      if (error) {
-        console.warn('Failed to load premium status', error.message);
-        setSince(null);
-        setExpiresAt(null);
-      } else {
-        setSince(data?.premium_since ?? null);
-        setExpiresAt(data?.premium_expires_at ?? null);
-      }
+      const next = await fetchPremiumStatusFor(userId);
+      setStatus(next);
+      return next;
     } finally {
       setIsLoaded(true);
     }
@@ -72,24 +67,24 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   }, [fetchStatus]);
 
   const applyServerPremium = (nextSince: string, nextExpiresAt: string) => {
-    setSince(nextSince);
-    setExpiresAt(nextExpiresAt);
+    setStatus({ isPremium: new Date(nextExpiresAt).getTime() > Date.now(), premiumSince: nextSince, premiumExpiresAt: nextExpiresAt });
   };
 
-  const isPremium = !!expiresAt && new Date(expiresAt).getTime() > Date.now();
-  const daysRemaining = isPremium ? Math.max(0, Math.ceil((new Date(expiresAt as string).getTime() - Date.now()) / MS_PER_DAY)) : 0;
+  const daysRemaining = status.isPremium
+    ? Math.max(0, Math.ceil((new Date(status.premiumExpiresAt as string).getTime() - Date.now()) / MS_PER_DAY))
+    : 0;
 
   const value = useMemo(
     () => ({
-      isPremium,
-      premiumSince: since,
-      premiumExpiresAt: expiresAt,
+      isPremium: status.isPremium,
+      premiumSince: status.premiumSince,
+      premiumExpiresAt: status.premiumExpiresAt,
       daysRemaining,
       isLoaded,
       refresh: fetchStatus,
       applyServerPremium,
     }),
-    [isPremium, since, expiresAt, daysRemaining, isLoaded, fetchStatus]
+    [status, daysRemaining, isLoaded, fetchStatus]
   );
 
   return <PremiumContext.Provider value={value}>{children}</PremiumContext.Provider>;

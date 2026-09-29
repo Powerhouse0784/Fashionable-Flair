@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -51,7 +51,12 @@ const leafDark = require('@/assets/privacy/privacy-leaf-dark.png');
 
 export default function PrivacyPolicyScreen() {
   const { colors, isDark } = useTheme();
-  const styles = makeStyles(colors, isDark);
+  // Memoized so it's the same object across renders that don't actually
+  // change colors/theme — SectionsList below is React.memo'd and relies
+  // on that stability to skip re-rendering every time activeIndex changes
+  // on scroll (a fresh styles object every render would defeat that
+  // memoization, since it'd look like a changed prop).
+  const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
 
@@ -65,6 +70,9 @@ export default function PrivacyPolicyScreen() {
   const bodyWrapY = useRef(0);
   const sectionsColumnY = useRef(0);
   const sectionYs = useRef<number[]>(PRIVACY_SECTIONS.map(() => 0));
+  const handleSectionLayout = useCallback((i: number, y: number) => {
+    sectionYs.current[i] = y;
+  }, []);
 
   // Keyed to the same activeIndex: the Contents list auto-scrolls itself so
   // the highlighted item is always in view, instead of leaving it to the
@@ -300,48 +308,13 @@ export default function PrivacyPolicyScreen() {
                   sectionsColumnY.current = e.nativeEvent.layout.y;
                 }}
               >
-                {/* Continuous connector line, painted first so every card
-                    (opaque background) sits on top of it except in the gaps
-                    between cards — that's what makes it read as a timeline
-                    threading circle-to-circle instead of one long line
-                    overlapping the text. */}
-                <View style={styles.timelineTrack} pointerEvents="none" />
-
-                {PRIVACY_SECTIONS.map((s, i) => (
-                  <View
-                    key={s.id}
-                    style={styles.sectionRow}
-                    onLayout={(e: LayoutChangeEvent) => {
-                      sectionYs.current[i] = e.nativeEvent.layout.y;
-                    }}
-                  >
-                    <View style={styles.numberCircle}>
-                      <Text style={styles.numberCircleText}>{s.number}</Text>
-                    </View>
-
-                    <View style={styles.card}>
-                      <View style={styles.cardHeaderRow}>
-                        <Text style={styles.cardTitle}>{s.title}</Text>
-                        <View style={styles.cardIconBadge}>
-                          <Ionicons name={s.icon as any} size={16} color={colors.primary} />
-                        </View>
-                      </View>
-
-                      <Text style={styles.cardBody}>{s.body}</Text>
-
-                      {s.subsections && (
-                        <View style={styles.subsectionList}>
-                          {s.subsections.map((sub) => (
-                            <View key={sub.title} style={styles.subsectionItem}>
-                              <Text style={styles.subsectionTitle}>{sub.title}</Text>
-                              <Text style={styles.subsectionBody}>{sub.body}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                ))}
+                {/* Extracted + React.memo'd below: this list is static
+                    (doesn't depend on activeIndex at all), so without
+                    memoizing it, changing sections while scrolling was
+                    re-rendering this entire card list on every tick —
+                    fighting the sticky chip bar above for layout/paint
+                    time and showing up as a visible shake/vibration. */}
+                <SectionsList sections={PRIVACY_SECTIONS} colors={colors} styles={styles} onSectionLayout={handleSectionLayout} />
               </View>
             </View>
           </Container>
@@ -377,6 +350,67 @@ function PriorityCallout({
     </View>
   );
 }
+
+/** The actual Q&A/section cards — split out and memoized so scrolling
+ * (which updates activeIndex on the parent, for the sticky chip bar and
+ * sidebar) never has to re-render this list too. It never reads
+ * activeIndex, so there's nothing here that scrolling should be able to
+ * change. */
+const SectionsList = React.memo(function SectionsList({
+  sections,
+  colors,
+  styles,
+  onSectionLayout,
+}: {
+  sections: typeof PRIVACY_SECTIONS;
+  colors: ColorTheme;
+  styles: any;
+  onSectionLayout: (i: number, y: number) => void;
+}) {
+  return (
+    <>
+      {/* Continuous connector line, painted first so every card (opaque
+          background) sits on top of it except in the gaps between cards —
+          that's what makes it read as a timeline threading circle-to-circle
+          instead of one long line overlapping the text. */}
+      <View style={styles.timelineTrack} pointerEvents="none" />
+
+      {sections.map((s, i) => (
+        <View
+          key={s.id}
+          style={styles.sectionRow}
+          onLayout={(e: LayoutChangeEvent) => onSectionLayout(i, e.nativeEvent.layout.y)}
+        >
+          <View style={styles.numberCircle}>
+            <Text style={styles.numberCircleText}>{s.number}</Text>
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>{s.title}</Text>
+              <View style={styles.cardIconBadge}>
+                <Ionicons name={s.icon as any} size={16} color={colors.primary} />
+              </View>
+            </View>
+
+            <Text style={styles.cardBody}>{s.body}</Text>
+
+            {s.subsections && (
+              <View style={styles.subsectionList}>
+                {s.subsections.map((sub) => (
+                  <View key={sub.title} style={styles.subsectionItem}>
+                    <Text style={styles.subsectionTitle}>{sub.title}</Text>
+                    <Text style={styles.subsectionBody}>{sub.body}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+      ))}
+    </>
+  );
+});
 
 function makeStyles(colors: ColorTheme, isDark: boolean) {
   return StyleSheet.create({
