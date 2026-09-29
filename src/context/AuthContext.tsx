@@ -2,6 +2,16 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useCall
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/services/supabaseClient';
 
+interface SignUpResult {
+  error: string | null;
+  /** True if the account was created but needs email confirmation before
+   * it can sign in — there is no session yet, so callers must NOT treat
+   * this as "logged in" (see CustomerAuthModal). False whenever `error`
+   * is set, and also false on a normal immediate-session signup (email
+   * confirmation turned off in the Supabase project). */
+  needsConfirmation: boolean;
+}
+
 interface AuthContextValue {
   session: Session | null;
   /** True only if this user's id is present in the `admins` table — not just "logged in". */
@@ -10,13 +20,15 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   /** Customer self-registration — a regular signed-up shopper, never an
    * admin (that still only ever comes from the `admins` table above). */
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
 }
 
+const ALREADY_REGISTERED_ERROR = 'An account with this email already exists \u2014 please log in instead.';
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const CONFIG_ERROR = 'Sign-in isn\u2019t configured yet — see SUPABASE_SETUP.md.';
+const CONFIG_ERROR = "Sign-in isn't configured yet — see SUPABASE_SETUP.md.";
 
 // Same session/identity for two different audiences: the store owner (and
 // anyone they allow-list in the `admins` table) uses this to reach the
@@ -72,14 +84,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   };
 
-  const signUp = async (email: string, password: string) => {
-    if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error: error?.message ?? null };
+  const signUp = async (email: string, password: string): Promise<SignUpResult> => {
+    if (!isSupabaseConfigured) return { error: CONFIG_ERROR, needsConfirmation: false };
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return { error: error.message, needsConfirmation: false };
+
+    // Supabase deliberately returns a "success" here — no error at all —
+    // when the email already belongs to a confirmed account, so that a
+    // stranger can't use signup to probe which emails are registered. The
+    // only tell is an empty `identities` array. Without this check the
+    // app would believe a brand-new account had just been created (and,
+    // since there's still no session, likely show "check your email" for
+    // an account whose confirmation email went out days or months ago).
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      return { error: ALREADY_REGISTERED_ERROR, needsConfirmation: false };
+    }
+
+    // A session here means the project has email confirmation turned off
+    // and this account can be used immediately; no session means a real
+    // confirmation email is on its way and there is nothing to log into yet.
+    return { error: null, needsConfirmation: !data.session };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // { scope: 'local' } clears this device's session immediately, even if
+    // the network call to also revoke it server-side fails (offline, a
+    // timeout, Supabase briefly unreachable). Without it, a failed revoke
+    // can leave the old session sitting in storage — meaning the same
+    // account silently signs back in on the next app launch, looking
+    // exactly like "logging out didn't work".
+    await supabase.auth.signOut({ scope: 'local' });
   };
 
   const value = useMemo(() => ({ session, isAdmin, loading, signIn, signUp, signOut }), [session, isAdmin, loading]);

@@ -10,6 +10,7 @@ import { fonts } from '@/hooks/useAppFonts';
 import { Product } from '@/types/product';
 import { RootStackParamList } from '@/types/navigation';
 import { useWishlist } from '@/context/WishlistContext';
+import { useModalBackClose } from '@/hooks/useModalBackClose';
 import { getPrimaryImage } from '@/utils/productImages';
 import { goToMeesho } from '@/utils/buyNow';
 import { shareProduct } from '@/utils/share';
@@ -34,6 +35,10 @@ export default function WishlistItemCard({ product, style }: Props) {
   const styles = makeStyles(colors);
   const { toggleWishlist } = useWishlist();
   const [menuOpen, setMenuOpen] = useState(false);
+  // So a back-press (Android hardware button, or the browser's back/edge-
+  // swipe on web) closes just this menu instead of skipping straight
+  // through to whatever screen opened it — see useModalBackClose.
+  useModalBackClose(menuOpen, () => setMenuOpen(false));
   const primaryImage = getPrimaryImage(product);
   const outOfStock = product.isAvailable === false;
   const scale = useRef(new Animated.Value(1)).current;

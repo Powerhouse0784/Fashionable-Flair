@@ -98,7 +98,7 @@ export default function AdminTestimonialsScreen() {
         ListEmptyComponent={
           !loading ? (
             <Text style={styles.emptyText}>
-              No shopper-submitted testimonials yet — they\u2019ll show up here as people use the "Share Your Experience" form.
+              No shopper-submitted testimonials yet — they’ll show up here as people use the "Share Your Experience" form.
             </Text>
           ) : (
             <View style={{ paddingVertical: spacing.xxl, alignItems: 'center' }}>

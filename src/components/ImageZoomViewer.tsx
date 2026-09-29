@@ -15,6 +15,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useModalBackClose } from '@/hooks/useModalBackClose';
 
 interface Props {
   visible: boolean;
@@ -223,6 +224,10 @@ function ZoomableImage({
  * so a pan gesture doesn't accidentally flip to the next photo.
  */
 export default function ImageZoomViewer({ visible, images, initialIndex, onClose }: Props) {
+  // So a back-press (Android hardware button, or the browser's back/edge-
+  // swipe on web) closes just this sheet instead of skipping straight
+  // through to whatever screen opened it — see useModalBackClose.
+  useModalBackClose(visible, onClose);
   const { width, height } = useWindowDimensions();
   const [zoomedIn, setZoomedIn] = useState(false);
   const listRef = useRef<FlatList<string>>(null);

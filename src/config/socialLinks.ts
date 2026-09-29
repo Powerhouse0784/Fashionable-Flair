@@ -31,3 +31,6 @@ export const APK_DOWNLOAD_URL = 'https://example.com/fashionable-flair.apk';
  * services/premiumService.ts and RAZORPAY_SETUP.md).
  */
 export const WEBSITE_URL = 'https://example.com';
+
+/** Same address the footer and Contact page already use. */
+export const SUPPORT_EMAIL = 'fashionableflair786@gmail.com';

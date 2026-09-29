@@ -10,9 +10,11 @@ import {
   ScrollView,
   Animated,
   Platform,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
@@ -25,7 +27,7 @@ import { categories } from '@/data/categories';
 import { CategoryKey } from '@/types/product';
 import { GRID_GAP } from '@/constants/layout';
 import ProductCard from '@/components/ProductCard';
-import EmptyState from '@/components/EmptyState';
+import NoProductsFound, { NoProductsDecor } from '@/components/NoProductsFound';
 import { ProductGridSkeleton } from '@/components/ProductCardSkeleton';
 import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import Container from '@/components/Container';
@@ -50,6 +52,8 @@ export default function SearchScreen() {
   const [sortSheetVisible, setSortSheetVisible] = useState(false);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+  const navigation = useNavigation<any>();
   const columns = useColumns();
   const isWide = useIsWideScreen();
   const handleScroll = useScrollVisibilityHandler();
@@ -101,6 +105,7 @@ export default function SearchScreen() {
   }, [query, filters, sortOption, products]);
 
   const activeFilterCount = countActiveFilters(filters);
+  const showEmpty = !(loading && products.length === 0) && results.length === 0;
   const sortLabel =
     sortOption === 'price-asc' ? 'Price ↑' : sortOption === 'price-desc' ? 'Price ↓' : 'Sort';
 
@@ -113,9 +118,13 @@ export default function SearchScreen() {
 
   const header = (
     <View>
-      <View style={[styles.searchBar, inputFocused && styles.searchBarFocused]}>
+      <Pressable
+        onPress={() => inputRef.current?.focus()}
+        style={[styles.searchBar, inputFocused && styles.searchBarFocused]}
+      >
         <Ionicons name="search" size={19} color={inputFocused ? colors.primary : colors.textMuted} />
         <TextInput
+          ref={inputRef}
           value={query}
           onChangeText={setQuery}
           placeholder={isListening ? 'Listening…' : 'Search earrings, pendants, sets...'}
@@ -126,6 +135,8 @@ export default function SearchScreen() {
           onBlur={() => setInputFocused(false)}
           onSubmitEditing={submitSearch}
           returnKeyType="search"
+          selectionColor={colors.primary}
+          accessibilityLabel="Search products"
         />
         {query.length > 0 && (
           <TouchableOpacity
@@ -158,7 +169,7 @@ export default function SearchScreen() {
             </Animated.View>
           </TouchableOpacity>
         )}
-      </View>
+      </Pressable>
 
       {voiceError && (
         <View style={styles.voiceErrorBanner}>
@@ -253,12 +264,25 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {showEmpty && <NoProductsDecor />}
       {!isWide && <MobileQuickNav />}
       <Container style={{ flex: 1 }}>
         {loading && products.length === 0 ? (
           <>
             {header}
             <ProductGridSkeleton count={6} columns={columns} />
+          </>
+        ) : showEmpty ? (
+          <>
+            {header}
+            <NoProductsFound
+              hasActiveFilters={query.trim().length > 0 || activeFilterCount > 0}
+              onClearFilters={() => {
+                setQuery('');
+                setFilters(DEFAULT_FILTERS);
+              }}
+              onExploreCategories={() => navigation.navigate('Tabs', { screen: 'Home' })}
+            />
           </>
         ) : (
           <FlatList
@@ -272,13 +296,6 @@ export default function SearchScreen() {
             onScroll={handleScroll}
             scrollEventThrottle={16}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-            ListEmptyComponent={
-              <EmptyState
-                icon="search-outline"
-                title="No products found"
-                subtitle="Try different filters or a broader search term"
-              />
-            }
             renderItem={({ item }) => <ProductCard product={item} columns={columns} />}
           />
         )}
@@ -315,11 +332,36 @@ function makeStyles(colors: ColorTheme) {
       borderColor: colors.border,
       height: 52,
       ...(Platform.OS === 'web'
-        ? ({ boxShadow: `0 2px 10px ${colors.shadow}` } as any)
+        ? ({ boxShadow: `0 2px 10px ${colors.shadow}`, cursor: 'text' } as any)
         : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 2 }),
     },
-    searchBarFocused: { borderColor: colors.primary },
-    input: { flex: 1, marginLeft: spacing.sm, ...typography.body, color: colors.textPrimary },
+    searchBarFocused: {
+      borderColor: colors.primary,
+      // Soft focus ring instead of the browser's default black outline.
+      ...(Platform.OS === 'web'
+        ? ({ boxShadow: `0 0 0 4px ${colors.primary}26, 0 2px 10px ${colors.shadow}` } as any)
+        : {}),
+    },
+    input: {
+      flex: 1,
+      marginLeft: spacing.sm,
+      ...typography.body,
+      color: colors.textPrimary,
+      paddingVertical: 0,
+      // Web: a bare <input> draws its own black focus rectangle + border —
+      // those were the "two black lines". Strip them so the whole pill is
+      // the text area, and tint the blinking caret with the brand colour.
+      ...(Platform.OS === 'web'
+        ? ({
+            outlineStyle: 'none',
+            outlineWidth: 0,
+            borderWidth: 0,
+            backgroundColor: 'transparent',
+            height: '100%',
+            caretColor: colors.primary,
+          } as any)
+        : {}),
+    },
     clearButton: { marginRight: spacing.xs },
     micButton: { marginLeft: spacing.xs },
     micPulse: {

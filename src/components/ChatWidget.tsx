@@ -20,6 +20,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useIsWideScreen } from '@/hooks/useResponsive';
 import { useTabBarHeight } from '@/hooks/useTabBarHeight';
+import { useModalBackClose } from '@/hooks/useModalBackClose';
 import { isSupabaseConfigured } from '@/services/supabaseClient';
 import { sendChatMessage, ChatMessage, checkChatbotHealth } from '@/services/chatService';
 
@@ -84,6 +85,10 @@ export default function ChatWidget({ hidden, open: openProp, onClose, wideBottom
     if (onClose) onClose();
     if (!isControlled) setInternalOpen(false);
   };
+  // So a back-press (Android hardware button, or the browser's back/edge-
+  // swipe on web) closes just this panel instead of skipping straight
+  // through to whatever screen opened it — see useModalBackClose.
+  useModalBackClose(open, closePanel);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);

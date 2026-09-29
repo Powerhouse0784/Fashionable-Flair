@@ -16,6 +16,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useModalBackClose } from '@/hooks/useModalBackClose';
 import { fonts } from '@/hooks/useAppFonts';
 import { resolveProfileAvatarSource } from '@/data/profileAvatar';
 import ProfileAvatarPickerModal from './ProfileAvatarPickerModal';
@@ -38,6 +39,10 @@ const BIO_MAX = 80;
  * Profile tab — name, a short one-line bio, and an avatar picked from the
  * same 50-portrait set testimonials use. Nothing here leaves the device. */
 export default function EditProfileModal({ visible, name, bio, avatarIndex, isPremium, onSave, onRequestUpgrade, onClose }: Props) {
+  // So a back-press (Android hardware button, or the browser's back/edge-
+  // swipe on web) closes just this sheet instead of skipping straight
+  // through to whatever screen opened it — see useModalBackClose.
+  useModalBackClose(visible, onClose);
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const { height: windowHeight } = useWindowDimensions();

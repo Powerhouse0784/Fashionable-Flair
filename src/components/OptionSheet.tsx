@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useModalBackClose } from '@/hooks/useModalBackClose';
 import { fonts } from '@/hooks/useAppFonts';
 
 export interface SheetOption {
@@ -25,6 +26,10 @@ interface Props {
  * app's other bottom sheets (FilterSheet, AvatarPickerModal) for a
  * consistent feel. */
 export default function OptionSheet({ visible, title, options, value, onSelect, onClose }: Props) {
+  // So a back-press (Android hardware button, or the browser's back/edge-
+  // swipe on web) closes just this sheet instead of skipping straight
+  // through to whatever screen opened it — see useModalBackClose.
+  useModalBackClose(visible, onClose);
   const { colors } = useTheme();
   const styles = makeStyles(colors);
 

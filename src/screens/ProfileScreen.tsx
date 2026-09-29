@@ -116,7 +116,7 @@ export default function ProfileScreen() {
   const { colors, preference, setPreference, accentTheme, setAccentTheme } = useTheme();
   const styles = makeStyles(colors);
   const { isAdmin, session, signOut } = useAuth();
-  const { name, bio, avatarIndex, memberSince, updateProfile } = useProfile();
+  const { name, bio, avatarIndex, memberSince, isGuest, updateProfile } = useProfile();
   const { isPremium, premiumExpiresAt } = usePremium();
   const { wishlistIds } = useWishlist();
   const { recentlyViewedIds } = useRecentlyViewed();
@@ -266,12 +266,23 @@ export default function ProfileScreen() {
               <View style={styles.profileTextCol}>
                 <View style={styles.nameRow}>
                   <Text style={styles.profileName} numberOfLines={1}>
-                    {name || 'Add your name'}
+                    {name || (isGuest ? 'Add your name' : 'Add your account name')}
                   </Text>
                   {isPremium && (
                     <View style={styles.premiumBadge}>
                       <Ionicons name="diamond" size={10} color={colors.gold} />
                       <Text style={styles.premiumBadgeText}>Premium</Text>
+                    </View>
+                  )}
+                  {isGuest ? (
+                    <View style={styles.guestBadge}>
+                      <Ionicons name="person-outline" size={10} color={colors.textMuted} />
+                      <Text style={styles.guestBadgeText}>Guest</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.accountBadge}>
+                      <Ionicons name="checkmark-circle" size={10} color={colors.success} />
+                      <Text style={styles.accountBadgeText}>Signed In</Text>
                     </View>
                   )}
                 </View>
@@ -660,6 +671,26 @@ function makeStyles(colors: ColorTheme) {
       borderRadius: radius.pill,
     },
     premiumBadgeText: { ...typography.caption, color: colors.gold, fontFamily: fonts.bodySemiBold, fontSize: 10 },
+    guestBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: colors.surfaceAlt,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: radius.pill,
+    },
+    guestBadgeText: { ...typography.caption, color: colors.textMuted, fontFamily: fonts.bodySemiBold, fontSize: 10 },
+    accountBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: colors.successLight,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: radius.pill,
+    },
+    accountBadgeText: { ...typography.caption, color: colors.success, fontFamily: fonts.bodySemiBold, fontSize: 10 },
     memberSinceRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
     memberSinceText: { ...typography.caption, color: colors.textMuted },
     profileBio: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs, fontStyle: 'italic' },

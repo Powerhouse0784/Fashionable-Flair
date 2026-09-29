@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useModalBackClose } from '@/hooks/useModalBackClose';
 import { fonts } from '@/hooks/useAppFonts';
 import { AVATARS, PREMIUM_AVATARS, encodePremiumAvatarIndex, randomFreeProfileAvatarIndex } from '@/data/profileAvatar';
 
@@ -24,6 +25,10 @@ interface Props {
  * subscription (see PremiumContext), at which point they behave exactly
  * like the free grid. */
 export default function ProfileAvatarPickerModal({ visible, value, isPremium, onSelect, onRequestUpgrade, onClose }: Props) {
+  // So a back-press (Android hardware button, or the browser's back/edge-
+  // swipe on web) closes just this sheet instead of skipping straight
+  // through to whatever screen opened it — see useModalBackClose.
+  useModalBackClose(visible, onClose);
   const { colors } = useTheme();
   const styles = makeStyles(colors);
 

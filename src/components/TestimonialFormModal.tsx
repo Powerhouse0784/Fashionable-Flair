@@ -17,6 +17,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useModalBackClose } from '@/hooks/useModalBackClose';
 import { fonts } from '@/hooks/useAppFonts';
 import { categories } from '@/data/categories';
 import { getAvatarByIndex } from '@/data/avatars';
@@ -38,6 +39,10 @@ const MIN_BODY_LENGTH = 20;
 const MAX_BODY_LENGTH = 500;
 
 export default function TestimonialFormModal({ visible, initial, saving, onSubmit, onClose }: Props) {
+  // So a back-press (Android hardware button, or the browser's back/edge-
+  // swipe on web) closes just this sheet instead of skipping straight
+  // through to whatever screen opened it — see useModalBackClose.
+  useModalBackClose(visible, onClose);
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const { height: windowHeight } = useWindowDimensions();
