@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import { useIsWideScreen } from '@/hooks/useResponsive';
 import { fonts } from '@/hooks/useAppFonts';
 import { goBackOrTo } from '@/utils/navigation';
@@ -104,6 +105,12 @@ export default function TermsScreen() {
     setActiveIndex((prev) => (prev === next ? prev : next));
   };
 
+  const handleSidebarScroll = useScrollVisibilityHandler();
+  const handleScrollCombined = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    handleScroll(e);
+    handleSidebarScroll(e);
+  };
+
   const scrollToSection = (i: number) => {
     const y = Math.max(0, absoluteY(i) - SCROLL_TOP_OFFSET);
     scrollRef.current?.scrollTo({ y, animated: true });
@@ -150,7 +157,7 @@ export default function TermsScreen() {
         <ScrollView
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
-          onScroll={handleScroll}
+          onScroll={handleScrollCombined}
           scrollEventThrottle={32}
           contentContainerStyle={{ paddingBottom: spacing.xxl }}
         >

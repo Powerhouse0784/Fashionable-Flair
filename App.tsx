@@ -16,7 +16,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { RecentlyViewedProvider } from '@/context/RecentlyViewedContext';
-import { ScrollVisibilityProvider } from '@/context/ScrollVisibilityContext';
+import { ScrollVisibilityProvider, useResetScrollVisibility } from '@/context/ScrollVisibilityContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import QuickActionsSidebar from '@/components/QuickActionsSidebar';
 import OnboardingScreen from '@/screens/OnboardingScreen';
@@ -79,6 +79,7 @@ function AppNavigation() {
   const { isDark, colors, setPremiumAccess } = useTheme();
   const { isPremium, isLoaded: premiumLoaded } = usePremium();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  const resetScrollVisibility = useResetScrollVisibility();
   const [isAdminScreen, setIsAdminScreen] = useState(false);
   const [isMeeshoRedirect, setIsMeeshoRedirect] = useState(false);
   const [isProductDetail, setIsProductDetail] = useState(false);
@@ -119,7 +120,15 @@ function AppNavigation() {
     // this one screen it needs to sit higher or it visually collides with
     // that bar / the content just above it while scrolling.
     setIsProductDetail(routeName === 'ProductDetail');
-  }, [navigationRef]);
+    // The shown/hidden value above is one Animated.Value shared by every
+    // screen (see ScrollVisibilityContext), so without this, arriving on a
+    // new screen kept whatever state scrolling had left it in on the
+    // previous one — including hidden, with no way to bring it back short
+    // of scrolling on a screen that happens to wire up onScroll. A fresh
+    // screen should always start with it visible, exactly like first
+    // opening the app would.
+    resetScrollVisibility();
+  }, [navigationRef, resetScrollVisibility]);
 
   // FIX: Hide the sidebar if on admin screen OR meesho redirect screen
   const shouldHideSidebar = isAdminScreen || isMeeshoRedirect;

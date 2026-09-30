@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/context/ProfileContext';
@@ -121,6 +122,7 @@ export default function ProfileScreen() {
   const { wishlistIds } = useWishlist();
   const { recentlyViewedIds } = useRecentlyViewed();
   const isWide = useIsWideScreen();
+  const handleScroll = useScrollVisibilityHandler();
   const navigation = useNavigation<any>();
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -239,7 +241,7 @@ export default function ProfileScreen() {
           its own slightly-different header. */}
       {!isWide && <MobileTopBar />}
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
         <Container style={{ paddingTop: spacing.lg }}>
           {/* Profile card — purely local (no login), lets a shopper put a
               name, avatar and short line about themselves on their own tab. */}

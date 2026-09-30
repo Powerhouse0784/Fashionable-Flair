@@ -8,6 +8,7 @@ import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useIsWideScreen } from '@/hooks/useResponsive';
+import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import { goBackOrTo } from '@/utils/navigation';
 import { submitContactForm } from '@/services/emailService';
 import { useToast } from '@/context/ToastContext';
@@ -100,6 +101,7 @@ export default function ContactScreen() {
   const styles = makeStyles(colors, isDark);
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
+  const handleScroll = useScrollVisibilityHandler();
   const { showToast } = useToast();
 
   const [name, setName] = useState('');
@@ -137,7 +139,12 @@ export default function ContactScreen() {
     <WebPageWrapper>
       <SafeAreaView style={styles.safe} edges={isWide ? [] : ['top']}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
+          <ScrollView
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingBottom: spacing.xxl }}
+        >
             {/* The artwork is painted for the classic blue palette, so it's skipped
               under a Premium appearance (Ivory / Blush / Twilight / Espresso) rather than clash. */}
           {!isCustomAppearance && (

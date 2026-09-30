@@ -8,6 +8,7 @@ import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useIsWideScreen } from '@/hooks/useResponsive';
+import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import { goBackOrTo } from '@/utils/navigation';
 import Container from '@/components/Container';
 import WebPageWrapper from '@/components/WebPageWrapper';
@@ -122,6 +123,7 @@ export default function FAQScreen() {
   const styles = makeStyles(colors, isDark);
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
+  const handleScroll = useScrollVisibilityHandler();
   const [query, setQuery] = useState('');
   const [openCategory, setOpenCategory] = useState<string | null>(CATEGORIES[0].title);
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -150,7 +152,12 @@ export default function FAQScreen() {
   return (
     <WebPageWrapper>
       <SafeAreaView style={styles.safe} edges={isWide ? [] : ['top']}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingBottom: spacing.xxl }}
+        >
           {/* The artwork is painted for the classic blue palette, so it's skipped
               under a Premium appearance (Ivory / Blush / Twilight / Espresso) rather than clash. */}
           {!isCustomAppearance && (

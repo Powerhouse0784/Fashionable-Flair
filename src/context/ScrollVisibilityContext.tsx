@@ -24,6 +24,17 @@ interface ScrollVisibilityContextValue {
    * scroll with a tap-to-dismiss overlay (which would catch the scroll
    * gesture itself, not just taps). */
   subscribeScroll: (callback: () => void) => () => void;
+  /** Forces the shared value back to "fully shown" and forgets which way
+   * the last scroll went. This is a single Animated.Value shared by every
+   * screen (so hiding on one and reappearing on another feels like one
+   * continuous scroll, not a per-screen reset) — but that means switching
+   * screens on its own doesn't touch it, so whatever it was on the screen
+   * you left is what the new screen starts at too, including "hidden" if
+   * you'd scrolled down right before navigating. Call this on every
+   * navigation change (see App.tsx) so a freshly-opened screen always
+   * starts with its floating chrome visible, the same as a fresh app
+   * launch would. */
+  resetVisibility: () => void;
 }
 
 const ScrollVisibilityContext = createContext<ScrollVisibilityContextValue | null>(null);
@@ -76,8 +87,15 @@ export function ScrollVisibilityProvider({ children }: { children: React.ReactNo
     return () => scrollListeners.current.delete(callback);
   };
 
+  const resetVisibility = () => {
+    lastDirection.current = null;
+    lastY.current = 0;
+    visibility.stopAnimation();
+    visibility.setValue(1);
+  };
+
   return (
-    <ScrollVisibilityContext.Provider value={{ visibility, handleScroll, subscribeScroll }}>
+    <ScrollVisibilityContext.Provider value={{ visibility, handleScroll, subscribeScroll, resetVisibility }}>
       {children}
     </ScrollVisibilityContext.Provider>
   );
@@ -103,4 +121,11 @@ export function useScrollVisibility(): Animated.Value {
 export function useOnAnyScroll(): (callback: () => void) => () => void {
   const ctx = useContext(ScrollVisibilityContext);
   return ctx?.subscribeScroll ?? (() => () => {});
+}
+
+/** Call on every navigation change so newly-opened screens always start
+ * with floating chrome shown — see the doc comment on resetVisibility. */
+export function useResetScrollVisibility(): () => void {
+  const ctx = useContext(ScrollVisibilityContext);
+  return ctx?.resetVisibility ?? (() => {});
 }

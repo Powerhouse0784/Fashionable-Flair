@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import { fonts } from '@/hooks/useAppFonts';
 import { useIsWideScreen } from '@/hooks/useResponsive';
 import { goBackOrTo } from '@/utils/navigation';
@@ -66,6 +67,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 export default function TestimonialsScreen() {
   const { colors, isDark } = useTheme();
   const styles = makeStyles(colors, isDark);
+  const handleScroll = useScrollVisibilityHandler();
   const { width } = useWindowDimensions();
   const { showToast } = useToast();
   const navigation = useNavigation<any>();
@@ -217,6 +219,8 @@ export default function TestimonialsScreen() {
         <View style={{ flex: 1 }}>
           <ScrollView
             showsVerticalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             contentContainerStyle={!isWide && { paddingBottom: STICKY_BAR_SPACE }}
           >
             {/* Hero */}

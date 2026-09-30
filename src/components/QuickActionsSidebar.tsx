@@ -443,6 +443,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: GAP,
     zIndex: 50,
+    // zIndex alone isn't reliable against a sibling that has its own
+    // elevation on Android — the bottom tab bar sets elevation: 8 for its
+    // shadow, and without a higher elevation here too, Android can route
+    // touches in the overlap area to the tab bar underneath instead of
+    // these buttons, even though the buttons paint on top. This is exactly
+    // that: comfortably higher than the tab bar's, on both wrappers below.
+    elevation: 24,
   },
   wrap: {
     position: 'absolute',
@@ -450,6 +457,7 @@ const styles = StyleSheet.create({
     height: MAIN_SIZE_NARROW,
     alignItems: 'flex-end',
     zIndex: 50,
+    elevation: 24,
   },
   subButtonWrap: {
     position: 'absolute',
