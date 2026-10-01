@@ -58,7 +58,7 @@ interface Props {
  * screen never needs to scroll, on any phone, laptop or monitor.
  */
 export default function NoProductsFound({ hasActiveFilters, onClearFilters, onExploreCategories }: Props) {
-  const { colors, isDark, isCustomAppearance } = useTheme();
+  const { colors, isDark } = useTheme();
   const isWide = useIsWideScreen();
   const { width: winW } = useWindowDimensions();
   const [box, setBox] = useState<{ w: number; h: number } | null>(null);
@@ -143,28 +143,18 @@ export default function NoProductsFound({ hasActiveFilters, onClearFilters, onEx
     },
   ];
 
-  const emblem = Math.min(artH, 170);
-
   return (
     <View style={styles.wrap} onLayout={onLayout}>
       {box && (
         <View style={styles.content}>
-          {showArt &&
-            (isCustomAppearance ? (
-              // The illustration is painted for the classic blue palette, so
-              // Premium appearances get a simple themed emblem instead.
-              <View style={[styles.emblem, { width: emblem, height: emblem, borderRadius: emblem / 2 }]}>
-                <Ionicons name="search" size={emblem * 0.42} color={colors.primary} />
-                <Ionicons name="sparkles" size={emblem * 0.2} color={colors.gold} style={styles.emblemSparkle} />
-              </View>
-            ) : (
-              <Image
-                source={isDark ? heroDark : heroLight}
-                style={{ width: artW, height: artH }}
-                resizeMode="contain"
-                accessibilityLabel="A jewellery box and magnifying glass, illustrating that no matching products were found"
-              />
-            ))}
+          {showArt && (
+            <Image
+              source={isDark ? heroDark : heroLight}
+              style={{ width: artW, height: artH }}
+              resizeMode="contain"
+              accessibilityLabel="A jewellery box and magnifying glass, illustrating that no matching products were found"
+            />
+          )}
 
           <Text style={styles.title}>No products found</Text>
           <Text style={styles.subtitle}>
@@ -231,13 +221,13 @@ export default function NoProductsFound({ hasActiveFilters, onClearFilters, onEx
 /**
  * Corner artwork for the empty state (florals bottom-left on large screens,
  * a wave bottom-right). Render it as an absolutely-positioned sibling
- * behind the screen content — it never captures touches. Skipped under
- * Premium appearances, since it's painted for the classic blue palette.
+ * behind the screen content — it never captures touches. Shown the same
+ * way under every appearance (light/dark only decides which variant),
+ * same as the rest of the app's illustrations.
  */
 export function NoProductsDecor() {
-  const { isDark, isCustomAppearance } = useTheme();
+  const { isDark } = useTheme();
   const { width, height } = useWindowDimensions();
-  if (isCustomAppearance) return null;
 
   const showFloral = width >= 1200 && height >= 640;
   const waveWidth = width >= 1024 ? 300 : 170;
@@ -285,15 +275,6 @@ function makeStyles(colors: ColorTheme, isDark: boolean, m: Metrics) {
     // last-resort guard so nothing can ever create a scrollbar.
     wrap: { flex: 1, minHeight: 0, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
     content: { width: '100%', alignItems: 'center', justifyContent: 'center' },
-
-    emblem: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.primaryLight,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-    },
-    emblemSparkle: { position: 'absolute', top: '16%', right: '16%' },
 
     title: {
       ...typography.h1,

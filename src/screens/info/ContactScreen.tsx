@@ -97,7 +97,7 @@ function FormField({ icon, label, value, onChangeText, placeholder, colors, isDa
 }
 
 export default function ContactScreen() {
-  const { colors, isDark, isCustomAppearance } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = makeStyles(colors, isDark);
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
@@ -145,14 +145,10 @@ export default function ContactScreen() {
           scrollEventThrottle={16}
           contentContainerStyle={{ paddingBottom: spacing.xxl }}
         >
-            {/* The artwork is painted for the classic blue palette, so it's skipped
-              under a Premium appearance (Ivory / Blush / Twilight / Espresso) rather than clash. */}
-          {!isCustomAppearance && (
-            <View style={styles.bgWrap} pointerEvents="none">
-              <Image source={isDark ? bgWaveDark : bgWaveLight} style={styles.bgImage} resizeMode="cover" />
-              <LinearGradient colors={['transparent', colors.background]} locations={[0.65, 1]} style={styles.bgFade} />
-            </View>
-          )}
+          <View style={styles.bgWrap} pointerEvents="none">
+            <Image source={isDark ? bgWaveDark : bgWaveLight} style={styles.bgImage} resizeMode="cover" />
+            <LinearGradient colors={['transparent', colors.background]} locations={[0.65, 1]} style={styles.bgFade} />
+          </View>
 
             {!isWide && (
               <View style={styles.header}>

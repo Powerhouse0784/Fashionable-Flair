@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform, ScrollView } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Image, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,11 +13,9 @@ import Container from '@/components/Container';
 import WebPageWrapper from '@/components/WebPageWrapper';
 import Footer from '@/components/Footer';
 
-const heroLight = require('@/assets/about/about_hero_light.png');
-const heroDark = require('@/assets/about/about_hero_dark.png');
+const isWeb = Platform.OS === 'web';
+
 const jewelleryBox = require('@/assets/about/jewellery_box.png');
-const dividerLight = require('@/assets/about/divider_light.png');
-const dividerDark = require('@/assets/about/divider_dark.png');
 
 const FEATURES = [
   { icon: 'diamond-outline', title: 'Curated Collection', body: 'Thoughtfully chosen pieces for every occasion.' },
@@ -26,20 +23,20 @@ const FEATURES = [
   { icon: 'heart-outline', title: 'Customer First', body: 'Your happiness is our biggest treasure.' },
 ] as const;
 
-function cardShadow(colors: ColorTheme) {
-  return Platform.OS === 'web'
-    ? ({ boxShadow: `0 2px 10px ${colors.shadow}` } as any)
-    : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 10, elevation: 2 };
-}
-
+/**
+ * Same hero formula as FAQScreen (eyebrow pill, title, gold rule, body text
+ * on the plain page background, with one clean bounded image to the side) —
+ * kept deliberately plain rather than a decorative full-bleed background:
+ * the only art available for this page was busy enough everywhere that text
+ * laid over it stopped being reliably readable in every theme, so plain
+ * page-background text plus a single framed photo is what actually holds up.
+ */
 export default function AboutScreen() {
-  const { colors, isDark } = useTheme();
-  const styles = makeStyles(colors, isDark);
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
   const handleScroll = useScrollVisibilityHandler();
-  const heroSource = isDark ? heroDark : heroLight;
-  const dividerSource = isDark ? dividerDark : dividerLight;
 
   return (
     <WebPageWrapper>
@@ -48,7 +45,7 @@ export default function AboutScreen() {
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ paddingBottom: spacing.xxl }}
         >
           {!isWide && (
             <View style={styles.header}>
@@ -61,153 +58,142 @@ export default function AboutScreen() {
             </View>
           )}
 
-          <View style={{ flex: 1 }}>
-            <Container style={{ paddingTop: isWide ? spacing.xl : spacing.sm, paddingBottom: spacing.xxl }}>
-              {/* Hero — same pattern as the Privacy/Terms/FAQ heroes: text
-                  sits on a plain, theme-correct panel so it's always
-                  legible, never directly on top of a busy photo. The
-                  floral banner art is a decorative strip above the text
-                  instead, and the jewellery-box visual is a separate,
-                  properly-sized framed image beside it. */}
-              <View style={styles.hero}>
-                <Image source={heroSource} style={styles.heroStrip} contentFit="cover" />
-                <View style={[styles.heroInner, isWide && styles.heroInnerWide]}>
-                  <View style={[styles.heroText, isWide && styles.heroTextWide]}>
-                    <View style={styles.eyebrowRow}>
-                      <Text style={styles.eyebrow}>ABOUT US</Text>
-                      <View style={styles.eyebrowLine} />
-                    </View>
-                    <Text style={[styles.heroTitle, isWide && styles.heroTitleWide]}>Fashionable Flair</Text>
-                    <Text style={styles.heroSubtitle}>Jewellery that speaks your style</Text>
-                    <Text style={styles.heroBody}>
-                      Fashionable Flair started as a small, hand-curated jewellery collection — earrings, pendants,
-                      chains, bracelets, and hair accessories chosen for everyday elegance without the everyday price
-                      tag. Every piece in this catalog has been personally selected, not mass-imported.
-                    </Text>
-                  </View>
-                  <View style={[styles.heroImageOuter, isWide && styles.heroImageOuterWide]}>
-                    <View style={styles.heroImageWrap}>
-                      <Image source={jewelleryBox} style={styles.heroImage} contentFit="cover" />
-                    </View>
-                  </View>
+          <Container>
+            {/* ---------- Hero ---------- */}
+            <View style={[styles.hero, isWide && styles.heroWide]}>
+              <View style={[styles.heroText, isWide && styles.heroTextWide]}>
+                <View style={styles.eyebrowBadge}>
+                  <Text style={styles.eyebrowText}>ABOUT US</Text>
                 </View>
+                <Text style={[styles.heroTitle, isWide && styles.heroTitleWide]}>Fashionable Flair</Text>
+                <View style={styles.heroRule} />
+                <Text style={styles.heroSubtitle}>Jewellery that speaks your style</Text>
+                <Text style={styles.heroBody}>
+                  Fashionable Flair started as a small, hand-curated jewellery collection — earrings, pendants,
+                  chains, bracelets, and hair accessories chosen for everyday elegance without the everyday price
+                  tag. Every piece in this catalog has been personally selected, not mass-imported.
+                </Text>
               </View>
 
-              {/* Feature bullets */}
-              <View style={[styles.featureRow, !isWide && styles.featureRowNarrow]}>
-                {FEATURES.map((f) => (
-                  <View key={f.title} style={[styles.featureItem, !isWide && styles.featureItemNarrow]}>
-                    <View style={styles.featureIconWrap}>
-                      <Ionicons name={f.icon as any} size={20} color={colors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.featureTitle}>{f.title}</Text>
-                      <Text style={styles.featureBody}>{f.body}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-
-              <Image source={dividerSource} style={styles.divider} contentFit="contain" />
-
-              {/* Info cards */}
-              <View style={[styles.infoRow, !isWide && styles.infoRowNarrow]}>
-                <View style={[styles.infoCard, !isWide && styles.infoCardNarrow]}>
-                  <View style={styles.infoIconWrap}>
-                    <Ionicons name="diamond" size={18} color={colors.textInverse} />
-                  </View>
-                  <Text style={styles.infoTitle}>How this works</Text>
-                  <Text style={styles.infoBody}>
-                    This app is a showcase of our full catalog, built for browsing the way we'd want to browse — fast,
-                    clear, and without clutter. When you find something you love, "Buy Now" takes you straight to our
-                    storefront on Meesho, where your order is placed, paid for, and shipped securely.
-                  </Text>
-                </View>
-
-                <View style={[styles.infoCard, !isWide && styles.infoCardNarrow]}>
-                  <View style={styles.infoIconWrap}>
-                    <Ionicons name="storefront" size={18} color={colors.textInverse} />
-                  </View>
-                  <Text style={styles.infoTitle}>Why Meesho?</Text>
-                  <Text style={styles.infoBody}>
-                    Meesho handles the logistics — secure payments, order tracking, and delivery across India — so we
-                    can focus on what we do best: finding pieces worth wearing.
-                  </Text>
-                  <Text style={styles.infoTagline}>Same great jewellery.{'\n'}Now just a tap away.</Text>
+              <View style={[styles.heroArtShadowWrap, isWide && styles.heroArtShadowWrapWide]}>
+                <View style={styles.heroArtWrap}>
+                  <Image source={jewelleryBox} style={styles.heroArt} resizeMode="cover" />
                 </View>
               </View>
+            </View>
 
-              {/* CTA */}
-              <View style={styles.ctaCard}>
-                <View style={styles.ctaIconWrap}>
-                  <Ionicons name="storefront" size={22} color={colors.primary} />
+            {/* ---------- Feature bullets ---------- */}
+            <View style={[styles.featureRow, !isWide && styles.featureRowNarrow]}>
+              {FEATURES.map((f) => (
+                <View key={f.title} style={[styles.featureItem, !isWide && styles.featureItemNarrow]}>
+                  <View style={styles.featureIconWrap}>
+                    <Ionicons name={f.icon as any} size={20} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.featureTitle}>{f.title}</Text>
+                    <Text style={styles.featureBody}>{f.body}</Text>
+                  </View>
                 </View>
-                <Text style={styles.ctaText}>All purchases are completed on our official Meesho store.</Text>
-                <TouchableOpacity onPress={() => Linking.openURL('https://www.meesho.com/h6z4l')}>
-                  <Text style={styles.ctaLink}>Visit the store →</Text>
-                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* ---------- Info cards ---------- */}
+            <View style={[styles.infoRow, !isWide && styles.infoRowNarrow]}>
+              <View style={[styles.infoCard, !isWide && styles.infoCardNarrow]}>
+                <View style={styles.infoIconWrap}>
+                  <Ionicons name="diamond" size={18} color={colors.textInverse} />
+                </View>
+                <Text style={styles.infoTitle}>How this works</Text>
+                <Text style={styles.infoBody}>
+                  This app is a showcase of our full catalog, built for browsing the way we'd want to browse — fast,
+                  clear, and without clutter. When you find something you love, "Buy Now" takes you straight to our
+                  storefront on Meesho, where your order is placed, paid for, and shipped securely.
+                </Text>
               </View>
-            </Container>
-            {isWide && <Footer />}
-          </View>
+
+              <View style={[styles.infoCard, !isWide && styles.infoCardNarrow]}>
+                <View style={styles.infoIconWrap}>
+                  <Ionicons name="storefront" size={18} color={colors.textInverse} />
+                </View>
+                <Text style={styles.infoTitle}>Why Meesho?</Text>
+                <Text style={styles.infoBody}>
+                  Meesho handles the logistics — secure payments, order tracking, and delivery across India — so we
+                  can focus on what we do best: finding pieces worth wearing.
+                </Text>
+                <Text style={styles.infoTagline}>Same great jewellery. Now just a tap away.</Text>
+              </View>
+            </View>
+
+            {/* ---------- CTA ---------- */}
+            <View style={styles.ctaCard}>
+              <View style={styles.ctaIconWrap}>
+                <Ionicons name="storefront" size={22} color={colors.primary} />
+              </View>
+              <Text style={styles.ctaText}>All purchases are completed on our official Meesho store.</Text>
+              <TouchableOpacity onPress={() => Linking.openURL('https://www.meesho.com/h6z4l')}>
+                <Text style={styles.ctaLink}>Visit the store →</Text>
+              </TouchableOpacity>
+            </View>
+          </Container>
+          {isWide && <Footer />}
         </ScrollView>
       </SafeAreaView>
     </WebPageWrapper>
   );
 }
 
-function makeStyles(colors: ColorTheme, isDark: boolean) {
+function cardShadow(colors: ColorTheme) {
+  return isWeb
+    ? ({ boxShadow: `0 2px 10px ${colors.shadow}` } as any)
+    : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 10, elevation: 2 };
+}
+
+function makeStyles(colors: ColorTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
     header: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
 
-    hero: {
+    // ---------- Hero (same formula as FAQScreen) ----------
+    hero: { marginTop: spacing.sm },
+    heroWide: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl },
+    heroText: {},
+    heroTextWide: { flex: 1, paddingRight: spacing.xxl, maxWidth: 620 },
+    eyebrowBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 5,
+      marginBottom: spacing.md,
+    },
+    eyebrowText: { fontSize: 11, fontFamily: fonts.bodyBold, letterSpacing: 1, color: colors.primary },
+    heroTitle: { fontSize: 30, lineHeight: 36, fontFamily: fonts.headingBold, color: colors.textPrimary },
+    heroTitleWide: { fontSize: 40, lineHeight: 46 },
+    heroRule: { width: 56, height: 3, borderRadius: 2, backgroundColor: colors.gold, marginVertical: spacing.md },
+    heroSubtitle: { ...typography.body, color: colors.primary, fontFamily: fonts.bodySemiBold },
+    heroBody: { ...typography.body, color: colors.textSecondary, lineHeight: 22, marginTop: spacing.sm },
+
+    heroArtShadowWrap: {
+      width: 190,
+      height: 132,
+      alignSelf: 'center',
+      marginTop: spacing.xl,
+      borderRadius: radius.lg,
+      ...cardShadow(colors),
+    },
+    heroArtShadowWrapWide: { width: 300, height: 208, marginTop: 0 },
+    heroArtWrap: {
+      flex: 1,
       borderRadius: radius.lg,
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.border,
-      // Plain, theme-correct panel — same as the Privacy/Terms/FAQ heroes —
-      // so heroTitle/heroSubtitle/heroBody below are always readable
-      // against a flat surface, never against the busy strip image.
-      backgroundColor: isDark ? colors.surface : colors.surfaceAlt,
-      ...cardShadow(colors),
+      backgroundColor: colors.surface,
     },
-    // Decorative banner, full width, sitting above the text — never behind
-    // it, so it can be as busy/detailed as it likes without ever risking
-    // legibility.
-    heroStrip: { width: '100%', height: 64 },
-    heroInner: { padding: spacing.lg },
-    heroInnerWide: { flexDirection: 'row', alignItems: 'center', padding: spacing.xl, gap: spacing.xl },
-    heroText: {},
-    heroTextWide: { flex: 6 },
-    eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
-    eyebrow: {
-      ...typography.caption,
-      color: colors.primary,
-      fontFamily: fonts.bodySemiBold,
-      letterSpacing: 1.4,
-      textTransform: 'uppercase',
-    },
-    eyebrowLine: { width: 28, height: 2, borderRadius: 1, backgroundColor: colors.gold },
-    heroTitle: { ...typography.h1, fontFamily: fonts.headingBold, color: colors.textPrimary },
-    heroTitleWide: { fontSize: 38 },
-    heroSubtitle: { ...typography.body, color: colors.primary, fontFamily: fonts.bodySemiBold, marginTop: 2 },
-    heroBody: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.md, lineHeight: 21, maxWidth: 480 },
-    heroImageOuter: { marginTop: spacing.lg, alignItems: 'center' },
-    heroImageOuterWide: { flex: 4, marginTop: 0, alignItems: 'center', justifyContent: 'center' },
-    heroImageWrap: {
-      borderRadius: radius.lg,
-      overflow: 'hidden',
-      borderWidth: 2,
-      borderColor: colors.gold,
-      ...cardShadow(colors),
-    },
-    // Up from the original 170×150 — too small to read as more than a
-    // thumbnail next to a whole paragraph of text. This keeps the source
-    // image's ~1.47:1 aspect ratio at a size that actually holds its own.
-    heroImage: { width: 230, height: 157 },
+    heroArt: { width: '100%', height: '100%' },
 
-    featureRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
+    // ---------- Feature bullets ----------
+    featureRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl },
     featureRowNarrow: { flexDirection: 'column' },
     featureItem: {
       flex: 1,
@@ -233,9 +219,8 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
     featureTitle: { ...typography.body, fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
     featureBody: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
 
-    divider: { width: 200, height: 34, alignSelf: 'center', marginTop: spacing.xl, marginBottom: spacing.xs },
-
-    infoRow: { flexDirection: 'row', gap: spacing.md },
+    // ---------- Info cards ----------
+    infoRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md },
     infoRowNarrow: { flexDirection: 'column' },
     infoCard: {
       flex: 1,
@@ -244,7 +229,6 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       borderWidth: 1,
       borderColor: colors.border,
       padding: spacing.lg,
-      overflow: 'hidden',
       ...cardShadow(colors),
     },
     infoCardNarrow: { flex: undefined },
@@ -265,16 +249,16 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       fontStyle: 'italic',
       color: colors.gold,
       marginTop: spacing.md,
-      lineHeight: 20,
     },
 
+    // ---------- CTA ----------
     ctaCard: {
       backgroundColor: colors.surfaceAlt,
       borderRadius: radius.lg,
       padding: spacing.lg,
       alignItems: 'center',
       gap: spacing.sm,
-      marginTop: spacing.lg,
+      marginTop: spacing.xl,
     },
     ctaIconWrap: {
       width: 44,
