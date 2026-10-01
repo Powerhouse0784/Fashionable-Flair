@@ -17,8 +17,6 @@ import Footer from '@/components/Footer';
 const heroLight = require('@/assets/about/about_hero_light.png');
 const heroDark = require('@/assets/about/about_hero_dark.png');
 const jewelleryBox = require('@/assets/about/jewellery_box.png');
-const accentLight = require('@/assets/about/accent_light.png');
-const accentDark = require('@/assets/about/accent_dark.png');
 const dividerLight = require('@/assets/about/divider_light.png');
 const dividerDark = require('@/assets/about/divider_dark.png');
 
@@ -36,12 +34,11 @@ function cardShadow(colors: ColorTheme) {
 
 export default function AboutScreen() {
   const { colors, isDark } = useTheme();
-  const styles = makeStyles(colors);
+  const styles = makeStyles(colors, isDark);
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
   const handleScroll = useScrollVisibilityHandler();
   const heroSource = isDark ? heroDark : heroLight;
-  const accentSource = isDark ? accentDark : accentLight;
   const dividerSource = isDark ? dividerDark : dividerLight;
 
   return (
@@ -66,20 +63,14 @@ export default function AboutScreen() {
 
           <View style={{ flex: 1 }}>
             <Container style={{ paddingTop: isWide ? spacing.xl : spacing.sm, paddingBottom: spacing.xxl }}>
-              {/* Hero — soft floral/marble banner with the brand story on
-                  one side and the jewellery-box visual on the other; stacks
-                  on narrow screens instead of squeezing side by side. */}
+              {/* Hero — same pattern as the Privacy/Terms/FAQ heroes: text
+                  sits on a plain, theme-correct panel so it's always
+                  legible, never directly on top of a busy photo. The
+                  floral banner art is a decorative strip above the text
+                  instead, and the jewellery-box visual is a separate,
+                  properly-sized framed image beside it. */}
               <View style={styles.hero}>
-                {isWide ? (
-                  <Image source={heroSource} style={StyleSheet.absoluteFillObject} contentFit="cover" />
-                ) : (
-                  // The banner art is a wide (~2.5:1) strip — stretching it
-                  // to `cover` a tall stacked mobile layout would blow it up
-                  // and crop away the floral corners, so on narrow screens
-                  // it's a fixed-height band up top (close to its native
-                  // aspect) instead of a full-bleed background.
-                  <Image source={heroSource} style={styles.heroBandNarrow} contentFit="cover" />
-                )}
+                <Image source={heroSource} style={styles.heroStrip} contentFit="cover" />
                 <View style={[styles.heroInner, isWide && styles.heroInnerWide]}>
                   <View style={[styles.heroText, isWide && styles.heroTextWide]}>
                     <View style={styles.eyebrowRow}>
@@ -134,7 +125,6 @@ export default function AboutScreen() {
                 </View>
 
                 <View style={[styles.infoCard, !isWide && styles.infoCardNarrow]}>
-                  <Image source={accentSource} style={styles.infoAccent} contentFit="contain" pointerEvents="none" />
                   <View style={styles.infoIconWrap}>
                     <Ionicons name="storefront" size={18} color={colors.textInverse} />
                   </View>
@@ -166,7 +156,7 @@ export default function AboutScreen() {
   );
 }
 
-function makeStyles(colors: ColorTheme) {
+function makeStyles(colors: ColorTheme, isDark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
     header: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
@@ -176,10 +166,16 @@ function makeStyles(colors: ColorTheme) {
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.surface,
+      // Plain, theme-correct panel — same as the Privacy/Terms/FAQ heroes —
+      // so heroTitle/heroSubtitle/heroBody below are always readable
+      // against a flat surface, never against the busy strip image.
+      backgroundColor: isDark ? colors.surface : colors.surfaceAlt,
       ...cardShadow(colors),
     },
-    heroBandNarrow: { width: '100%', height: 120 },
+    // Decorative banner, full width, sitting above the text — never behind
+    // it, so it can be as busy/detailed as it likes without ever risking
+    // legibility.
+    heroStrip: { width: '100%', height: 64 },
     heroInner: { padding: spacing.lg },
     heroInnerWide: { flexDirection: 'row', alignItems: 'center', padding: spacing.xl, gap: spacing.xl },
     heroText: {},
@@ -197,7 +193,7 @@ function makeStyles(colors: ColorTheme) {
     heroTitleWide: { fontSize: 38 },
     heroSubtitle: { ...typography.body, color: colors.primary, fontFamily: fonts.bodySemiBold, marginTop: 2 },
     heroBody: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.md, lineHeight: 21, maxWidth: 480 },
-    heroImageOuter: { marginTop: spacing.lg, alignItems: 'flex-start' },
+    heroImageOuter: { marginTop: spacing.lg, alignItems: 'center' },
     heroImageOuterWide: { flex: 4, marginTop: 0, alignItems: 'center', justifyContent: 'center' },
     heroImageWrap: {
       borderRadius: radius.lg,
@@ -206,7 +202,10 @@ function makeStyles(colors: ColorTheme) {
       borderColor: colors.gold,
       ...cardShadow(colors),
     },
-    heroImage: { width: 170, height: 150 },
+    // Up from the original 170×150 — too small to read as more than a
+    // thumbnail next to a whole paragraph of text. This keeps the source
+    // image's ~1.47:1 aspect ratio at a size that actually holds its own.
+    heroImage: { width: 230, height: 157 },
 
     featureRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
     featureRowNarrow: { flexDirection: 'column' },
@@ -260,7 +259,6 @@ function makeStyles(colors: ColorTheme) {
     },
     infoTitle: { ...typography.h3, fontFamily: fonts.heading, color: colors.textPrimary, marginBottom: spacing.xs },
     infoBody: { ...typography.bodySmall, color: colors.textSecondary, lineHeight: 20 },
-    infoAccent: { position: 'absolute', bottom: 0, right: 0, width: 90, height: 90, opacity: 0.55 },
     infoTagline: {
       ...typography.bodySmall,
       fontFamily: fonts.heading,
