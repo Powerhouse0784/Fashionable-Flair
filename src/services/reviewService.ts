@@ -17,6 +17,19 @@ export async function fetchReviews(productId: string): Promise<ProductReview[]> 
   return (data as ProductReview[]) || [];
 }
 
+/** Every review across every product, newest first — for the admin
+ * Reviews screen, which manages reviews store-wide rather than one
+ * product at a time. */
+export async function fetchAllReviews(): Promise<ProductReview[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.from(TABLE).select('*').order('createdAt', { ascending: false });
+  if (error) {
+    console.warn('Failed to fetch all reviews', error.message);
+    return [];
+  }
+  return (data as ProductReview[]) || [];
+}
+
 export type ReviewInput = Omit<ProductReview, 'id' | 'createdAt'>;
 
 export async function createReview(input: ReviewInput): Promise<ProductReview> {

@@ -11,6 +11,11 @@ export type RootStackParamList = {
   AdminReviews: { productId: string; productTitle: string };
   AdminNotify: undefined;
   AdminTestimonials: undefined;
+  AdminHome: undefined;
+  AdminCategories: undefined;
+  AdminAllReviews: undefined;
+  AdminSettings: undefined;
+  AdminComingSoon: { title: string; icon: string; description: string };
   Testimonials: undefined;
   About: undefined;
   Contact: undefined;

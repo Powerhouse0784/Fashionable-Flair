@@ -13,6 +13,11 @@ import AdminProductFormScreen from '@/screens/admin/AdminProductFormScreen';
 import AdminReviewsScreen from '@/screens/admin/AdminReviewsScreen';
 import AdminNotifyScreen from '@/screens/admin/AdminNotifyScreen';
 import AdminTestimonialsScreen from '@/screens/admin/AdminTestimonialsScreen';
+import AdminHomeScreen from '@/screens/admin/AdminHomeScreen';
+import AdminCategoriesScreen from '@/screens/admin/AdminCategoriesScreen';
+import AdminAllReviewsScreen from '@/screens/admin/AdminAllReviewsScreen';
+import AdminSettingsScreen from '@/screens/admin/AdminSettingsScreen';
+import AdminComingSoonScreen from '@/screens/admin/AdminComingSoonScreen';
 import TestimonialsScreen from '@/screens/TestimonialsScreen';
 import AboutScreen from '@/screens/info/AboutScreen';
 import ContactScreen from '@/screens/info/ContactScreen';
@@ -61,6 +66,11 @@ export default function RootNavigator() {
         component={AdminTestimonialsScreen}
         options={{ presentation: 'modal' }}
       />
+      <Stack.Screen name="AdminHome" component={AdminHomeScreen} />
+      <Stack.Screen name="AdminCategories" component={AdminCategoriesScreen} />
+      <Stack.Screen name="AdminAllReviews" component={AdminAllReviewsScreen} />
+      <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
+      <Stack.Screen name="AdminComingSoon" component={AdminComingSoonScreen} />
       <Stack.Screen name="Testimonials" component={TestimonialsScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
       <Stack.Screen name="Contact" component={ContactScreen} />
