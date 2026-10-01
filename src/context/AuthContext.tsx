@@ -32,7 +32,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<SignInResult>;
   /** Customer self-registration — a regular signed-up shopper, never an
    * admin (that still only ever comes from the `admins` table above). */
-  signUp: (email: string, password: string) => Promise<SignUpResult>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
 }
 
@@ -96,9 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null, session: data.session ?? null };
   };
 
-  const signUp = async (email: string, password: string): Promise<SignUpResult> => {
+  const signUp = async (email: string, password: string, fullName?: string): Promise<SignUpResult> => {
     if (!isSupabaseConfigured) return { error: CONFIG_ERROR, needsConfirmation: false, session: null };
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      // Stashed in the auth user's own metadata at signup mainly so it's
+      // visible against the account in the Supabase dashboard — the name
+      // shown in the app comes from updateProfile() in CustomerAuthModal,
+      // set from this same value right after a successful signup.
+      options: fullName ? { data: { full_name: fullName } } : undefined,
+    });
     if (error) return { error: error.message, needsConfirmation: false, session: null };
 
     // Supabase deliberately returns a "success" here — no error at all —

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useIsWideScreen } from '@/hooks/useResponsive';
 import { useTabBarHeight } from '@/hooks/useTabBarHeight';
-import { useScrollVisibility, useOnAnyScroll } from '@/context/ScrollVisibilityContext';
+import { useScrollVisibility, useOnAnyScroll, useIsScrollVisible } from '@/context/ScrollVisibilityContext';
 import ChatWidget from '@/components/ChatWidget';
 import { WHATSAPP_NUMBER, WHATSAPP_DEFAULT_MESSAGE, INSTAGRAM_URL, SUPPORT_PHONE } from '@/config/socialLinks';
 
@@ -70,22 +70,13 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
   // scrollVisibility is a mutable Animated.Value updated directly on every
   // scroll tick (by design, to skip a re-render per frame) — opacity and
   // translateY alone track it fine for painting, but neither actually
-  // disables touches. On native, a transformed view's touch target can
-  // stay put at its original, pre-transform position, so once the sidebar
-  // animates off-screen the empty space it used to occupy would still
-  // silently catch taps as if the buttons were sitting right there. This
-  // listener mirrors just the shown/hidden edge (not every frame) into
-  // real state, so pointerEvents can actually switch off while hidden.
-  const [canInteract, setCanInteract] = useState(true);
-  useEffect(() => {
-    const id = scrollVisibility.addListener(({ value }) => {
-      setCanInteract((prev) => {
-        const next = value > 0.5;
-        return prev === next ? prev : next;
-      });
-    });
-    return () => scrollVisibility.removeListener(id);
-  }, [scrollVisibility]);
+  // disables touches, and sampling the animated value itself (e.g. "is it
+  // past 0.5 yet?") to decide that used to cause the exact bug this is
+  // here to avoid: reacting to the show/hide *decision* directly, instead
+  // of the animation's current position, means touches come back the
+  // instant a show starts rather than partway through it — see the
+  // `shown` doc comment in ScrollVisibilityContext for the full story.
+  const canInteract = useIsScrollVisible();
 
   // React Native Web has no native animation thread, so useNativeDriver
   // does nothing there but log a warning every time — same pattern already
@@ -242,9 +233,10 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
     return (
       <>
         <Animated.View
+          pointerEvents={canInteract ? 'box-none' : 'none'}
           style={[
             styles.rail,
-            { bottom: 28 + extraBottomOffset, right: 28, pointerEvents: canInteract ? 'box-none' : 'none' },
+            { bottom: 28 + extraBottomOffset, right: 28 },
             {
               opacity: Animated.multiply(mountAnim, scrollVisibility),
               transform: [
@@ -256,7 +248,7 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
         >
           <View style={{ alignItems: 'center', justifyContent: 'center' }}>
             {!hasInteracted && (
-              <Animated.View style={[pulseRingStyle(BUTTON_SIZE_WIDE, 'left'), { pointerEvents: 'none' }]} />
+              <Animated.View pointerEvents="none" style={pulseRingStyle(BUTTON_SIZE_WIDE, 'left')} />
             )}
             <RailButton
               icon={chatOpen ? 'close' : 'chatbubbles'}
@@ -302,9 +294,10 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
   return (
     <>
       <Animated.View
+        pointerEvents={canInteract ? 'box-none' : 'none'}
         style={[
           styles.wrap,
-          { bottom, right: 16, pointerEvents: canInteract ? 'box-none' : 'none' },
+          { bottom, right: 16 },
           {
             opacity: Animated.multiply(mountAnim, scrollVisibility),
             transform: [
@@ -321,12 +314,12 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
           return (
             <Animated.View
               key={a.key}
+              pointerEvents={expanded ? 'auto' : 'none'}
               style={[
                 styles.subButtonWrap,
                 {
                   opacity: v,
                   transform: [{ translateY }, { scale: v }],
-                  pointerEvents: expanded ? 'auto' : 'none',
                 },
               ]}
             >
@@ -343,7 +336,7 @@ export default function QuickActionsSidebar({ hidden, extraBottomOffset = 0 }: P
         })}
 
         {!hasInteracted && (
-          <Animated.View style={[pulseRingStyle(MAIN_SIZE_NARROW, 'right'), { pointerEvents: 'none' }]} />
+          <Animated.View pointerEvents="none" style={pulseRingStyle(MAIN_SIZE_NARROW, 'right')} />
         )}
 
         {/* Main chat button — always front and center, one tap opens chat

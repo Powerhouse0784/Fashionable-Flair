@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef } from 'react';
+import React, { createContext, useContext, useRef, useState } from 'react';
 import { Animated, NativeScrollEvent, NativeSyntheticEvent, Platform } from 'react-native';
 
 const MIN_DELTA = 6; // ignore tiny jitter/rubber-band scroll noise
@@ -12,8 +12,23 @@ const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 interface ScrollVisibilityContextValue {
   /** 1 = fully shown, 0 = hidden. Mutated directly (no re-renders) so this
-   * is safe to drive from a scroll handler firing on every frame. */
+   * is safe to drive from a scroll handler firing on every frame. Use this
+   * for opacity/transform; use `shown` below for anything that gates
+   * touches, since this is a continuous value mid-animation and `shown`
+   * isn't. */
   visibility: Animated.Value;
+  /** The show/hide *decision* itself — true the instant a show starts
+   * (not once the animation finishes), false the instant a hide starts.
+   * Driving pointerEvents off this instead of sampling `visibility` mid-
+   * animation is the difference that matters: sampling meant the button
+   * was already visibly most of the way back on screen while still
+   * reporting hidden, so a tap in that window fell through to whatever
+   * was behind it — exactly "hide then reappear, then taps miss" (the
+   * reported bug). Reacting to intent instead of position closes that
+   * window entirely: touches are live from the very first frame of the
+   * button coming back, matching what's on screen rather than lagging
+   * half an animation behind it. */
+  shown: boolean;
   /** Attach directly to any screen's ScrollView/FlatList onScroll prop
    * (pair with scrollEventThrottle={16}) to have that screen's scrolling
    * drive the shared visibility value. */
@@ -53,16 +68,19 @@ export function ScrollVisibilityProvider({ children }: { children: React.ReactNo
   const lastY = useRef(0);
   const lastDirection = useRef<'up' | 'down' | null>(null);
   const scrollListeners = useRef(new Set<() => void>());
+  const [shown, setShown] = useState(true);
 
   const show = () => {
     if (lastDirection.current !== 'up') {
       lastDirection.current = 'up';
+      setShown(true);
       Animated.timing(visibility, { toValue: 1, duration: 220, useNativeDriver: USE_NATIVE_DRIVER }).start();
     }
   };
   const hide = () => {
     if (lastDirection.current !== 'down') {
       lastDirection.current = 'down';
+      setShown(false);
       Animated.timing(visibility, { toValue: 0, duration: 220, useNativeDriver: USE_NATIVE_DRIVER }).start();
     }
   };
@@ -92,10 +110,11 @@ export function ScrollVisibilityProvider({ children }: { children: React.ReactNo
     lastY.current = 0;
     visibility.stopAnimation();
     visibility.setValue(1);
+    setShown(true);
   };
 
   return (
-    <ScrollVisibilityContext.Provider value={{ visibility, handleScroll, subscribeScroll, resetVisibility }}>
+    <ScrollVisibilityContext.Provider value={{ visibility, shown, handleScroll, subscribeScroll, resetVisibility }}>
       {children}
     </ScrollVisibilityContext.Provider>
   );
@@ -115,6 +134,14 @@ export function useScrollVisibility(): Animated.Value {
   const ctx = useContext(ScrollVisibilityContext);
   const fallback = useRef(new Animated.Value(1)).current;
   return ctx?.visibility ?? fallback;
+}
+
+/** For anything that needs to gate touches on shown/hidden — see the
+ * `shown` doc comment above for why this (not sampling the Animated.Value)
+ * is the correct thing to drive pointerEvents from. */
+export function useIsScrollVisible(): boolean {
+  const ctx = useContext(ScrollVisibilityContext);
+  return ctx?.shown ?? true;
 }
 
 /** Registers a callback that fires on every scroll tick from any screen. */

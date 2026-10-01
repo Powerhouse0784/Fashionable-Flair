@@ -195,11 +195,12 @@ export default function OnboardingScreen({ onDone }: Props) {
 
       {/* Dark mode only: the photos are bright, so dim them slightly to keep
           the light-coloured text readable. Invisible in light mode. */}
-      {isDark && <View style={styles.darkScrim} />}
+      {isDark && <View pointerEvents="none" style={styles.darkScrim} />}
 
       {/* Content: identical to the original layout — logo circle, title,
           description — centred in the space between the Skip row and footer. */}
       <View
+        pointerEvents="none"
         style={[
           styles.content,
           {
@@ -265,7 +266,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       />
 
       {/* Skip button — floats on top of the background, top-right */}
-      <View style={[styles.topHeader, { paddingTop: insets.top }]}>
+      <View pointerEvents="box-none" style={[styles.topHeader, { paddingTop: insets.top }]}>
         <TouchableOpacity
           style={styles.skipButton}
           onPress={onDone}
@@ -280,10 +281,11 @@ export default function OnboardingScreen({ onDone }: Props) {
 
       {/* Footer — progress dots + Back / Next, floats on top of the background */}
       <View
+        pointerEvents="box-none"
         style={[styles.footer, { paddingBottom: (isWeb ? spacing.xl : spacing.lg) + insets.bottom }]}
         onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
       >
-        <View style={styles.progressContainer}>
+        <View pointerEvents="none" style={styles.progressContainer}>
           {SLIDES.map((_, i) => (
             <View
               key={i}
@@ -352,7 +354,6 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
     darkScrim: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(7,17,31,0.62)',
-      pointerEvents: 'none',
     },
 
     /* Skip row — sits above the slides, transparent so the photo shows through */
@@ -366,7 +367,6 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       alignItems: 'center',
       justifyContent: 'flex-end',
       paddingHorizontal: isWeb ? 28 : 18,
-      pointerEvents: 'box-none', // let swipes pass through the empty part of the row
     },
 
     skipButton: {
@@ -398,7 +398,6 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       ...StyleSheet.absoluteFillObject,
       alignItems: 'center',
       justifyContent: 'center',
-      pointerEvents: 'none', // text is not interactive; swipes go straight to the list
     },
 
     contentInner: {
@@ -524,11 +523,9 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       paddingHorizontal: isWeb ? spacing.xxl : spacing.xl,
       paddingTop: spacing.sm,
       gap: spacing.md,
-      pointerEvents: 'box-none', // only the buttons catch touches; the rest passes through
     },
 
     progressContainer: {
-      pointerEvents: 'none',
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',

@@ -52,7 +52,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ showToast }}>
       {children}
       {toast && (
-        <SafeAreaView style={[styles.wrap, { pointerEvents: 'none' }]} edges={['top']}>
+        <SafeAreaView pointerEvents="none" style={styles.wrap} edges={['top']}>
           <Animated.View style={[styles.toast, { opacity, borderColor: toastColors[toast.type] }]}>
             <Ionicons name={ICONS[toast.type] as any} size={18} color={toastColors[toast.type]} />
             <Text style={styles.text}>{toast.message}</Text>

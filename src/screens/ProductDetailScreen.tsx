@@ -408,7 +408,14 @@ function makeStyles(colors: ColorTheme) {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.md,
+    // Android/native gets a real safe-area inset stacked on top of this by
+    // the SafeAreaView wrapper, so paddingBottom here only has to cover the
+    // "nice to have" breathing room. Web has no such inset to fall back on
+    // (insets.bottom is always 0 in a browser) — with the same small value
+    // as native, this bar had nothing between its buttons and the true
+    // bottom edge of the browser viewport, and read as glued to it. Same
+    // fix pattern BottomTabNavigator already uses for this exact gap.
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl : Platform.OS === 'web' ? spacing.lg : spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     ...(Platform.OS === 'web'

@@ -17,6 +17,7 @@ import { RootStackParamList } from '@/types/navigation';
 import WishlistItemCard from '@/components/WishlistItemCard';
 import OptionSheet, { SheetOption } from '@/components/OptionSheet';
 import EmptyState from '@/components/EmptyState';
+import WishlistEmptyState from '@/components/WishlistEmptyState';
 import { ProductGridSkeleton } from '@/components/ProductCardSkeleton';
 import Container from '@/components/Container';
 import MobileTopBar from '@/components/MobileTopBar';
@@ -45,10 +46,12 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 export default function WishlistScreen() {
   const navigation = useNavigation<Nav>();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const isWide = useIsWideScreen();
   const width = useViewportWidth();
-  const styles = makeStyles(colors);
+  const styles = makeStyles(colors, isDark);
+  // The design uses gold as the accent in dark mode and the brand blue in light.
+  const accent = isDark ? colors.gold : colors.primary;
   const { products, loading, refreshing, refresh } = useProducts();
   const { wishlistIds, clearWishlist } = useWishlist();
   const handleScroll = useScrollVisibilityHandler();
@@ -97,6 +100,9 @@ export default function WishlistScreen() {
     if (confirmed) clearWishlist();
   };
 
+  const isLoadingFirstTime = loading && products.length === 0;
+  const showEmptyWishlist = !isLoadingFirstTime && wishlistedProducts.length === 0;
+
   const columns = width >= 760 ? 2 : 1;
   const rows = useMemo(() => chunk(visibleProducts, columns), [visibleProducts, columns]);
   const currentCategoryLabel = categoryOptions.find((o) => o.key === categoryFilter)?.label || 'All Items';
@@ -110,16 +116,16 @@ export default function WishlistScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: showEmptyWishlist ? 0 : spacing.xxl }}
       >
         <Container>
           <View style={[styles.titleRow, isWide && styles.titleRowWide]}>
             <View style={styles.titleLeft}>
               <View style={styles.titleIconWrap}>
-                <Ionicons name="heart" size={20} color={colors.primary} />
+                <Ionicons name="heart" size={20} color={accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.title}>My Wishlist</Text>
+                <Text style={[styles.title, isWide && styles.titleWide]}>My Wishlist</Text>
                 <Text style={styles.subtitle}>Your favourite pieces, always within reach.</Text>
               </View>
             </View>
@@ -156,48 +162,38 @@ export default function WishlistScreen() {
           )}
         </Container>
 
-        <Container style={{ flex: 1 }}>
-          {loading && products.length === 0 ? (
-            <ProductGridSkeleton count={4} columns={columns} />
-          ) : wishlistedProducts.length === 0 ? (
-            <View style={styles.emptyWrap}>
+        {showEmptyWishlist ? (
+          // Rendered outside the max-width Container so its floral/wave
+          // backdrop can run edge to edge.
+          <WishlistEmptyState onBrowse={() => navigation.navigate('Tabs', { screen: 'Home' })} />
+        ) : (
+          <Container style={{ flex: 1 }}>
+            {isLoadingFirstTime ? (
+              <ProductGridSkeleton count={4} columns={columns} />
+            ) : visibleProducts.length === 0 ? (
               <EmptyState
-                icon="heart-outline"
-                title="Your wishlist is empty"
-                subtitle="Tap the heart on any product to save it here"
+                icon="filter-outline"
+                title="No items in this filter"
+                subtitle="Try a different category from the filter above"
               />
-              <TouchableOpacity
-                style={styles.browseButton}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
-              >
-                <Text style={styles.browseButtonText}>Browse Products</Text>
-                <Ionicons name="arrow-forward" size={16} color={colors.textInverse} />
-              </TouchableOpacity>
-            </View>
-          ) : visibleProducts.length === 0 ? (
-            <EmptyState
-              icon="filter-outline"
-              title="No items in this filter"
-              subtitle="Try a different category from the filter above"
-            />
-          ) : (
-            <View style={{ gap: GRID_GAP }}>
-              {rows.map((row, i) => (
-                <View key={i} style={styles.gridRow}>
-                  {row.map((item) => (
-                    <WishlistItemCard key={item.id} product={item} style={{ flex: 1 }} />
-                  ))}
-                  {columns > 1 &&
-                    row.length < columns &&
-                    Array.from({ length: columns - row.length }).map((_, i2) => (
-                      <View key={`pad-${i2}`} style={{ flex: 1 }} />
+            ) : (
+              <View style={{ gap: GRID_GAP }}>
+                {rows.map((row, i) => (
+                  <View key={i} style={styles.gridRow}>
+                    {row.map((item) => (
+                      <WishlistItemCard key={item.id} product={item} style={{ flex: 1 }} />
                     ))}
-                </View>
-              ))}
-            </View>
-          )}
-        </Container>
+                    {columns > 1 &&
+                      row.length < columns &&
+                      Array.from({ length: columns - row.length }).map((_, i2) => (
+                        <View key={`pad-${i2}`} style={{ flex: 1 }} />
+                      ))}
+                  </View>
+                ))}
+              </View>
+            )}
+          </Container>
+        )}
       </ScrollView>
 
       <OptionSheet
@@ -220,7 +216,8 @@ export default function WishlistScreen() {
   );
 }
 
-function makeStyles(colors: ColorTheme) {
+function makeStyles(colors: ColorTheme, isDark: boolean) {
+  const accent = isDark ? colors.gold : colors.primary;
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
     titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: spacing.sm, gap: spacing.sm },
@@ -231,15 +228,16 @@ function makeStyles(colors: ColorTheme) {
     titleRowWide: { marginTop: spacing.xxl },
     titleLeft: { flexDirection: 'row', alignItems: 'flex-start', flex: 1, gap: spacing.sm },
     titleIconWrap: {
-      width: 36,
-      height: 36,
+      width: 40,
+      height: 40,
       borderRadius: radius.pill,
-      backgroundColor: `${colors.primary}18`,
+      backgroundColor: isDark ? `${accent}26` : `${accent}18`,
       alignItems: 'center',
       justifyContent: 'center',
       marginTop: 2,
     },
     title: { ...typography.h2, color: colors.textPrimary },
+    titleWide: { fontSize: 32, lineHeight: 38 },
     subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
     countPill: {
       flexDirection: 'row',
@@ -274,17 +272,5 @@ function makeStyles(colors: ColorTheme) {
     clear: { ...typography.bodySmall, color: colors.danger, fontFamily: fonts.bodySemiBold, flexShrink: 0 },
 
     gridRow: { flexDirection: 'row', gap: GRID_GAP, alignItems: 'stretch' },
-    emptyWrap: { flex: 1, alignItems: 'center' },
-    browseButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      backgroundColor: colors.primary,
-      borderRadius: radius.pill,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.md,
-      marginTop: spacing.lg,
-    },
-    browseButtonText: { ...typography.button, color: colors.textInverse },
   });
 }

@@ -78,7 +78,7 @@ export default function BannerCarousel() {
         ))}
       </ScrollView>
 
-      <View style={[styles.dots, { pointerEvents: 'box-none' }]}>
+      <View pointerEvents="box-none" style={styles.dots}>
         {BANNERS.map((_, i) => (
           <TouchableOpacity
             key={i}

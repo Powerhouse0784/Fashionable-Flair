@@ -153,7 +153,7 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
         return;
       }
 
-      const { error: authError, needsConfirmation, session } = await signUp(email.trim(), password);
+      const { error: authError, needsConfirmation, session } = await signUp(email.trim(), password, fullName.trim());
       if (authError) {
         setError(authError);
         return;
