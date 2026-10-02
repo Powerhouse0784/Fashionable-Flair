@@ -65,7 +65,19 @@ export default function BottomTabNavigator({ hideTabBar }: { hideTabBar?: boolea
   // clipped at the bottom edge on narrower web windows. Web gets a bigger
   // floor. (Shared with ChatWidget via useTabBarHeight so the two can't
   // drift out of sync again.)
-  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'web' ? 14 : 10);
+  //
+  // The min(...,48) half is a backstop for a different bug: coming back
+  // from a screen stacked on top of this one (ProductDetail, or one of
+  // Profile's menu destinations) could leave insets.bottom read from
+  // whatever moment it last happened to re-measure while this screen was
+  // covered — occasionally a much bigger number than any real device's
+  // gesture bar, which showed up as a band of dead space under the tab
+  // bar with the icons pushed up above it. No real device needs more than
+  // ~48 of bottom inset, so anything past that is a bad reading, not a
+  // bigger phone. (AppShell also remounts this whole navigator on refocus
+  // now, which should stop the bad reading from happening at all — this
+  // clamp just means a that one slips through can't turn into a visible gap.)
+  const bottomPadding = Math.max(Math.min(insets.bottom, 48), Platform.OS === 'web' ? 14 : 10);
   const tabBarHeight = useTabBarHeight();
 
   return (
