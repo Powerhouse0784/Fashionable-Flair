@@ -34,34 +34,43 @@ import { BackHandler, Platform } from 'react-native';
 // open fired a `popstate` that EVERY listener received, closing both at
 // once instead of just the top sheet.
 //
-// `suppressPopstateCount` fixes the bug this hook actually shipped with:
-// closing the INNER modal via its own "Done"/X/selection (not a real
-// back-press) runs this cleanup, which calls `history.back()` to undo that
-// modal's own earlier pushState and keep history tidy. That call still
-// fires a real `popstate` event — and the OUTER modal (Edit Profile) was
-// still mounted with its own listener still attached, so it received that
-// echo and closed itself too, discarding whatever hadn't been saved yet
-// (the picked avatar, in this case) before "Save Changes" was ever
-// pressed. This counter tells every listener "N of the next pops don't
-// count."
+// This is the actual bug this hook shipped with, found after two wrong
+// guesses, so the reasoning is worth keeping in full:
 //
-// A plain boolean here (set true, read-and-reset on the next popstate)
-// looks right but isn't: in dev, React's StrictMode mounts every effect
-// twice — mount, clean up, mount again — the moment a modal first opens.
-// That phantom first cleanup triggers this exact same self-correcting
-// history.back(), so on a component's FIRST ever open there can be two of
-// these pending at once (the StrictMode phantom one, then the real one
-// from actually pressing Done) while only one popstate had arrived yet. A
-// boolean can only ever flag "one pending" — the second suppression either
-// overwrites and loses the first, or gets cleared by the wrong event,
-// so the real Done-press's popstate sailed through unsuppressed and closed
-// Edit Profile anyway. That's why it only ever misbehaved on the very
-// first open of a given modal in a session and was fine every time after
-// (by then there was nothing left to double up). A counter has no such
-// limit — it just tracks exactly how many self-corrections are owed.
+// Closing the INNER modal via its own "Done"/X/selection (not a real
+// back-press) used to run a cleanup that called `history.back()`, purely
+// to undo that modal's own earlier pushState and keep history tidy for
+// later. The problem: `history.back()` always fires a real `popstate`
+// event, with no way to mark it as "this one's just me tidying up" — and
+// the OUTER modal (Edit Profile) was still mounted with its own listener
+// still attached, so it received that same event and closed itself too,
+// discarding whatever hadn't been saved yet (the picked avatar) before
+// "Save Changes" was ever pressed.
+//
+// The first fix attempt added a shared flag to mark "the next popstate
+// doesn't count" right before calling history.back(). That still didn't
+// hold up, because nothing about *looking* reliable in testing actually
+// ruled out a genuine race: `history.back()` doesn't fire its popstate
+// synchronously, and there's no hard guarantee about exactly when it
+// lands relative to whatever the user does next — so the flag could, at
+// least in principle, already be consumed or overwritten by the time the
+// real event arrived. A counter (tracking *how many* are pending, not
+// just whether one is) closed that gap but was still built on the same
+// shaky foundation: suppressing an event we ourselves are about to cause,
+// and hoping nothing else reads it first.
+//
+// The actual fix removes the race instead of out-guessing its timing:
+// don't call `history.back()` while any other modal is still open to
+// possibly misread the echo. `history.replaceState()` updates our own
+// entry in place and — critically — never fires `popstate` at all, so an
+// inner modal closing this way has nothing for a sibling to overhear in
+// the first place. The one time it's actually safe to call
+// `history.back()` is when the stack is empty right after we remove
+// ourselves — nobody else is listening by then, so there's no one left to
+// confuse, and real history stays accurate for wherever the user goes
+// next.
 let modalStack: number[] = [];
 let nextModalId = 1;
-let suppressPopstateCount = 0;
 
 export function useModalBackClose(visible: boolean, onClose: () => void) {
   const idRef = useRef<number | null>(null);
@@ -88,12 +97,6 @@ export function useModalBackClose(visible: boolean, onClose: () => void) {
       pushedHistoryRef.current = true;
 
       const handlePopState = () => {
-        if (suppressPopstateCount > 0) {
-          // Some modal's own cleanup caused this pop, not a real
-          // back-press — it already closed itself; nobody else should.
-          suppressPopstateCount -= 1;
-          return;
-        }
         if (modalStack[modalStack.length - 1] !== id) {
           // Not the topmost modal — a real back-press closes the one on
           // top first, same as pressing back in a normal navigation stack.
@@ -110,11 +113,19 @@ export function useModalBackClose(visible: boolean, onClose: () => void) {
         modalStack = modalStack.filter((x) => x !== id);
         if (pushedHistoryRef.current) {
           // Closed some other way (X, backdrop tap, made a selection) while
-          // our extra history entry is still sitting there unused — remove
-          // it so a later real back-press doesn't appear to do nothing.
+          // our extra history entry is still sitting there unused.
           pushedHistoryRef.current = false;
-          suppressPopstateCount += 1;
-          window.history.back();
+          if (modalStack.length === 0) {
+            // Nothing else is open/listening right now, so it's safe to
+            // actually remove the entry — no one left to overhear it.
+            window.history.back();
+          } else {
+            // Another modal is still open underneath this one. Neutralize
+            // our entry in place instead of popping it — replaceState
+            // never fires popstate, so its still-mounted listener has
+            // nothing to mishear as its own close signal.
+            window.history.replaceState({ __modalBackClose: false }, '');
+          }
         }
       };
     }
