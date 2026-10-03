@@ -42,7 +42,7 @@ export default function TestimonialsTeaser() {
         <Text style={styles.title}>Loved by Shoppers Like You</Text>
         <Text style={styles.subtitle}>
           Every review here comes from someone who's actually worn the pieces. Read what they're saying,
-          or share your own experience — no account needed.
+          or sign in to share your own.
         </Text>
 
         <View style={styles.chipsRow}>

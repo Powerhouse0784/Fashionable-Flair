@@ -276,7 +276,7 @@ export default function TestimonialsScreen() {
                     </Text>
 
                     <Text style={[styles.heroSubtitle, isWide && styles.heroSubtitleWide]}>
-                      Real experiences from our valued customers — no account needed to share yours.
+                      Real experiences from our valued customers — quick to join and share yours.
                     </Text>
 
                     <View style={[styles.trustRow, isWide && styles.trustRowWide]}>

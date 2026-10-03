@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
     // touches in the overlap area to the tab bar underneath instead of
     // these buttons, even though the buttons paint on top. This is exactly
     // that: comfortably higher than the tab bar's, on both wrappers below.
-    elevation: 24,
+    elevation: 12,
   },
   wrap: {
     position: 'absolute',
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     height: MAIN_SIZE_NARROW,
     alignItems: 'flex-end',
     zIndex: 50,
-    elevation: 24,
+    elevation: 12,
   },
   subButtonWrap: {
     position: 'absolute',

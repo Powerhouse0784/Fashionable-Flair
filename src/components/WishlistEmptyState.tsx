@@ -54,7 +54,7 @@ export default function WishlistEmptyState({ onBrowse }: Props) {
   return (
     <View style={styles.root}>
       {/* Backdrop — behind everything, never intercepts touches. */}
-      <View style={styles.decor}>
+      <View pointerEvents="none" style={styles.decor}>
         <Image
           source={art.wave}
           style={[styles.wave, { height: waveHeight }]}
@@ -151,7 +151,7 @@ function makeStyles(colors: ColorTheme, isDark: boolean, isWide: boolean) {
       overflow: 'hidden',
       justifyContent: 'center',
     },
-    decor: { ...StyleSheet.absoluteFillObject, pointerEvents: 'none' } as any,
+    decor: { ...StyleSheet.absoluteFillObject },
     wave: { position: 'absolute', left: 0, right: 0, bottom: 0 },
     corner: { position: 'absolute', left: 0, bottom: 0 },
 

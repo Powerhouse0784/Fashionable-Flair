@@ -267,38 +267,44 @@ export default function SearchScreen() {
       {showEmpty && <NoProductsDecor />}
       {!isWide && <MobileQuickNav />}
       <Container style={{ flex: 1 }}>
-        {loading && products.length === 0 ? (
-          <>
-            {header}
-            <ProductGridSkeleton count={6} columns={columns} />
-          </>
-        ) : showEmpty ? (
-          <>
-            {header}
-            <NoProductsFound
-              hasActiveFilters={query.trim().length > 0 || activeFilterCount > 0}
-              onClearFilters={() => {
-                setQuery('');
-                setFilters(DEFAULT_FILTERS);
-              }}
-              onExploreCategories={() => navigation.navigate('Tabs', { screen: 'Home' })}
-            />
-          </>
-        ) : (
-          <FlatList
-            key={`search-${columns}`}
-            data={results}
-            keyExtractor={(item) => item.id}
-            numColumns={columns}
-            columnWrapperStyle={{ gap: GRID_GAP }}
-            contentContainerStyle={{ gap: GRID_GAP, paddingBottom: spacing.xxl, flexGrow: 1 }}
-            ListHeaderComponent={header}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-            renderItem={({ item }) => <ProductCard product={item} columns={columns} />}
-          />
-        )}
+        {/* One FlatList, always — `header` (and the TextInput inside it) is
+            always its ListHeaderComponent, in the exact same tree position,
+            whether we're loading, empty, or showing real results. Swapping
+            between three separate JSX branches here used to put the search
+            input in a structurally different spot each time (sometimes a
+            FlatList prop, sometimes a plain child), so React unmounted and
+            remounted it on every loading/empty transition — which, mid-
+            typing, happens the moment a query's match count crosses zero.
+            That remount is what was silently dropping focus and eating the
+            next keystroke. Keeping one stable FlatList and only ever
+            swapping its ListEmptyComponent/data fixes it. */}
+        <FlatList
+          key={`search-${columns}`}
+          data={loading && products.length === 0 ? [] : showEmpty ? [] : results}
+          keyExtractor={(item) => item.id}
+          numColumns={columns}
+          columnWrapperStyle={columns > 1 ? { gap: GRID_GAP } : undefined}
+          contentContainerStyle={{ gap: GRID_GAP, paddingBottom: spacing.xxl, flexGrow: 1 }}
+          ListHeaderComponent={header}
+          ListEmptyComponent={
+            loading && products.length === 0 ? (
+              <ProductGridSkeleton count={6} columns={columns} />
+            ) : showEmpty ? (
+              <NoProductsFound
+                hasActiveFilters={query.trim().length > 0 || activeFilterCount > 0}
+                onClearFilters={() => {
+                  setQuery('');
+                  setFilters(DEFAULT_FILTERS);
+                }}
+                onExploreCategories={() => navigation.navigate('Tabs', { screen: 'Home' })}
+              />
+            ) : null
+          }
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
+          renderItem={({ item }) => <ProductCard product={item} columns={columns} />}
+        />
       </Container>
 
       <FilterSheet

@@ -34,7 +34,7 @@ import { BackHandler, Platform } from 'react-native';
 // open fired a `popstate` that EVERY listener received, closing both at
 // once instead of just the top sheet.
 //
-// `suppressNextPopstate` fixes the bug this hook actually shipped with:
+// `suppressPopstateCount` fixes the bug this hook actually shipped with:
 // closing the INNER modal via its own "Done"/X/selection (not a real
 // back-press) runs this cleanup, which calls `history.back()` to undo that
 // modal's own earlier pushState and keep history tidy. That call still
@@ -42,10 +42,26 @@ import { BackHandler, Platform } from 'react-native';
 // still mounted with its own listener still attached, so it received that
 // echo and closed itself too, discarding whatever hadn't been saved yet
 // (the picked avatar, in this case) before "Save Changes" was ever
-// pressed. This flag tells every listener "this one doesn't count."
+// pressed. This counter tells every listener "N of the next pops don't
+// count."
+//
+// A plain boolean here (set true, read-and-reset on the next popstate)
+// looks right but isn't: in dev, React's StrictMode mounts every effect
+// twice — mount, clean up, mount again — the moment a modal first opens.
+// That phantom first cleanup triggers this exact same self-correcting
+// history.back(), so on a component's FIRST ever open there can be two of
+// these pending at once (the StrictMode phantom one, then the real one
+// from actually pressing Done) while only one popstate had arrived yet. A
+// boolean can only ever flag "one pending" — the second suppression either
+// overwrites and loses the first, or gets cleared by the wrong event,
+// so the real Done-press's popstate sailed through unsuppressed and closed
+// Edit Profile anyway. That's why it only ever misbehaved on the very
+// first open of a given modal in a session and was fine every time after
+// (by then there was nothing left to double up). A counter has no such
+// limit — it just tracks exactly how many self-corrections are owed.
 let modalStack: number[] = [];
 let nextModalId = 1;
-let suppressNextPopstate = false;
+let suppressPopstateCount = 0;
 
 export function useModalBackClose(visible: boolean, onClose: () => void) {
   const idRef = useRef<number | null>(null);
@@ -72,10 +88,10 @@ export function useModalBackClose(visible: boolean, onClose: () => void) {
       pushedHistoryRef.current = true;
 
       const handlePopState = () => {
-        if (suppressNextPopstate) {
-          // Another modal's own cleanup caused this pop, not a real
+        if (suppressPopstateCount > 0) {
+          // Some modal's own cleanup caused this pop, not a real
           // back-press — it already closed itself; nobody else should.
-          suppressNextPopstate = false;
+          suppressPopstateCount -= 1;
           return;
         }
         if (modalStack[modalStack.length - 1] !== id) {
@@ -97,7 +113,7 @@ export function useModalBackClose(visible: boolean, onClose: () => void) {
           // our extra history entry is still sitting there unused — remove
           // it so a later real back-press doesn't appear to do nothing.
           pushedHistoryRef.current = false;
-          suppressNextPopstate = true;
+          suppressPopstateCount += 1;
           window.history.back();
         }
       };

@@ -33,7 +33,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
     subsections: [
       {
         title: 'Acceptance of These Terms',
-        body: "By using this app or website, you agree to these Terms of Service. If you don't agree with any part of them, please don't continue using the app — the good news is browsing and buying here don't require agreeing to anything beyond this, since there's no account or sign-up involved for shoppers.",
+        body: "By using this app or website, you agree to these Terms of Service. If you don't agree with any part of them, please don't continue using the app — the good news is browsing and buying here don't require agreeing to anything beyond this, since no account is needed just to shop. Creating an account is only ever needed for two things: posting a review, and subscribing to Premium.",
       },
       {
         title: 'What This App Is',
@@ -41,7 +41,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
       },
       {
         title: 'Eligibility',
-        body: "This app doesn't collect age information and doesn't require an account, so there's no formal age-gate here — but purchasing anything happens on Meesho, and you'll need to meet Meesho's own eligibility requirements to complete a purchase there.",
+        body: "This app doesn't collect age information and doesn't require an account just to browse, so there's no formal age-gate here — but purchasing anything happens on Meesho, and you'll need to meet Meesho's own eligibility requirements to complete a purchase there.",
       },
     ],
   },

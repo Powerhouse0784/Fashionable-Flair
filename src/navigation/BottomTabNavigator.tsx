@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
@@ -58,26 +58,27 @@ export default function BottomTabNavigator({ hideTabBar }: { hideTabBar?: boolea
   // tab bar would render partly underneath it and those taps get eaten by
   // system gestures instead of reaching the app. Fix: add the device's
   // actual bottom safe-area inset on top of our base padding.
+  //
+  // That inset is read once from initialWindowMetrics (captured before this
+  // app's first render) rather than live from useSafeAreaInsets(). A real
+  // device's gesture bar / home indicator doesn't change size during normal
+  // use, so there's nothing to react to — and reading it live was the
+  // actual bug: that value also reacts to every screen transition, and
+  // popping a screen that had been covering this tab bar (ProductDetail,
+  // or Terms/About/FAQ/Privacy/Testimonials from Profile's menu) could
+  // catch it mid-transition and freeze on a much-too-large number, shown
+  // as a band of dead space under the bar with the icons pushed up above
+  // it. useSafeAreaInsets() is kept only as the fallback for the rare case
+  // initialWindowMetrics isn't available yet.
   const insets = useSafeAreaInsets();
+  const stableBottomInset = Math.min(initialWindowMetrics?.insets.bottom ?? insets.bottom, 48);
   // Web has no notch/gesture-bar equivalent, so insets.bottom is always 0
   // there — giving it the same minimum as native left too little vertical
   // room for the label text in a fixed-height flex row, and the label got
   // clipped at the bottom edge on narrower web windows. Web gets a bigger
   // floor. (Shared with ChatWidget via useTabBarHeight so the two can't
   // drift out of sync again.)
-  //
-  // The min(...,48) half is a backstop for a different bug: coming back
-  // from a screen stacked on top of this one (ProductDetail, or one of
-  // Profile's menu destinations) could leave insets.bottom read from
-  // whatever moment it last happened to re-measure while this screen was
-  // covered — occasionally a much bigger number than any real device's
-  // gesture bar, which showed up as a band of dead space under the tab
-  // bar with the icons pushed up above it. No real device needs more than
-  // ~48 of bottom inset, so anything past that is a bad reading, not a
-  // bigger phone. (AppShell also remounts this whole navigator on refocus
-  // now, which should stop the bad reading from happening at all — this
-  // clamp just means a that one slips through can't turn into a visible gap.)
-  const bottomPadding = Math.max(Math.min(insets.bottom, 48), Platform.OS === 'web' ? 14 : 10);
+  const bottomPadding = Math.max(stableBottomInset, Platform.OS === 'web' ? 14 : 10);
   const tabBarHeight = useTabBarHeight();
 
   return (
