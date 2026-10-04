@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useModalBackClose } from '@/hooks/useModalBackClose';
 
 interface Props {
@@ -229,6 +229,7 @@ export default function ImageZoomViewer({ visible, images, initialIndex, onClose
   // through to whatever screen opened it — see useModalBackClose.
   useModalBackClose(visible, onClose);
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [zoomedIn, setZoomedIn] = useState(false);
   const listRef = useRef<FlatList<string>>(null);
 
@@ -236,7 +237,16 @@ export default function ImageZoomViewer({ visible, images, initialIndex, onClose
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          {/* An absolutely-positioned child doesn't reliably sit below
+              SafeAreaView's own top padding — it was overlapping the status
+              bar (battery/clock) instead of sitting under it. Pairs the
+              same `position: absolute` with an explicit top inset instead
+              of trusting the parent's padding to push it down. */}
+          <TouchableOpacity
+            style={[styles.closeButton, { top: insets.top + (Platform.OS === 'web' ? 16 : 8) }]}
+            onPress={onClose}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
             <Ionicons name="close" size={26} color="#FFFFFF" />
           </TouchableOpacity>
 
@@ -265,7 +275,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   closeButton: {
     position: 'absolute',
-    top: Platform.OS === 'web' ? 16 : 8,
     right: 16,
     zIndex: 10,
     width: 40,

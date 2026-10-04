@@ -43,7 +43,7 @@ export default function AdminCategoriesScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Categories</Text>
         <Text style={styles.subtitle}>
-          {categories.length} categories \u2014 fixed set, not database-managed. Tap one to see its products.
+          {categories.length} categories — fixed set, not database-managed. Tap one to see its products.
         </Text>
 
         <View style={{ gap: spacing.md }}>

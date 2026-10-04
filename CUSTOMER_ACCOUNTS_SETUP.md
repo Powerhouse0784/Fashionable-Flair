@@ -165,3 +165,43 @@ you'd like to preserve edit access for, that's a manual, one-off
 (look up the right account's id in **Authentication → Users**) rather
 than something this migration can do automatically, since nothing links
 an old `ownerToken` back to a specific person's new account.
+
+## 5. Admin Customers screen (list, block, delete)
+
+The admin panel's **Customers** screen shows every signed-up shopper —
+Premium or not — with their join date, last sign-in, review count, and
+Block/Delete actions. None of that can come from the client directly:
+there's no table the anon/authenticated client can query to list
+`auth.users`, and blocking or deleting a user are both privileged Auth
+Admin API calls. Two edge functions do this instead, using the same
+"verify the caller is an admin via their own JWT, then act with the
+service-role key" pattern as `send-notification`.
+
+**Deploy both:**
+
+```
+supabase functions deploy admin-list-customers
+supabase functions deploy admin-manage-customer
+```
+
+No new secrets or tables needed — both reuse `SUPABASE_URL`,
+`SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` (already set for
+`send-notification`) and the existing `admins` table.
+
+**How blocking works:** there's no "blocked" column anywhere — blocking
+calls Supabase's own Auth Admin API (`updateUserById` with a
+`ban_duration`) so a blocked shopper genuinely cannot sign in anymore,
+not just "looks blocked" in the admin UI. Supabase has no literal
+"forever" ban, so blocking sets a 100-year ban (`876000h`); unblocking
+sets it back to `'none'`. `admin-list-customers` reads each user's
+`banned_until` straight from `auth.users` to show the current state, so
+it's always accurate even if a ban was set some other way.
+
+**How delete works:** deleting a customer deletes their `auth.users` row
+via the Admin API. Their `profiles` row and any `testimonials` they wrote
+both have `on delete cascade` back to `auth.users(id)`, so they're
+removed automatically — no separate cleanup step.
+
+**Note:** an admin can't block or delete their own admin account through
+this screen (the function rejects it) — sign in as a different admin, or
+do it directly in the Supabase dashboard, if that's ever genuinely needed.

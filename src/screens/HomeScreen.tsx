@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, FlatList, StyleSheet, TouchableOpacity, RefreshControl, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
@@ -13,6 +13,7 @@ import { useProducts } from '@/context/ProductsContext';
 import { useRecentlyViewed } from '@/context/RecentlyViewedContext';
 import { getFeaturedProducts, getNewArrivals, getBestSellers } from '@/utils/productHelpers';
 import { Product } from '@/types/product';
+import { ActiveOffer, fetchActiveOffers } from '@/services/offerService';
 import { RootStackParamList } from '@/types/navigation';
 import { useIsWideScreen, useColumns } from '@/hooks/useResponsive';
 import { GRID_GAP } from '@/constants/layout';
@@ -27,6 +28,7 @@ import { ProductGridSkeleton } from '@/components/ProductCardSkeleton';
 import BannerCarousel from '@/components/BannerCarousel';
 import WhyChooseUs from '@/components/WhyChooseUs';
 import TestimonialsTeaser from '@/components/TestimonialsTeaser';
+import OfferProductCard from '@/components/OfferProductCard';
 import Logo from '@/components/Logo';
 import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
@@ -71,6 +73,28 @@ function ProductRow({ items, isWide }: { items: Product[]; isWide: boolean }) {
   );
 }
 
+function OfferRow({ offers, isWide }: { offers: ActiveOffer[]; isWide: boolean }) {
+  if (isWide) {
+    return (
+      <View style={[{ flexDirection: 'row', flexWrap: 'wrap' }, { gap: GRID_GAP }]}>
+        {offers.map((offer) => (
+          <OfferProductCard key={offer.id} offer={offer} />
+        ))}
+      </View>
+    );
+  }
+  return (
+    <FlatList
+      horizontal
+      data={offers}
+      keyExtractor={(item) => item.id}
+      showsHorizontalScrollIndicator={false}
+      ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
+      renderItem={({ item }) => <OfferProductCard offer={item} compact />}
+    />
+  );
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const { colors, isDark } = useTheme();
@@ -80,6 +104,11 @@ export default function HomeScreen() {
   const featured = getFeaturedProducts(products);
   const newArrivals = getNewArrivals(products);
   const bestSellers = getBestSellers(products);
+  const [offers, setOffers] = useState<ActiveOffer[]>([]);
+  useEffect(() => {
+    if (products.length === 0) return;
+    fetchActiveOffers(products).then(setOffers);
+  }, [products]);
   const recentlyViewed = recentlyViewedIds
     .map((id) => products.find((p) => p.id === id))
     .filter((p): p is Product => !!p);
@@ -222,6 +251,18 @@ export default function HomeScreen() {
 
           {/* Scrollable promo banner strip */}
           <BannerCarousel />
+
+          {/* Offers & Discounts — admin-curated, time-limited offer prices */}
+          {offers.length > 0 && (
+            <>
+              <SectionHeader
+                title="Offers & Discounts"
+                actionLabel="See all"
+                onActionPress={() => navigation.navigate('Offers')}
+              />
+              <OfferRow offers={offers} isWide={isWide} />
+            </>
+          )}
 
           {/* Featured */}
           {featured.length > 0 && (

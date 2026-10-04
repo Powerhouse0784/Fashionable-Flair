@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -14,7 +14,6 @@ import Logo from '@/components/Logo';
 export type AdminNavKey =
   | 'AdminHome'
   | 'AdminDashboard'
-  | 'AdminOrders'
   | 'AdminCustomers'
   | 'AdminCategories'
   | 'AdminOffers'
@@ -32,40 +31,9 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: 'AdminHome', label: 'Dashboard', icon: 'grid-outline' },
   { key: 'AdminDashboard', label: 'Products', icon: 'cube-outline' },
-  {
-    key: 'AdminOrders',
-    label: 'Orders',
-    icon: 'receipt-outline',
-    comingSoon: {
-      title: 'Orders',
-      icon: 'receipt-outline',
-      description:
-        "Checkout happens on Meesho, not in this app, so there's no in-app order history to manage yet — Meesho's own seller dashboard is the source of truth for orders today.",
-    },
-  },
-  {
-    key: 'AdminCustomers',
-    label: 'Customers',
-    icon: 'people-outline',
-    comingSoon: {
-      title: 'Customers',
-      icon: 'people-outline',
-      description:
-        'A customer list tying together accounts, Premium status, and order history is a natural next step now that sign-in exists — just not wired up here yet.',
-    },
-  },
+  { key: 'AdminCustomers', label: 'Customers', icon: 'people-outline' },
   { key: 'AdminCategories', label: 'Categories', icon: 'pricetags-outline' },
-  {
-    key: 'AdminOffers',
-    label: 'Offers & Discounts',
-    icon: 'gift-outline',
-    comingSoon: {
-      title: 'Offers & Discounts',
-      icon: 'gift-outline',
-      description:
-        'Store-wide sales and coupon codes aren\u2019t built yet — for now, discounts are set per product from its Compare-at Price field in the product editor.',
-    },
-  },
+  { key: 'AdminOffers', label: 'Offers & Discounts', icon: 'gift-outline' },
   { key: 'AdminAllReviews', label: 'Reviews', icon: 'star-outline' },
   { key: 'AdminTestimonials', label: 'Testimonials', icon: 'chatbubbles-outline' },
   { key: 'AdminSettings', label: 'Settings', icon: 'settings-outline' },
@@ -98,6 +66,8 @@ export default function AdminShell({ active, children, searchable }: Props) {
   const [query, setQuery] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
 
   const goTo = (item: NavItem) => {
     setDrawerOpen(false);
@@ -150,17 +120,23 @@ export default function AdminShell({ active, children, searchable }: Props) {
       )}
 
       {isWide ? (
-        <View style={styles.searchBox}>
+        <Pressable
+          style={[styles.searchBox, searchFocused && styles.searchBoxFocused]}
+          onPress={() => searchInputRef.current?.focus()}
+        >
           <Ionicons name="search-outline" size={16} color={colors.textMuted} />
           <TextInput
+            ref={searchInputRef}
             value={query}
             onChangeText={setQuery}
-            placeholder={searchable ? 'Search products, categories, or SKU...' : 'Search products...'}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder="Search products..."
             placeholderTextColor={colors.textMuted}
-            style={styles.searchInput}
+            style={[styles.searchInput, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
           />
-          {Platform.OS === 'web' && <Text style={styles.kbdHint}>\u2318K</Text>}
-        </View>
+          {Platform.OS === 'web' && <Text style={styles.kbdHint}>⌘K</Text>}
+        </Pressable>
       ) : (
         <View style={styles.brandRow}>
           <Logo variant="mark" height={22} />
@@ -346,6 +322,12 @@ function makeStyles(colors: ColorTheme) {
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
       maxWidth: 440,
+      borderWidth: 1.5,
+      borderColor: 'transparent',
+    },
+    searchBoxFocused: {
+      borderColor: colors.primary,
+      backgroundColor: colors.surface,
     },
     searchInput: { flex: 1, ...typography.bodySmall, color: colors.textPrimary, padding: 0 },
     kbdHint: { ...typography.caption, color: colors.textMuted, backgroundColor: colors.surface, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },

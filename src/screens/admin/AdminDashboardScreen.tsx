@@ -231,7 +231,7 @@ function ProductsList({
                 <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
               </TouchableOpacity>
               <Text style={styles.countLabel}>
-                {filtered.length} product{filtered.length === 1 ? '' : 's'} \u00b7 {isLive ? 'Live' : 'Local fallback'}
+                {filtered.length} product{filtered.length === 1 ? '' : 's'} · {isLive ? 'Live' : 'Local fallback'}
               </Text>
             </View>
           </View>

@@ -15,6 +15,8 @@ export type RootStackParamList = {
   AdminCategories: undefined;
   AdminAllReviews: undefined;
   AdminSettings: undefined;
+  AdminCustomers: undefined;
+  AdminOffers: undefined;
   AdminComingSoon: { title: string; icon: string; description: string };
   Testimonials: undefined;
   About: undefined;
@@ -28,5 +30,6 @@ export type TabParamList = {
   Home: undefined;
   Search: undefined;
   Wishlist: undefined;
+  Offers: undefined;
   Profile: undefined;
 };

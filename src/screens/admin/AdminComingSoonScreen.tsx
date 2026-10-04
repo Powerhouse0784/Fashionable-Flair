@@ -8,8 +8,8 @@ import AdminShell, { AdminNavKey } from './AdminShell';
 
 /**
  * Shared placeholder for sidebar items that don't have a real screen
- * behind them yet (Orders, Customers, Offers & Discounts) — an honest
- * "not built yet, here's why" instead of a broken or faked-out page.
+ * behind them yet — an honest "not built yet, here's why" instead of a
+ * broken or faked-out page.
  */
 export default function AdminComingSoonScreen() {
   const { colors } = useTheme();
@@ -18,10 +18,12 @@ export default function AdminComingSoonScreen() {
   const { title, icon, description } = route.params as { title: string; icon: string; description: string };
 
   // Best-effort match back to the sidebar item that led here, so it still
-  // highlights correctly rather than defaulting to nothing active.
-  const activeKey = (
-    { Orders: 'AdminOrders', Customers: 'AdminCustomers', 'Offers & Discounts': 'AdminOffers' } as Record<string, AdminNavKey>
-  )[title] as AdminNavKey | undefined;
+  // highlights correctly rather than defaulting to nothing active. Nothing
+  // in the sidebar routes here anymore (Orders was removed outright,
+  // Customers and Offers & Discounts both got real screens), but the
+  // screen is kept around in case a future sidebar item needs an honest
+  // "not built yet" placeholder again.
+  const activeKey = ({} as Record<string, AdminNavKey>)[title] as AdminNavKey | undefined;
 
   return (
     <AdminShell active={activeKey ?? 'AdminHome'}>

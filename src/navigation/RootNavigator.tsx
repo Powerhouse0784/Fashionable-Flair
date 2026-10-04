@@ -18,6 +18,9 @@ import AdminCategoriesScreen from '@/screens/admin/AdminCategoriesScreen';
 import AdminAllReviewsScreen from '@/screens/admin/AdminAllReviewsScreen';
 import AdminSettingsScreen from '@/screens/admin/AdminSettingsScreen';
 import AdminComingSoonScreen from '@/screens/admin/AdminComingSoonScreen';
+import AdminCustomersScreen from '@/screens/admin/AdminCustomersScreen';
+import AdminOffersScreen from '@/screens/admin/AdminOffersScreen';
+import OffersScreen from '@/screens/OffersScreen';
 import TestimonialsScreen from '@/screens/TestimonialsScreen';
 import AboutScreen from '@/screens/info/AboutScreen';
 import ContactScreen from '@/screens/info/ContactScreen';
@@ -71,7 +74,10 @@ export default function RootNavigator() {
       <Stack.Screen name="AdminAllReviews" component={AdminAllReviewsScreen} />
       <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
       <Stack.Screen name="AdminComingSoon" component={AdminComingSoonScreen} />
+      <Stack.Screen name="AdminCustomers" component={AdminCustomersScreen} />
+      <Stack.Screen name="AdminOffers" component={AdminOffersScreen} />
       <Stack.Screen name="Testimonials" component={TestimonialsScreen} />
+      <Stack.Screen name="Offers" component={OffersScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
       <Stack.Screen name="Contact" component={ContactScreen} />
       <Stack.Screen name="FAQ" component={FAQScreen} />

@@ -2,11 +2,10 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, Platform } from 'react-native';
-import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
-import { useTabBarHeight } from '@/hooks/useTabBarHeight';
+import { useTabBarMetrics } from '@/hooks/useTabBarHeight';
 import { TabParamList } from '@/types/navigation';
 import { useWishlist } from '@/context/WishlistContext';
 
@@ -53,33 +52,14 @@ function WishlistTabIcon({ focused, colors }: { focused: boolean; colors: ColorT
 
 export default function BottomTabNavigator({ hideTabBar }: { hideTabBar?: boolean }) {
   const { colors } = useTheme();
-  // A hardcoded height/paddingBottom doesn't leave room for the phone's own
-  // system navigation bar (Android's 3-button bar or gesture pill), so the
-  // tab bar would render partly underneath it and those taps get eaten by
-  // system gestures instead of reaching the app. Fix: add the device's
-  // actual bottom safe-area inset on top of our base padding.
-  //
-  // That inset is read once from initialWindowMetrics (captured before this
-  // app's first render) rather than live from useSafeAreaInsets(). A real
-  // device's gesture bar / home indicator doesn't change size during normal
-  // use, so there's nothing to react to — and reading it live was the
-  // actual bug: that value also reacts to every screen transition, and
-  // popping a screen that had been covering this tab bar (ProductDetail,
-  // or Terms/About/FAQ/Privacy/Testimonials from Profile's menu) could
-  // catch it mid-transition and freeze on a much-too-large number, shown
-  // as a band of dead space under the bar with the icons pushed up above
-  // it. useSafeAreaInsets() is kept only as the fallback for the rare case
-  // initialWindowMetrics isn't available yet.
-  const insets = useSafeAreaInsets();
-  const stableBottomInset = Math.min(initialWindowMetrics?.insets.bottom ?? insets.bottom, 48);
-  // Web has no notch/gesture-bar equivalent, so insets.bottom is always 0
-  // there — giving it the same minimum as native left too little vertical
-  // room for the label text in a fixed-height flex row, and the label got
-  // clipped at the bottom edge on narrower web windows. Web gets a bigger
-  // floor. (Shared with ChatWidget via useTabBarHeight so the two can't
-  // drift out of sync again.)
-  const bottomPadding = Math.max(stableBottomInset, Platform.OS === 'web' ? 14 : 10);
-  const tabBarHeight = useTabBarHeight();
+  // Both numbers come from one hook (see useTabBarHeight.ts) — including
+  // the module-level cache that keeps the bottom inset stable for the
+  // whole app session, which is what actually matters here: without it, a
+  // screen transition back to this tab bar (from ProductDetail, or Terms/
+  // About/FAQ/Privacy/Testimonials from Profile's menu) could catch the
+  // live inset mid-change and freeze on a much-too-large number — shown as
+  // a band of dead space under the bar with the icons pushed up above it.
+  const { height: tabBarHeight, bottomPadding } = useTabBarMetrics();
 
   return (
     <Tab.Navigator

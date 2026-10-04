@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { BackHandler, Platform } from 'react-native';
+import { BackHandler, Keyboard, Platform } from 'react-native';
 
 /**
  * Makes a Modal/bottom-sheet play along with "back" the way people expect:
@@ -83,6 +83,14 @@ export function useModalBackClose(visible: boolean, onClose: () => void) {
 
     if (Platform.OS === 'android') {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        // If a text field in this modal is focused, dismiss the keyboard
+        // first rather than closing straight through it. Without this, the
+        // modal (and whatever TextInput was focused) unmounts while Android
+        // is still mid-way through resizing the window for the keyboard —
+        // that race is what caused the bottom tab bar to come back with a
+        // tall gap of blank space under it after closing something like
+        // Edit Profile while the keyboard was still up.
+        Keyboard.dismiss();
         onCloseRef.current();
         return true; // we handled it — don't also pop the navigator underneath
       });

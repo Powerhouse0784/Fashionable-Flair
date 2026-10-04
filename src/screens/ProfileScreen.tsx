@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -186,20 +186,8 @@ export default function ProfileScreen() {
     if (confirmed) signOut();
   };
 
-  const handleOffersPress = async () => {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm('Check out our latest offers and deals on Meesho!')) {
-        Linking.openURL('https://www.meesho.com/h6z4l');
-      }
-      return;
-    }
-    Alert.alert('Offers & Deals', 'Check out our latest offers and deals on Meesho!', [
-      {
-        text: 'View on Meesho',
-        onPress: () => Linking.openURL('https://www.meesho.com/h6z4l'),
-      },
-      { text: 'Close', style: 'cancel' },
-    ]);
+  const handleOffersPress = () => {
+    navigation.navigate('Offers');
   };
 
   const handleNotificationsPress = async () => {
