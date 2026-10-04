@@ -350,10 +350,19 @@ function makeStyles(colors: ColorTheme) {
     },
     input: {
       flex: 1,
+      height: '100%',
       marginLeft: spacing.sm,
       ...typography.body,
       color: colors.textPrimary,
       paddingVertical: 0,
+      // Android's EditText reserves extra space above the glyphs for
+      // multi-line text by default, even on a single-line input — that's
+      // what was pushing the text (and placeholder) up out of the pill's
+      // vertical center instead of sitting centered in it like the search
+      // icon next to it. Both props below are Android-only and no-ops
+      // elsewhere.
+      textAlignVertical: 'center',
+      includeFontPadding: false,
       // Web: a bare <input> draws its own black focus rectangle + border —
       // those were the "two black lines". Strip them so the whole pill is
       // the text area, and tint the blinking caret with the brand colour.

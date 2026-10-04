@@ -130,7 +130,17 @@ export default function TestimonialFormModal({ visible, initial, saving, onSubmi
           style={{ width: '100%' }}
         >
           <Pressable
-            style={[styles.sheet, { maxHeight: Math.round(windowHeight * 0.92) }]}
+            // A deterministic `height` here (not `maxHeight`) is what lets
+            // the ScrollView below use `flex: 1` and reliably know exactly
+            // how much space it has to scroll within. The previous
+            // `maxHeight` + `flexShrink` pairing on the ScrollView left
+            // that genuinely ambiguous on native — Yoga doesn't always
+            // resolve a scrollable height cleanly from `maxHeight` alone,
+            // so the form could render looking fine but scroll janky or
+            // not at all depending on the device. react-native-web maps
+            // `max-height` straight to CSS, which is why this only ever
+            // showed up in the RN app and not on web.
+            style={[styles.sheet, { height: Math.round(windowHeight * 0.92) }]}
             onPress={(e) => e.stopPropagation()}
           >
             <View style={styles.handle} />
@@ -143,12 +153,12 @@ export default function TestimonialFormModal({ visible, initial, saving, onSubmi
 
             <ScrollView
               showsVerticalScrollIndicator={false}
-              // flexShrink lets this area give up height to the keyboard (or
-              // to a short screen) instead of pushing the header and submit
-              // button off-screen with no way to reach them — the fixed
-              // 480 alone had no give, which is what made the sheet feel
-              // "stuck" on shorter phones or once the keyboard opened.
-              style={{ maxHeight: 480, flexShrink: 1 }}
+              // Fills whatever's left in the now fixed-height sheet after
+              // the handle/header above and the submit button below take
+              // their own space — the standard, reliable way to make a
+              // ScrollView actually scroll on native RN, instead of
+              // capping its own height and hoping Yoga resolves the rest.
+              style={{ flex: 1 }}
               keyboardShouldPersistTaps="handled"
             >
               <TouchableOpacity style={styles.avatarPicker} activeOpacity={0.85} onPress={() => setAvatarPickerOpen(true)}>

@@ -404,7 +404,18 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
         : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 1 }),
     },
     searchBarWide: { maxWidth: 480, alignSelf: 'center', width: '100%' },
-    searchInput: { flex: 1, ...typography.body, color: colors.textPrimary },
+    // textAlignVertical/includeFontPadding: Android's EditText reserves
+    // extra space above the glyphs for multi-line text by default, even on
+    // a single-line input, pushing the text up out of vertical center —
+    // both are Android-only and no-ops elsewhere.
+    searchInput: {
+      flex: 1,
+      height: '100%',
+      ...typography.body,
+      color: colors.textPrimary,
+      textAlignVertical: 'center',
+      includeFontPadding: false,
+    },
 
     // ---------- Categories ----------
     categoryList: { marginTop: spacing.xl, gap: spacing.md },

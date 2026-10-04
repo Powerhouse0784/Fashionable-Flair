@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,7 +44,24 @@ export default function WishlistEmptyState({ onBrowse }: Props) {
   const { colors, isDark } = useTheme();
   const isWide = useIsWideScreen();
   const viewportWidth = useViewportWidth();
-  const { styles, palette } = makeStyles(colors, isDark, isWide);
+  const { height: windowHeight } = useWindowDimensions();
+  // `root` needs a real, concrete height for the absolutely-positioned
+  // wave/corner backdrop (pinned to its bottom edge) to land in the right
+  // place. It used to rely on `flex: 1` to stretch to fill whatever space
+  // was left in the parent ScrollView — that's exactly what react-native-
+  // web's ScrollView does (a plain CSS flexbox there, so flex:1 fills the
+  // viewport correctly), but RN's own ScrollView on native doesn't resolve
+  // a lone flex:1 child the same way: Yoga has nothing to flex *against*
+  // inside a scrollable content container, so it collapsed to `minHeight`
+  // instead of the screen's real height. The backdrop then ended up
+  // bunched up near the top of that short box instead of forming a bottom
+  // "shoreline" under the whole screen, with a big blank gap below it —
+  // exactly the "fine on web, broken on the app" bug reported. Deriving a
+  // concrete pixel height from the window itself sidesteps that platform
+  // difference entirely instead of depending on flex resolution.
+  const minHeight = isWide ? 560 : 470;
+  const rootHeight = Math.max(minHeight, Math.round(windowHeight * (isWide ? 0.7 : 0.62)));
+  const { styles, palette } = makeStyles(colors, isDark, isWide, rootHeight);
   const art = isDark ? ART.dark : ART.light;
 
   const heroWidth = isWide ? Math.min(460, viewportWidth * 0.5) : Math.min(360, viewportWidth * 0.92);
@@ -128,7 +145,7 @@ export default function WishlistEmptyState({ onBrowse }: Props) {
   );
 }
 
-function makeStyles(colors: ColorTheme, isDark: boolean, isWide: boolean) {
+function makeStyles(colors: ColorTheme, isDark: boolean, isWide: boolean, rootHeight: number) {
   // Dark theme uses the gold accent (per the design); light uses the brand
   // blue, which also means a Premium accent skin (ruby, emerald…) tints this
   // screen the same way it tints every other button in light mode.
@@ -138,16 +155,15 @@ function makeStyles(colors: ColorTheme, isDark: boolean, isWide: boolean) {
   const taglineRule = isDark ? 'rgba(160,180,210,0.45)' : `${colors.primary}44`;
 
   const styles = StyleSheet.create({
-    // Centers `content` in whatever height this ends up with (the screen
-    // fills it via the parent ScrollView's flexGrow, so that's the full
-    // space below the header) — not `space-between`, which only looks
-    // centered once the wide-only tagline below is also present to balance
-    // it; on mobile, with content as the sole child, `space-between` just
-    // pins it to the top.
+    // Centers `content` within an explicit height (see the comment above
+    // this function's call site for why that's computed from the window
+    // instead of `flex: 1` + `minHeight`) — not `space-between`, which
+    // only looks centered once the wide-only tagline below is also
+    // present to balance it; on mobile, with content as the sole child,
+    // `space-between` just pins it to the top.
     root: {
-      flex: 1,
       width: '100%',
-      minHeight: isWide ? 560 : 470,
+      height: rootHeight,
       overflow: 'hidden',
       justifyContent: 'center',
     },

@@ -33,6 +33,12 @@ interface AuthContextValue {
   /** Customer self-registration — a regular signed-up shopper, never an
    * admin (that still only ever comes from the `admins` table above). */
   signUp: (email: string, password: string, fullName?: string) => Promise<SignUpResult>;
+  /** Sends a password-reset email via Supabase. Always reports success
+   * even for an email with no account — same reasoning as the signup
+   * "already registered" case above, just in the other direction: telling
+   * the truth here would let a stranger use this form to check which
+   * emails are registered at all. */
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -126,6 +132,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null, needsConfirmation: !data.session, session: data.session ?? null };
   };
 
+  const resetPassword = async (email: string): Promise<{ error: string | null }> => {
+    if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    // Deliberately ignore `error` for "user not found"-type cases (Supabase
+    // itself doesn't actually distinguish this from other failures in the
+    // response), and only surface genuinely unexpected failures.
+    if (error && !/user not found/i.test(error.message)) {
+      return { error: error.message };
+    }
+    return { error: null };
+  };
+
   const signOut = async () => {
     // { scope: 'local' } clears this device's session immediately, even if
     // the network call to also revoke it server-side fails (offline, a
@@ -136,7 +154,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut({ scope: 'local' });
   };
 
-  const value = useMemo(() => ({ session, isAdmin, loading, signIn, signUp, signOut }), [session, isAdmin, loading]);
+  const value = useMemo(
+    () => ({ session, isAdmin, loading, signIn, signUp, resetPassword, signOut }),
+    [session, isAdmin, loading]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

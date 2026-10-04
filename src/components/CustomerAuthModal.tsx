@@ -11,9 +11,9 @@ import {
   Platform,
   ScrollView,
   useWindowDimensions,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
@@ -22,11 +22,21 @@ import { fonts } from '@/hooks/useAppFonts';
 import { useModalBackClose } from '@/hooks/useModalBackClose';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/context/ProfileContext';
+import { alertInfo } from '@/utils/confirm';
 import type { Session } from '@supabase/supabase-js';
 import Logo from './Logo';
 
-const leafLight = require('@/assets/privacy/privacy-leaf-light.png');
-const leafDark = require('@/assets/privacy/privacy-leaf-dark.png');
+// Decorative corners and hero scene, cropped from the approved login
+// reference art (see fashionable_flair_login_assets.zip) — the text and
+// UI chrome baked into that reference's own screenshots were cropped
+// away; only the clean floral/jewellery artwork is used here, with every
+// label, field and button in this file being real text, not an image.
+const topCornerLight = require('@/assets/auth/top_corner_light.jpg');
+const topCornerDark = require('@/assets/auth/top_corner_dark.jpg');
+const bottomCornerLight = require('@/assets/auth/bottom_corner_light.jpg');
+const bottomCornerDark = require('@/assets/auth/bottom_corner_dark.jpg');
+const heroLight = require('@/assets/auth/hero_light.jpg');
+const heroDark = require('@/assets/auth/hero_dark.jpg');
 
 interface Props {
   visible: boolean;
@@ -41,8 +51,20 @@ interface Props {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-type Mode = 'signIn' | 'signUp';
+type Mode = 'signIn' | 'signUp' | 'forgotPassword';
 type FieldKey = 'name' | 'email' | 'password' | 'confirm';
+
+const TRUST_BADGES = [
+  { icon: 'diamond-outline', label: 'Premium Quality\nJewellery' },
+  { icon: 'shield-checkmark-outline', label: 'Secure & Easy\nPayments' },
+  { icon: 'people-outline', label: 'Trusted by\nThousands' },
+] as const;
+
+const SOCIAL_BUTTONS = [
+  { key: 'google', icon: 'logo-google', color: '#EA4335', label: 'Google' },
+  { key: 'apple', icon: 'logo-apple', color: null, label: 'Apple' },
+  { key: 'facebook', icon: 'logo-facebook', color: '#1877F2', label: 'Facebook' },
+] as const;
 
 interface FieldProps {
   icon: string;
@@ -75,20 +97,20 @@ function Field({ icon, label, focused, colors, right, inputRef, inputProps }: Fi
 }
 
 /** The one place in the app that ever asks a shopper to sign in — a
- * full-screen login / create-account page (browsing, wishlist, profile
- * etc. all still work as a guest). On phones it's a single column with a
- * pinned header bar above a normally-flowing (not artificially centered)
- * body, so a short form (login) and a long one (register) both read the
- * same way. On wide/web screens the same form sits beside a decorative
- * panel instead of floating alone in a mostly-empty page. */
+ * full-screen login / create-account / reset-password page (browsing,
+ * wishlist, profile etc. all still work as a guest). Narrow screens get a
+ * single scrolling column; wide screens get the form beside a jewellery
+ * hero image and trust badges instead of floating alone in empty space. */
 export default function CustomerAuthModal({ visible, reason, onClose, onAuthenticated }: Props) {
   useModalBackClose(visible, onClose);
   const { colors, isDark } = useTheme();
   const styles = makeStyles(colors);
   const { width } = useWindowDimensions();
-  const isWide = width >= 700;
-  const leafSource = isDark ? leafDark : leafLight;
-  const { signIn, signUp } = useAuth();
+  const isWide = width >= 860;
+  const topCorner = isDark ? topCornerDark : topCornerLight;
+  const bottomCorner = isDark ? bottomCornerDark : bottomCornerLight;
+  const heroImage = isDark ? heroDark : heroLight;
+  const { signIn, signUp, resetPassword } = useAuth();
   const { name: profileName, updateProfile } = useProfile();
 
   const [mode, setMode] = useState<Mode>('signIn');
@@ -97,10 +119,12 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [focusedField, setFocusedField] = useState<FieldKey | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const emailRef = useRef<TextInput | null>(null);
   const passwordRef = useRef<TextInput | null>(null);
@@ -115,6 +139,7 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
     setShowPassword(false);
     setError(null);
     setConfirmationSent(false);
+    setResetSent(false);
   }, [visible, mode]);
 
   useEffect(() => {
@@ -124,6 +149,26 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
   const handleSubmit = async () => {
     if (submitting) return;
     setError(null);
+
+    if (mode === 'forgotPassword') {
+      if (!EMAIL_PATTERN.test(email.trim())) {
+        setError('Enter a valid email address.');
+        return;
+      }
+      setSubmitting(true);
+      try {
+        const { error: resetError } = await resetPassword(email.trim());
+        if (resetError) {
+          setError(resetError);
+          return;
+        }
+        setResetSent(true);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     if (mode === 'signUp' && !fullName.trim()) {
       setError('Enter your full name.');
       return;
@@ -158,166 +203,271 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
         setError(authError);
         return;
       }
-      // Use the name they just typed as their profile name (only if they
-      // hadn't already set one as a guest — never overwrite it).
       if (fullName.trim() && !profileName) updateProfile({ name: fullName.trim() });
 
       if (needsConfirmation || !session) {
-        // The project has "Confirm email" on — there's no session yet
-        // until they click the link, so say so plainly and don't call
-        // onAuthenticated: nothing is actually signed in yet, so the
-        // caller (e.g. the Premium paywall) must not proceed as if it were.
         setConfirmationSent(true);
         return;
       }
-      // Confirmation is off for this project, so signUp already produced a
-      // real session — safe to proceed immediately.
       onAuthenticated(session);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleSocialPress = (label: string) => {
+    alertInfo(`${label} sign-in`, `${label} sign-in isn\u2019t set up yet \u2014 please use your email for now.`);
+  };
+
   const gradientColors: [string, string] = isDark ? ['#EBCB85', colors.gold] : [colors.primary, colors.primaryDark];
   const buttonTextColor = isDark ? '#1B1405' : '#FFFFFF';
   const isSignIn = mode === 'signIn';
+  const isForgotPassword = mode === 'forgotPassword';
 
-  const form = confirmationSent ? (
-    <View style={styles.confirmationBox}>
-      <View style={styles.confirmationIcon}>
-        <Ionicons name="mail-outline" size={28} color={colors.primary} />
-      </View>
-      <Text style={styles.confirmationTitle}>Check your inbox</Text>
-      <Text style={styles.confirmationText}>We’ve sent a confirmation link to {email.trim()}. Confirm it, then log in.</Text>
+  const submitButton = (label: string) => (
+    <TouchableOpacity activeOpacity={0.88} onPress={handleSubmit} disabled={submitting} style={{ marginTop: spacing.sm }}>
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.submitButton, submitting && { opacity: 0.75 }]}
+      >
+        {submitting ? (
+          <ActivityIndicator color={buttonTextColor} />
+        ) : (
+          <>
+            <Text style={[styles.submitButtonText, { color: buttonTextColor }]}>{label}</Text>
+            <Ionicons name="arrow-forward" size={18} color={buttonTextColor} />
+          </>
+        )}
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+
+  const errorBox = error ? (
+    <View style={styles.errorBox}>
+      <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
+      <Text style={styles.errorText}>{error}</Text>
     </View>
-  ) : (
-    <>
-      {!isSignIn && (
+  ) : null;
+
+  let form: React.ReactNode;
+
+  if (confirmationSent) {
+    form = (
+      <View style={styles.confirmationBox}>
+        <View style={styles.confirmationIcon}>
+          <Ionicons name="mail-outline" size={28} color={colors.primary} />
+        </View>
+        <Text style={styles.confirmationTitle}>Check your inbox</Text>
+        <Text style={styles.confirmationText}>We’ve sent a confirmation link to {email.trim()}. Confirm it, then log in.</Text>
+      </View>
+    );
+  } else if (resetSent) {
+    form = (
+      <>
+        <View style={styles.confirmationBox}>
+          <View style={styles.confirmationIcon}>
+            <Ionicons name="mail-outline" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.confirmationTitle}>Check your inbox</Text>
+          <Text style={styles.confirmationText}>
+            If an account exists for {email.trim()}, we’ve sent a link to reset the password.
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.switchModeBtn} onPress={() => setMode('signIn')}>
+          <Text style={styles.switchModeText}>
+            <Text style={{ color: colors.primary, fontFamily: fonts.bodySemiBold }}>Back to Log In</Text>
+          </Text>
+        </TouchableOpacity>
+      </>
+    );
+  } else if (isForgotPassword) {
+    form = (
+      <>
         <Field
-          icon="person-outline"
-          label="Full Name"
+          icon="mail-outline"
+          label="Email Address"
           colors={colors}
-          focused={focusedField === 'name'}
+          focused={focusedField === 'email'}
+          inputRef={emailRef}
           inputProps={{
-            value: fullName,
-            onChangeText: setFullName,
-            placeholder: 'Enter your full name',
-            autoCapitalize: 'words',
-            autoComplete: 'name',
-            returnKeyType: 'next',
-            onFocus: () => setFocusedField('name'),
-            onBlur: () => setFocusedField(null),
-            onSubmitEditing: () => emailRef.current?.focus(),
-            maxLength: 40,
-          }}
-        />
-      )}
-      <Field
-        icon="mail-outline"
-        label={isSignIn ? undefined : 'Email Address'}
-        colors={colors}
-        focused={focusedField === 'email'}
-        inputRef={emailRef}
-        inputProps={{
-          value: email,
-          onChangeText: setEmail,
-          placeholder: 'you@example.com',
-          autoCapitalize: 'none',
-          keyboardType: 'email-address',
-          autoComplete: 'email',
-          returnKeyType: 'next',
-          onFocus: () => setFocusedField('email'),
-          onBlur: () => setFocusedField(null),
-          onSubmitEditing: () => passwordRef.current?.focus(),
-        }}
-      />
-      <Field
-        icon="lock-closed-outline"
-        label={isSignIn ? undefined : 'Password'}
-        colors={colors}
-        focused={focusedField === 'password'}
-        inputRef={passwordRef}
-        right={
-          <TouchableOpacity
-            onPress={() => setShowPassword((v) => !v)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-          >
-            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-        }
-        inputProps={{
-          value: password,
-          onChangeText: setPassword,
-          placeholder: 'At least 6 characters',
-          secureTextEntry: !showPassword,
-          autoCapitalize: 'none',
-          autoComplete: isSignIn ? 'current-password' : 'new-password',
-          returnKeyType: isSignIn ? 'go' : 'next',
-          onFocus: () => setFocusedField('password'),
-          onBlur: () => setFocusedField(null),
-          onSubmitEditing: () => (isSignIn ? handleSubmit() : confirmRef.current?.focus()),
-        }}
-      />
-      {!isSignIn && (
-        <Field
-          icon="shield-checkmark-outline"
-          label="Confirm Password"
-          colors={colors}
-          focused={focusedField === 'confirm'}
-          inputRef={confirmRef}
-          inputProps={{
-            value: confirmPassword,
-            onChangeText: setConfirmPassword,
-            placeholder: 'Re-enter your password',
-            secureTextEntry: !showPassword,
+            value: email,
+            onChangeText: setEmail,
+            placeholder: 'you@example.com',
             autoCapitalize: 'none',
-            autoComplete: 'new-password',
+            keyboardType: 'email-address',
+            autoComplete: 'email',
             returnKeyType: 'go',
-            onFocus: () => setFocusedField('confirm'),
+            onFocus: () => setFocusedField('email'),
             onBlur: () => setFocusedField(null),
             onSubmitEditing: handleSubmit,
           }}
         />
-      )}
+        {errorBox}
+        {submitButton('Send Reset Link')}
+        <TouchableOpacity style={styles.switchModeBtn} onPress={() => setMode('signIn')}>
+          <Text style={styles.switchModeText}>
+            <Text style={{ color: colors.primary, fontFamily: fonts.bodySemiBold }}>Back to Log In</Text>
+          </Text>
+        </TouchableOpacity>
+      </>
+    );
+  } else {
+    form = (
+      <>
+        {!isSignIn && (
+          <Field
+            icon="person-outline"
+            label="Full Name"
+            colors={colors}
+            focused={focusedField === 'name'}
+            inputProps={{
+              value: fullName,
+              onChangeText: setFullName,
+              placeholder: 'Enter your full name',
+              autoCapitalize: 'words',
+              autoComplete: 'name',
+              returnKeyType: 'next',
+              onFocus: () => setFocusedField('name'),
+              onBlur: () => setFocusedField(null),
+              onSubmitEditing: () => emailRef.current?.focus(),
+              maxLength: 40,
+            }}
+          />
+        )}
+        <Field
+          icon="mail-outline"
+          label={isSignIn ? undefined : 'Email Address'}
+          colors={colors}
+          focused={focusedField === 'email'}
+          inputRef={emailRef}
+          inputProps={{
+            value: email,
+            onChangeText: setEmail,
+            placeholder: 'you@example.com',
+            autoCapitalize: 'none',
+            keyboardType: 'email-address',
+            autoComplete: 'email',
+            returnKeyType: 'next',
+            onFocus: () => setFocusedField('email'),
+            onBlur: () => setFocusedField(null),
+            onSubmitEditing: () => passwordRef.current?.focus(),
+          }}
+        />
+        <Field
+          icon="lock-closed-outline"
+          label={isSignIn ? undefined : 'Password'}
+          colors={colors}
+          focused={focusedField === 'password'}
+          inputRef={passwordRef}
+          right={
+            <TouchableOpacity
+              onPress={() => setShowPassword((v) => !v)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+            >
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          }
+          inputProps={{
+            value: password,
+            onChangeText: setPassword,
+            placeholder: 'At least 6 characters',
+            secureTextEntry: !showPassword,
+            autoCapitalize: 'none',
+            autoComplete: isSignIn ? 'current-password' : 'new-password',
+            returnKeyType: isSignIn ? 'go' : 'next',
+            onFocus: () => setFocusedField('password'),
+            onBlur: () => setFocusedField(null),
+            onSubmitEditing: () => (isSignIn ? handleSubmit() : confirmRef.current?.focus()),
+          }}
+        />
+        {!isSignIn && (
+          <Field
+            icon="shield-checkmark-outline"
+            label="Confirm Password"
+            colors={colors}
+            focused={focusedField === 'confirm'}
+            inputRef={confirmRef}
+            inputProps={{
+              value: confirmPassword,
+              onChangeText: setConfirmPassword,
+              placeholder: 'Re-enter your password',
+              secureTextEntry: !showPassword,
+              autoCapitalize: 'none',
+              autoComplete: 'new-password',
+              returnKeyType: 'go',
+              onFocus: () => setFocusedField('confirm'),
+              onBlur: () => setFocusedField(null),
+              onSubmitEditing: handleSubmit,
+            }}
+          />
+        )}
 
-      {error ? (
-        <View style={styles.errorBox}>
-          <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
-          <Text style={styles.errorText}>{error}</Text>
+        {isSignIn && (
+          <View style={styles.optionsRow}>
+            <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe((v) => !v)} activeOpacity={0.7}>
+              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                {rememberMe && <Ionicons name="checkmark" size={12} color={colors.textInverse} />}
+              </View>
+              <Text style={styles.rememberText}>Remember me</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setMode('forgotPassword')}>
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {errorBox}
+        {submitButton(isSignIn ? 'Log In' : 'Create Account')}
+
+        {!isSignIn && (
+          <Text style={styles.termsText}>By creating an account you agree to our Terms of Service and Privacy Policy.</Text>
+        )}
+
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>Or continue with</Text>
+          <View style={styles.dividerLine} />
         </View>
-      ) : null}
+        <View style={styles.socialRow}>
+          {SOCIAL_BUTTONS.map((s) => (
+            <TouchableOpacity
+              key={s.key}
+              style={styles.socialButton}
+              activeOpacity={0.8}
+              onPress={() => handleSocialPress(s.label)}
+              accessibilityLabel={`Continue with ${s.label}`}
+            >
+              <Ionicons name={s.icon as any} size={20} color={s.color ?? colors.textPrimary} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </>
+    );
+  }
 
-      <TouchableOpacity activeOpacity={0.88} onPress={handleSubmit} disabled={submitting} style={{ marginTop: spacing.lg }}>
-        <LinearGradient
-          colors={gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.submitButton, submitting && { opacity: 0.75 }]}
-        >
-          {submitting ? (
-            <ActivityIndicator color={buttonTextColor} />
-          ) : (
-            <>
-              <Text style={[styles.submitButtonText, { color: buttonTextColor }]}>
-                {isSignIn ? 'Log In' : 'Create Account'}
-              </Text>
-              <Ionicons name="arrow-forward" size={18} color={buttonTextColor} />
-            </>
-          )}
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {!isSignIn && (
-        <Text style={styles.termsText}>By creating an account you agree to our Terms of Service and Privacy Policy.</Text>
-      )}
-    </>
+  const switchLink = !confirmationSent && !resetSent && !isForgotPassword && (
+    <TouchableOpacity style={styles.switchModeBtn} onPress={() => setMode(isSignIn ? 'signUp' : 'signIn')}>
+      <Text style={styles.switchModeText}>
+        {isSignIn ? "Don't have an account? " : 'Already have an account? '}
+        <Text style={{ color: colors.primary, fontFamily: fonts.bodySemiBold }}>{isSignIn ? 'Create one' : 'Log in'}</Text>
+      </Text>
+    </TouchableOpacity>
   );
 
-  // A back button that floats over everything, always in the same corner
-  // of the viewport — one implementation, one placement, on both layouts,
-  // instead of being embedded inside content that scrolls or resizes
-  // around it.
+  const titleText = confirmationSent || resetSent ? 'Almost there' : isForgotPassword ? 'Reset Password' : isSignIn ? 'Welcome Back' : 'Create Account';
+  const subtitleText =
+    !confirmationSent && !resetSent
+      ? reason ||
+        (isForgotPassword
+          ? "Enter your email and we'll send you a link to reset your password."
+          : isSignIn
+          ? 'Log in to your account and continue your jewellery journey.'
+          : 'Be the first to explore our latest collections, exclusive offers and more.')
+      : null;
+
   const backButton = (
     <TouchableOpacity
       style={styles.backButton}
@@ -344,94 +494,52 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
 
   const heading = (
     <>
-      <Text style={styles.title}>{confirmationSent ? 'Almost there' : isSignIn ? 'Welcome Back' : 'Create Account'}</Text>
-      {!confirmationSent && (
-        <Text style={styles.subtitle}>
-          {reason ||
-            (isSignIn
-              ? 'Log in to your account and continue your journey with us.'
-              : 'Be the first to explore our latest collections, exclusive offers and more.')}
-        </Text>
-      )}
+      <Text style={styles.title}>{titleText}</Text>
+      {subtitleText ? <Text style={styles.subtitle}>{subtitleText}</Text> : null}
     </>
-  );
-
-  const switchLink = !confirmationSent && (
-    <TouchableOpacity style={styles.switchModeBtn} onPress={() => setMode(isSignIn ? 'signUp' : 'signIn')}>
-      <Text style={styles.switchModeText}>
-        {isSignIn ? "Don't have an account? " : 'Already have an account? '}
-        <Text style={{ color: colors.primary, fontFamily: fonts.bodySemiBold }}>{isSignIn ? 'Create one' : 'Log in'}</Text>
-      </Text>
-    </TouchableOpacity>
-  );
-
-  // Real reasons to log in, not filler — this is what balances the short
-  // login form (2 fields) against the page. Only shown on login: the
-  // register form already has four fields plus terms copy, and adding
-  // this there is what was pushing it into needing a scroll.
-  const trustRow = isSignIn && !confirmationSent && (
-    <View style={styles.trustRow}>
-      <View style={styles.trustDivider} />
-      {[
-        { icon: 'sync-outline', label: 'Synced across every device' },
-        { icon: 'diamond-outline', label: 'Unlocks Premium & your saved profile' },
-        { icon: 'lock-closed-outline', label: 'Your details stay private' },
-      ].map((item) => (
-        <View key={item.label} style={styles.trustItem}>
-          <View style={styles.trustIconWrap}>
-            <Ionicons name={item.icon as any} size={15} color={colors.primary} />
-          </View>
-          <Text style={styles.trustLabel}>{item.label}</Text>
-        </View>
-      ))}
-    </View>
   );
 
   if (isWide) {
     return (
       <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-        <View style={styles.wideScreen}>
-          <View style={styles.wideBackWrap}>{backButton}</View>
+        <View style={styles.screen}>
+          <Image source={topCorner} style={styles.wideTopCornerImg} resizeMode="cover" />
+          <Image source={bottomCorner} style={styles.wideBottomCornerImg} resizeMode="cover" />
 
-          {/* Decorative panel — fills the space a single centred column used
-              to leave empty, instead of stretching the form itself
-              uncomfortably wide. */}
-          <View style={styles.widePanel}>
-            <LinearGradient
-              colors={isDark ? ['#0B2647', '#13345F'] : [colors.primary, colors.primaryDark]}
-              start={{ x: 0.1, y: 0 }}
-              end={{ x: 0.9, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Image source={leafSource} style={styles.widePanelLeafTop} contentFit="contain" pointerEvents="none" />
-            <Image source={leafSource} style={styles.widePanelLeafBottom} contentFit="contain" pointerEvents="none" />
-            <View style={styles.widePanelContent}>
-              <View style={styles.widePanelMark}>
-                <Logo variant="mark" height={30} />
-              </View>
-              <Text style={styles.widePanelBrand}>Fashionable Flair</Text>
-              <Text style={styles.widePanelTagline}>Jewellery That Speaks Your Style</Text>
-              <View style={styles.wideDiamondWrap}>
-                <Ionicons name="diamond" size={110} color="#F3D98A" style={{ opacity: 0.95 }} />
-                <Ionicons name="sparkles" size={26} color="#F3D98A" style={styles.sparkleA} />
-                <Ionicons name="sparkles" size={16} color="#F3D98A" style={styles.sparkleB} />
-              </View>
-              <Text style={styles.widePanelQuote}>"Every piece tells a story — keep yours synced, wherever you shop."</Text>
-            </View>
-          </View>
-
-          <View style={styles.wideFormPanel}>
-            <SafeAreaView style={{ flex: 1 }}>
-              <ScrollView contentContainerStyle={styles.wideFormScroll} showsVerticalScrollIndicator={false}>
-                <View style={styles.wideFormColumn}>
-                  {heading}
-                  <View style={[styles.formArea, styles.formCard]}>{form}</View>
-                  {switchLink}
-                  {trustRow}
+          <SafeAreaView style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={styles.wideScrollContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.wideWrap}>
+                <View style={styles.wideHeaderRow}>
+                  {backButton}
+                  {brandRow}
                 </View>
-              </ScrollView>
-            </SafeAreaView>
-          </View>
+
+                <View style={styles.wideColumns}>
+                  <View style={styles.wideLeftCol}>
+                    {heading}
+                    <View style={styles.formArea}>{form}</View>
+                    {switchLink}
+                  </View>
+
+                  <View style={styles.wideRightCol}>
+                    <View style={styles.heroImageWrap}>
+                      <Image source={heroImage} style={styles.heroImage} resizeMode="cover" />
+                    </View>
+                    <View style={styles.trustRow}>
+                      {TRUST_BADGES.map((b) => (
+                        <View key={b.label} style={styles.trustItem}>
+                          <View style={styles.trustIconWrap}>
+                            <Ionicons name={b.icon as any} size={20} color={colors.primary} />
+                          </View>
+                          <Text style={styles.trustLabel}>{b.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </SafeAreaView>
         </View>
       </Modal>
     );
@@ -440,33 +548,10 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.screen}>
-        {/* Brand wash runs most of the screen height (not just a header
-            strip) so the bottom of the page reads as designed rather than
-            trailing off into flat white/black. */}
-        <LinearGradient
-          colors={
-            isDark
-              ? ['#10305A', colors.background, colors.background]
-              : [colors.primaryLight, colors.background, colors.background]
-          }
-          locations={[0, 0.5, 1]}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-        <View style={[styles.orb, styles.orbGold]} pointerEvents="none" />
-        <View style={[styles.orb, styles.orbBlue]} pointerEvents="none" />
-        <View style={styles.artWrap} pointerEvents="none">
-          <Ionicons name="diamond" size={64} color={colors.gold} style={{ opacity: isDark ? 0.9 : 0.75 }} />
-          <Ionicons name="sparkles" size={20} color={colors.gold} style={styles.sparkleA} />
-          <Ionicons name="sparkles" size={13} color={colors.gold} style={styles.sparkleB} />
-        </View>
-        <Image source={leafSource} style={styles.bottomLeaf} contentFit="contain" pointerEvents="none" />
+        <Image source={topCorner} style={styles.topCornerImg} resizeMode="cover" pointerEvents="none" />
+        <Image source={bottomCorner} style={styles.bottomCornerImg} resizeMode="cover" pointerEvents="none" />
 
         <SafeAreaView style={{ flex: 1 }}>
-          {/* Pinned header bar — back button + brand, left-aligned like an
-              ordinary navbar. Never scrolls away, and the body below always
-              starts right after it (no forced centering, so a short form
-              never floats in a gap and a long one just flows normally). */}
           <View style={styles.headerBar}>
             {backButton}
             {brandRow}
@@ -482,7 +567,6 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
                 {heading}
                 <View style={styles.formArea}>{form}</View>
                 {switchLink}
-                {trustRow}
               </View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -495,23 +579,25 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
 function makeStyles(colors: ColorTheme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
-    orb: { position: 'absolute', borderRadius: 999 },
-    orbGold: { width: 220, height: 220, top: -70, right: -70, backgroundColor: `${colors.gold}22` },
-    orbBlue: { width: 180, height: 180, top: 60, left: -90, backgroundColor: `${colors.primary}1A` },
-    artWrap: { position: 'absolute', top: 58, right: 24, alignItems: 'center', justifyContent: 'center' },
-    sparkleA: { position: 'absolute', top: -12, left: -16, opacity: 0.9 },
-    sparkleB: { position: 'absolute', bottom: -8, right: -14, opacity: 0.8 },
-    // Small and pushed into the corner on purpose — it's there so the
-    // bottom of the screen doesn't read as flat empty space, not to sit
-    // behind any text, so it stays low-opacity and mostly off-screen.
-    bottomLeaf: {
+
+    // ---------- Decorative corners (narrow) ----------
+    topCornerImg: {
       position: 'absolute',
-      bottom: -30,
-      left: -35,
-      width: 150,
-      height: 110,
-      opacity: 0.45,
-      transform: [{ rotate: '10deg' }],
+      top: 0,
+      right: 0,
+      width: 120,
+      height: 230,
+      opacity: 0.9,
+      borderBottomLeftRadius: radius.lg,
+    },
+    bottomCornerImg: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      width: 230,
+      height: 130,
+      opacity: 0.9,
+      borderTopRightRadius: radius.lg,
     },
 
     // ---------- Pinned header bar (narrow layout) ----------
@@ -561,80 +647,45 @@ function makeStyles(colors: ColorTheme) {
     scrollContent: { flexGrow: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
     column: { width: '100%', alignSelf: 'center' },
 
-    title: { ...typography.h1, fontFamily: fonts.headingBold, color: colors.textPrimary, marginTop: spacing.md },
-    subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs, maxWidth: 320 },
+    title: { fontSize: 28, lineHeight: 34, fontFamily: fonts.headingBold, color: colors.textPrimary, marginTop: spacing.md },
+    subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs, maxWidth: 340 },
 
-    // ---------- Wide / web layout: decorative panel + form panel ----------
-    wideScreen: { flex: 1, flexDirection: 'row', backgroundColor: colors.background },
-    wideBackWrap: {
-      position: 'absolute',
-      top: spacing.lg,
-      left: spacing.lg,
-      zIndex: 10,
-      // Web ignores SafeAreaView's top inset since there's no notch to
-      // avoid, so this sits directly under the browser chrome instead.
-    },
-    widePanel: { flex: 5, minWidth: 320, maxWidth: 480, overflow: 'hidden' },
-    widePanelLeafTop: {
-      position: 'absolute',
-      top: -20,
-      right: -20,
-      width: 200,
-      height: 150,
-      opacity: 0.5,
-      transform: [{ rotate: '180deg' }],
-    },
-    widePanelLeafBottom: { position: 'absolute', bottom: -20, left: -20, width: 220, height: 160, opacity: 0.55 },
-    widePanelContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-    widePanelMark: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: 'rgba(255,255,255,0.12)',
-      borderWidth: 1.5,
-      borderColor: '#F3D98A',
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-    },
-    widePanelBrand: {
-      ...typography.h2,
-      fontFamily: fonts.headingBold,
-      color: '#FFFFFF',
-      marginTop: spacing.md,
-      textAlign: 'center',
-    },
-    widePanelTagline: {
-      ...typography.caption,
-      color: 'rgba(255,255,255,0.75)',
-      textTransform: 'uppercase',
-      letterSpacing: 1.4,
-      marginTop: 4,
-    },
-    wideDiamondWrap: { alignItems: 'center', justifyContent: 'center', marginTop: spacing.xl + 8, marginBottom: spacing.xl },
-    widePanelQuote: {
-      ...typography.body,
-      fontFamily: fonts.headingMedium,
-      color: 'rgba(255,255,255,0.92)',
-      textAlign: 'center',
-      maxWidth: 300,
-      lineHeight: 24,
-    },
-    wideFormPanel: { flex: 6 },
-    wideFormScroll: { flexGrow: 1, justifyContent: 'center', paddingVertical: spacing.xl },
-    wideFormColumn: { width: '100%', maxWidth: 420, alignSelf: 'center', paddingHorizontal: spacing.lg },
-
-    formArea: { marginTop: spacing.lg },
-    formCard: {
-      backgroundColor: colors.surface,
+    // ---------- Wide / web layout ----------
+    wideTopCornerImg: { position: 'absolute', top: 0, right: 0, width: 220, height: 190, opacity: 0.55 },
+    wideBottomCornerImg: { position: 'absolute', bottom: 0, left: 0, width: 260, height: 150, opacity: 0.55 },
+    wideScrollContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: spacing.xl },
+    wideWrap: { width: '100%', maxWidth: 1040, alignSelf: 'center', paddingHorizontal: spacing.xl },
+    wideHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xl },
+    wideColumns: { flexDirection: 'row', gap: spacing.xxl, alignItems: 'flex-start' },
+    wideLeftCol: { flex: 5, maxWidth: 440 },
+    wideRightCol: { flex: 6, alignItems: 'center' },
+    heroImageWrap: {
+      width: '100%',
+      aspectRatio: 1170 / 730,
       borderRadius: radius.lg,
+      overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.border,
-      padding: spacing.lg,
       ...(Platform.OS === 'web'
         ? ({ boxShadow: `0 6px 24px ${colors.shadow}` } as any)
         : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 1, shadowRadius: 16, elevation: 3 }),
     },
+    heroImage: { width: '100%', height: '100%' },
+    trustRow: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', marginTop: spacing.lg },
+    trustItem: { alignItems: 'center', gap: spacing.xs, maxWidth: 130 },
+    trustIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      borderWidth: 1.5,
+      borderColor: colors.gold,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    trustLabel: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', lineHeight: 16 },
+
+    formArea: { marginTop: spacing.lg },
 
     fieldWrap: { marginBottom: spacing.md },
     fieldLabel: { ...typography.caption, color: colors.textSecondary, fontFamily: fonts.bodySemiBold, marginBottom: 6 },
@@ -657,6 +708,28 @@ function makeStyles(colors: ColorTheme) {
       ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}),
     },
 
+    optionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: spacing.xs,
+      marginBottom: spacing.sm,
+    },
+    rememberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    checkbox: {
+      width: 18,
+      height: 18,
+      borderRadius: 5,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+    },
+    checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+    rememberText: { ...typography.caption, color: colors.textSecondary, fontFamily: fonts.bodySemiBold },
+    forgotText: { ...typography.caption, color: colors.primary, fontFamily: fonts.bodySemiBold },
+
     errorBox: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -666,6 +739,7 @@ function makeStyles(colors: ColorTheme) {
       paddingHorizontal: spacing.sm + 2,
       paddingVertical: spacing.sm,
       marginTop: spacing.xs,
+      marginBottom: spacing.xs,
     },
     errorText: { ...typography.caption, color: colors.danger, flex: 1 },
 
@@ -678,23 +752,28 @@ function makeStyles(colors: ColorTheme) {
       gap: spacing.sm,
     },
     submitButtonText: { ...typography.button },
-    termsText: { ...typography.caption, color: colors.textMuted, textAlign: 'center', marginTop: spacing.md },
+    termsText: { ...typography.caption, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
+
+    dividerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.divider },
+    dividerText: { ...typography.caption, color: colors.textMuted },
+    socialRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing.md, marginTop: spacing.md },
+    socialButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...(Platform.OS === 'web'
+        ? ({ boxShadow: `0 2px 8px ${colors.shadow}` } as any)
+        : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2 }),
+    },
 
     switchModeBtn: { alignItems: 'center', marginTop: spacing.lg, paddingVertical: spacing.sm },
     switchModeText: { ...typography.bodySmall, color: colors.textSecondary },
-
-    trustRow: { marginTop: spacing.lg, gap: spacing.sm + 2 },
-    trustDivider: { height: 1, backgroundColor: colors.divider, marginBottom: spacing.xs },
-    trustItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    trustIconWrap: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: colors.surfaceAlt,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    trustLabel: { ...typography.caption, color: colors.textSecondary, flex: 1 },
 
     confirmationBox: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
     confirmationIcon: {
