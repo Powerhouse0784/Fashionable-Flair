@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
-    "description": "Fashionable Flair — trendy, affordable jewellery for women. Earrings, pendants, chains, bracelets, and jewellery sets, delivered across India.",
+    "description": "Fashionable Flair \u2014 trendy, affordable jewellery for women. Earrings, pendants, chains, bracelets, and jewellery sets, delivered across India.",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -32,7 +32,7 @@
       "favicon": "./src/assets/favicon.png",
       "themeColor": "#286CB0",
       "backgroundColor": "#F8FAFF",
-      "description": "Fashionable Flair — trendy, affordable jewellery for women. Earrings, pendants, chains, bracelets, and jewellery sets, delivered across India."
+      "description": "Fashionable Flair \u2014 trendy, affordable jewellery for women. Earrings, pendants, chains, bracelets, and jewellery sets, delivered across India."
     },
     "plugins": [
       [
@@ -47,7 +47,12 @@
           "image": "./src/assets/splash-icon.png",
           "imageWidth": 220,
           "resizeMode": "contain",
-          "backgroundColor": "#F8FAFF"
+          "backgroundColor": "#F8FAFF",
+          "android": {
+            "image": "./src/assets/splash-icon-android.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#F8FAFF"
+          }
         }
       ],
       [
@@ -62,7 +67,9 @@
         {
           "microphonePermission": "Allow Fashionable Flair to use the microphone for voice search.",
           "speechRecognitionPermission": "Allow Fashionable Flair to use speech recognition for voice search.",
-          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
         }
       ]
     ],
