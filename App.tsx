@@ -25,6 +25,7 @@ import { RootStackParamList } from '@/types/navigation';
 import { useAppFonts } from '@/hooks/useAppFonts';
 import { useWebThemeBackground } from '@/hooks/useWebThemeBackground';
 import { useWebScrollbarStyle } from '@/hooks/useWebScrollbarStyle';
+import { useWebViewportLock } from '@/hooks/useWebViewportLock';
 import { registerForPushNotifications } from '@/services/pushService';
 
 const ONBOARDING_KEY = '@fashionable_flair/onboarding_complete';
@@ -86,6 +87,7 @@ function AppNavigation() {
 
   useWebThemeBackground(colors.background);
   useWebScrollbarStyle();
+  useWebViewportLock();
 
   // Premium-only themes and appearances only apply while Premium is active.
   // Until the status has loaded we assume "yes" so a member never sees a

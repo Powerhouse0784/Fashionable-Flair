@@ -23,6 +23,7 @@ import { goBackOrTo } from '@/utils/navigation';
 import Container from '@/components/Container';
 import WebPageWrapper from '@/components/WebPageWrapper';
 import Footer from '@/components/Footer';
+import SoftGlow from '@/components/SoftGlow';
 import { TERMS_SECTIONS, TERMS_LAST_UPDATED } from '@/data/termsOfService';
 
 const isWeb = Platform.OS === 'web';
@@ -45,6 +46,23 @@ const NAV_HEIGHT = 59;
 // FAQScreen already cap a paragraph/search bar's width for readability.
 const MAX_CONTENT_WIDTH = 1240;
 
+/**
+ * `position: 'sticky'` is a web-only trick here (see the `sidebar` and
+ * `chipStickyWrap` styles below) — React Native has no sticky position on
+ * native, so without this the Contents sidebar/chip bar just scrolled away
+ * with everything else on the app instead of staying pinned like they do
+ * on the website. This recreates the same pinned behavior on native by
+ * translating the element downward by exactly the amount the page has
+ * scrolled past its natural resting spot, so it appears to stay put —
+ * clamped so it lets go again once the (much shorter) sidebar/chip bar
+ * would otherwise run past the bottom of the section list beside it.
+ */
+function nativeStickyTranslateY(scrollY: number, naturalTop: number, stickTop: number, maxTranslate: number) {
+  if (isWeb || maxTranslate <= 0) return 0;
+  const raw = scrollY - (naturalTop - stickTop);
+  return Math.min(Math.max(0, raw), maxTranslate);
+}
+
 const termsHeroLight = require('@/assets/terms/terms-hero-light.png');
 const termsHeroDark = require('@/assets/terms/terms-hero-dark.png');
 const leafLight = require('@/assets/terms/terms-leaf-light.png');
@@ -63,12 +81,17 @@ export default function TermsScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  // Drives the native sticky-via-transform trick above — kept as state
+  // (not just a ref) because the sidebar/chip bar need to actually
+  // re-render as this changes to stay pinned on screen while scrolling.
+  const [scrollOffsetY, setScrollOffsetY] = useState(0);
 
   // Three layers of "where am I within the scroll content" — see the layout
   // note above sectionsColumn below for why this combination is enough to
   // locate every section regardless of whether the sidebar sits beside the
   // content (wide) or above it (narrow).
   const bodyWrapY = useRef(0);
+  const bodyWrapHeight = useRef(0);
   const sectionsColumnY = useRef(0);
   const sectionYs = useRef<number[]>(TERMS_SECTIONS.map(() => 0));
   const handleSectionLayout = useCallback((i: number, y: number) => {
@@ -96,6 +119,7 @@ export default function TermsScreen() {
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollY = e.nativeEvent.contentOffset.y;
+    setScrollOffsetY(scrollY);
     const line = scrollY + ACTIVATE_LOOKAHEAD;
     let next = 0;
     for (let i = 0; i < TERMS_SECTIONS.length; i++) {
@@ -137,6 +161,23 @@ export default function TermsScreen() {
     const target = Math.max(0, itemX - viewport / 2 + itemW / 2);
     chipScrollRef.current?.scrollTo({ x: target, animated: true });
   }, [activeIndex]);
+
+  // 500/80 are rough heights of the sidebar's (tocCard + callout + leaf)
+  // and the mobile chip bar respectively — once the sections column isn't
+  // tall enough to need that much more scrolling, the pinned element lets
+  // go instead of floating past the end of its own column.
+  const sidebarTranslateY = nativeStickyTranslateY(
+    scrollOffsetY,
+    bodyWrapY.current,
+    NAV_HEIGHT + spacing.lg,
+    Math.max(0, bodyWrapHeight.current - 500)
+  );
+  const chipTranslateY = nativeStickyTranslateY(
+    scrollOffsetY,
+    bodyWrapY.current,
+    0,
+    Math.max(0, bodyWrapHeight.current - 80)
+  );
 
   return (
     <WebPageWrapper>
@@ -183,7 +224,7 @@ export default function TermsScreen() {
                 {/* Soft glow so the art reads as part of the scene rather
                     than a photo dropped on top of it — sized bigger than
                     the image itself and blurred well past its edges. */}
-                <View style={styles.heroGlow} pointerEvents="none" />
+                <SoftGlow size={260} color={isDark ? colors.gold : colors.primary} baseOpacity={isDark ? 0.16 : 0.1} />
                 <Image
                   source={isDark ? termsHeroDark : termsHeroLight}
                   style={[styles.heroImage, isWide && styles.heroImageWide]}
@@ -200,10 +241,13 @@ export default function TermsScreen() {
               style={[styles.bodyWrap, isWide && styles.bodyWrapWide]}
               onLayout={(e: LayoutChangeEvent) => {
                 bodyWrapY.current = e.nativeEvent.layout.y;
+                bodyWrapHeight.current = e.nativeEvent.layout.height;
               }}
             >
               {isWide ? (
-                <View style={styles.sidebar}>
+                <View
+                  style={[styles.sidebar, !isWeb && { transform: [{ translateY: sidebarTranslateY }] }]}
+                >
                   <View style={styles.tocCard}>
                     <View style={styles.tocHeader}>
                       <Ionicons name="reader-outline" size={18} color={colors.primary} />
@@ -269,7 +313,9 @@ export default function TermsScreen() {
                 </View>
               ) : (
                 <>
-                  <View style={styles.chipStickyWrap}>
+                  <View
+                    style={[styles.chipStickyWrap, !isWeb && { transform: [{ translateY: chipTranslateY }] }]}
+                  >
                     <ScrollView
                       ref={chipScrollRef}
                       horizontal
@@ -508,15 +554,6 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       height: 260,
       marginTop: 0,
     },
-    heroGlow: {
-      position: 'absolute',
-      width: 260,
-      height: 260,
-      borderRadius: 140,
-      backgroundColor: isDark ? colors.gold : colors.primary,
-      opacity: isDark ? 0.16 : 0.1,
-      ...(isWeb ? ({ filter: 'blur(50px)' } as any) : {}),
-    },
     heroImage: {
       width: '100%',
       height: 180,
@@ -680,7 +717,8 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
     // scrolling content showed through behind, which is the overlap bug
     // from before.
     chipStickyWrap: {
-      ...(isWeb ? ({ position: 'sticky', top: 0, zIndex: 10 } as any) : {}),
+      ...(isWeb ? ({ position: 'sticky', top: 0 } as any) : {}),
+      zIndex: 10,
       backgroundColor: colors.background,
       paddingVertical: spacing.sm,
       marginHorizontal: -spacing.lg,
