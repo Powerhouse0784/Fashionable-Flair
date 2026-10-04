@@ -107,7 +107,14 @@ export default function OnboardingScreen({ onDone }: Props) {
   const [footerHeight, setFooterHeight] = useState(FOOTER_ESTIMATE + insets.bottom);
 
   const isLast = index === SLIDES.length - 1;
-  const logoSize = isWeb ? 140 : 116;
+  // Not gated on `isWeb`: the web screenshots this was compared against
+  // were a narrow mobile browser, the same screen size as the app itself —
+  // so the "nicer on web" look wasn't actually a desktop-vs-phone design
+  // choice, it was this screen using Platform (web vs native) as a stand-in
+  // for screen width. Same logo/type/spacing size everywhere now; isWeb is
+  // still used below, but only for genuine per-platform API differences
+  // (CSS box-shadow string vs RN shadow props), never for sizing.
+  const logoSize = 140;
 
   // The photos are wide, so on a tall screen "cover" would crop them down to
   // the empty middle and lose all the flowers and jewellery. Tall screens get
@@ -220,12 +227,12 @@ export default function OnboardingScreen({ onDone }: Props) {
                 { width: logoSize, height: logoSize, borderRadius: logoSize / 2 },
               ]}
             >
-              <Logo variant="mark" height={isWeb ? 84 : 70} />
+              <Logo variant="mark" height={84} />
             </View>
 
-            <Text style={[styles.title, isWeb && styles.titleWeb]}>{item.title}</Text>
+            <Text style={[styles.title, styles.titleWeb]}>{item.title}</Text>
 
-            <Text style={[styles.description, isWeb && styles.descriptionWeb]}>
+            <Text style={[styles.description, styles.descriptionWeb]}>
               {item.description}
             </Text>
 
@@ -282,7 +289,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       {/* Footer — progress dots + Back / Next, floats on top of the background */}
       <View
         pointerEvents="box-none"
-        style={[styles.footer, { paddingBottom: (isWeb ? spacing.xl : spacing.lg) + insets.bottom }]}
+        style={[styles.footer, { paddingBottom: spacing.xl + insets.bottom }]}
         onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
       >
         <View pointerEvents="none" style={styles.progressContainer}>
@@ -366,7 +373,7 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      paddingHorizontal: isWeb ? 28 : 18,
+      paddingHorizontal: 28,
     },
 
     skipButton: {
@@ -403,8 +410,8 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
     contentInner: {
       alignItems: 'center',
       width: '100%',
-      maxWidth: isWeb ? 600 : '100%',
-      paddingHorizontal: isWeb ? spacing.xxl : spacing.xl,
+      maxWidth: 600,
+      paddingHorizontal: spacing.xxl,
     },
 
     // Frosted-glass surface behind the logo/title/description. Translucent
@@ -421,8 +428,8 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       alignItems: 'center',
       width: '100%',
       borderRadius: 28,
-      paddingVertical: isWeb ? 32 : 26,
-      paddingHorizontal: isWeb ? 36 : 22,
+      paddingVertical: 32,
+      paddingHorizontal: 36,
       backgroundColor: isDark ? 'rgba(15,26,43,0.72)' : 'rgba(255,255,255,0.62)',
       borderWidth: 1,
       borderColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.75)',
@@ -471,7 +478,7 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
     logoCircle: {
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: isWeb ? 14 : 12,
+      marginBottom: 14,
       backgroundColor: colors.surfaceAlt,
       borderWidth: 1.5,
       borderColor: isDark ? colors.border : '#C9DDF0',
@@ -485,13 +492,14 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: spacing.xs,
-      lineHeight: 28,
       fontWeight: '700',
-      fontSize: 21,
       paddingHorizontal: spacing.sm,
       ...textHalo,
     },
 
+    // Kept as a second style object (always applied alongside `title`
+    // above) rather than merged in, just so this screen's two call sites
+    // don't need touching again if these ever do need to diverge.
     titleWeb: {
       fontSize: 24,
       lineHeight: 34,
@@ -502,9 +510,7 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       // readable over the photo's shadows (slide 3 especially).
       color: isDark ? colors.textSecondary : '#4F5F77',
       textAlign: 'center',
-      lineHeight: 20,
-      maxWidth: isWeb ? 450 : 340,
-      fontSize: 14,
+      maxWidth: 450,
       paddingHorizontal: spacing.sm,
       ...textHalo,
     },
@@ -520,7 +526,7 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       left: 0,
       right: 0,
       bottom: 0,
-      paddingHorizontal: isWeb ? spacing.xxl : spacing.xl,
+      paddingHorizontal: spacing.xxl,
       paddingTop: spacing.sm,
       gap: spacing.md,
     },
@@ -575,7 +581,7 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       paddingHorizontal: spacing.xl,
       minHeight: 48,
       width: '100%',
-      maxWidth: isWeb ? 240 : '100%',
+      maxWidth: 240,
       alignSelf: 'center',
 
       ...(isWeb
@@ -583,11 +589,13 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
         : { shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 6 }),
     },
 
-    // With a Back button alongside it, Next fills whatever space is left in the row.
+    // With a Back button alongside it, Next fills whatever space is left in
+    // the row, up to the same 240 cap so it doesn't suddenly grow wider
+    // than it is on the first slide just because a sibling showed up.
     nextButtonWithBack: {
       flex: 1,
       width: undefined,
-      maxWidth: isWeb ? 240 : undefined,
+      maxWidth: 240,
     },
 
     nextButtonText: {
