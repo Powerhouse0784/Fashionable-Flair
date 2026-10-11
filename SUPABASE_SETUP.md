@@ -463,3 +463,49 @@ with the app itself (`src/assets/avatars`), picked by index rather than
 uploaded.
 
 
+
+## Google sign-in (customer login)
+
+The "Continue with Google" button on the login/create-account screen is
+now fully wired up (Supabase OAuth + PKCE, via `expo-web-browser` on
+native and a normal page redirect on web) — but like any OAuth provider,
+it needs a Google OAuth client and a flip of a switch in Supabase before
+it will actually work. This is a one-time, ~10 minute setup, same as the
+rest of this file.
+
+### 1. Create a Google OAuth client
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → create a project if you don't have one already.
+2. **Create Credentials → OAuth client ID**. If prompted, configure the OAuth consent screen first (External, add your app name + support email — it can stay in "Testing" mode while you try this out).
+3. Application type: **Web application** (yes, even though this is a mobile/web app — Supabase itself is the thing talking to Google, not your app directly).
+4. Under **Authorized redirect URIs**, add exactly:
+   ```
+   https://<your-project-ref>.supabase.co/auth/v1/callback
+   ```
+   (find `<your-project-ref>` in your Supabase project's URL/settings — it's the same value as in `SUPABASE_URL`).
+5. Save, then copy the **Client ID** and **Client Secret** it gives you.
+
+### 2. Turn on the provider in Supabase
+
+1. Supabase Dashboard → **Authentication → Providers → Google**.
+2. Toggle it on, paste the Client ID and Client Secret from step 1, save.
+
+### 3. Allow-list this app's redirect URL
+
+Supabase refuses to redirect back to a URL it doesn't recognize, so:
+
+1. Supabase Dashboard → **Authentication → URL Configuration → Redirect URLs**.
+2. Add:
+   ```
+   fashionableflair://auth/callback
+   ```
+   (this comes from `"scheme": "fashionableflair"` in `app.json` — if you ever rename that scheme, update this too.)
+3. If you'll also test the web build at a real domain, add that origin here too (e.g. `https://yourstore.com`) — `window.location.origin` is what the web flow sends as its redirect, so whatever domain you're actually running on needs to be in this list.
+
+### How it behaves per environment
+
+- **Dev/preview/production builds** (`eas build`, or `expo run:android`/`expo run:ios`): works fully — tap the button, pick a Google account in the in-app browser tab, land back in the app signed in.
+- **Expo Go**: `expo-web-browser`/`expo-linking` are plain Expo SDK modules (unlike `expo-speech-recognition`), so this doesn't crash in Expo Go. The catch is the redirect URL: Expo Go deep-links back through a dev-server URL like `exp://192.168.x.x:8081/--/auth/callback` instead of `fashionableflair://...`, and that address changes with your machine's IP/port — so it has to be added to the Redirect URLs allow-list above for *that specific session* before Google will redirect back successfully. It's genuinely easier to just test this one feature from a dev/preview build.
+- **Web** (`expo start --web` / a deployed web build): works as a normal full-page redirect to Google and back — no extra native setup, just make sure that origin is allow-listed per step 3.
+
+Nothing else in the app needed to change for this — the same `signInWithGoogle()` now sits right alongside `signIn`/`signUp` in `AuthContext`, so a Google sign-in and an email sign-in land in the exact same `session`/`profiles` row handling as everywhere else.

@@ -90,6 +90,20 @@ export default function PrivacyPolicyScreen() {
   // note above sectionsColumn below for why this combination is enough to
   // locate every section regardless of whether the sidebar sits beside the
   // content (wide) or above it (narrow).
+  // bodyWrapY is "how far down the whole scroll content does the body start"
+  // — but onLayout only ever reports a view's position relative to its own
+  // immediate parent. bodyWrap sits inside its own <Container>, which comes
+  // AFTER the hero's <Container> in the ScrollView, so its own y was ~0 and
+  // completely missed the hero's height above it. Everything built on that
+  // (the sticky chip bar / sidebar translate, and the active-section
+  // calculation) was therefore anchored far too high up the page: the chip
+  // bar overshot by the hero's height and ended up sitting near the bottom
+  // of the screen instead of pinned to the top. The wrapper View around the
+  // body Container (a direct child of the ScrollView) supplies the missing
+  // offset; the two are summed whichever order their onLayout callbacks
+  // happen to fire in.
+  const bodyContainerY = useRef(0);
+  const bodyWrapLocalY = useRef(0);
   const bodyWrapY = useRef(0);
   const bodyWrapHeight = useRef(0);
   const sectionsColumnY = useRef(0);
@@ -234,11 +248,18 @@ export default function PrivacyPolicyScreen() {
           </Container>
 
           {/* ---------- Body: Contents (sidebar on wide / chips+callout on narrow) + Sections ---------- */}
+          <View
+            onLayout={(e: LayoutChangeEvent) => {
+              bodyContainerY.current = e.nativeEvent.layout.y;
+              bodyWrapY.current = bodyContainerY.current + bodyWrapLocalY.current;
+            }}
+          >
           <Container>
             <View
               style={[styles.bodyWrap, isWide && styles.bodyWrapWide]}
               onLayout={(e: LayoutChangeEvent) => {
-                bodyWrapY.current = e.nativeEvent.layout.y;
+                bodyWrapLocalY.current = e.nativeEvent.layout.y;
+                bodyWrapY.current = bodyContainerY.current + bodyWrapLocalY.current;
                 bodyWrapHeight.current = e.nativeEvent.layout.height;
               }}
             >
@@ -371,6 +392,7 @@ export default function PrivacyPolicyScreen() {
               </View>
             </View>
           </Container>
+          </View>
 
           {isWide && <Footer />}
         </ScrollView>

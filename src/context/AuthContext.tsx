@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, ReactNode } from 'react';
+import { Platform } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/services/supabaseClient';
+
+// Lets the in-app browser auth session close itself cleanly once Google
+// redirects back, instead of lingering as an open tab/dialog — a no-op on
+// native, relevant on web (see Supabase + Expo's own integration guide).
+WebBrowser.maybeCompleteAuthSession();
 
 interface SignInResult {
   error: string | null;
@@ -30,6 +39,14 @@ interface AuthContextValue {
   isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<SignInResult>;
+  /** Google sign-in/sign-up — the same account either way, Supabase treats
+   * it as one identity provider among others on the same user. Returns a
+   * `session` only on native once the whole round trip (browser → Google →
+   * back into the app) has actually completed; on web this instead
+   * navigates the page away to Google, so it always resolves with no
+   * session/error of its own — the real result arrives later via
+   * onAuthStateChange when the page comes back. */
+  signInWithGoogle: () => Promise<SignInResult>;
   /** Customer self-registration — a regular signed-up shopper, never an
    * admin (that still only ever comes from the `admins` table above). */
   signUp: (email: string, password: string, fullName?: string) => Promise<SignUpResult>;
@@ -132,6 +149,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null, needsConfirmation: !data.session, session: data.session ?? null };
   };
 
+  const signInWithGoogle = async (): Promise<SignInResult> => {
+    if (!isSupabaseConfigured) return { error: CONFIG_ERROR, session: null };
+
+    try {
+      if (Platform.OS === 'web') {
+        // Full-page redirect to Google, then back to this same origin.
+        // supabase-js (detectSessionInUrl: true, web-only — see
+        // supabaseClient.ts) finishes the code exchange on its own as soon
+        // as the page reloads with ?code=... in the URL, and the session
+        // shows up through the onAuthStateChange listener above — there is
+        // nothing left for this function to hand back synchronously.
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: window.location.origin },
+        });
+        return { error: error?.message ?? null, session: null };
+      }
+
+      // Native: ask Supabase for the Google consent URL without letting it
+      // try to open a browser itself (skipBrowserRedirect), open that URL
+      // in a transient, cookie-isolated in-app browser tab ourselves, and
+      // wait for Google to redirect it to our own custom URL scheme.
+      const redirectTo = Linking.createURL('auth/callback');
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error || !data?.url) {
+        return { error: error?.message ?? 'Could not start Google sign-in.', session: null };
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type !== 'success' || !result.url) {
+        // User backed out of the Google screen or dismissed the browser —
+        // not a real failure worth putting in front of them as an error.
+        return { error: null, session: null };
+      }
+
+      // Parsed with expo-auth-session's own helper rather than the URL
+      // constructor: Supabase's redirect can carry its params after a `#`
+      // instead of a `?`, which URL/URLSearchParams on some RN engines
+      // won't pick up, silently dropping the `code`.
+      const { params, errorCode } = QueryParams.getQueryParams(result.url);
+      if (errorCode) return { error: errorCode, session: null };
+      if (params.error) return { error: params.error_description || params.error, session: null };
+
+      const code = params.code;
+      if (!code) return { error: 'Google sign-in did not return a valid code.', session: null };
+
+      const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) return { error: exchangeError.message, session: null };
+      return { error: null, session: sessionData.session ?? null };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Google sign-in failed.', session: null };
+    }
+  };
+
   const resetPassword = async (email: string): Promise<{ error: string | null }> => {
     if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
     const { error } = await supabase.auth.resetPasswordForEmail(email);
@@ -155,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo(
-    () => ({ session, isAdmin, loading, signIn, signUp, resetPassword, signOut }),
+    () => ({ session, isAdmin, loading, signIn, signUp, signInWithGoogle, resetPassword, signOut }),
     [session, isAdmin, loading]
   );
 

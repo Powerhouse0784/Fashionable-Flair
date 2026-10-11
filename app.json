@@ -2,11 +2,12 @@
   "expo": {
     "name": "Fashionable Flair",
     "slug": "fashionable-flair",
+    "scheme": "fashionableflair",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
-    "description": "Fashionable Flair \u2014 trendy, affordable jewellery for women. Earrings, pendants, chains, bracelets, and jewellery sets, delivered across India.",
+    "description": "Fashionable Flair — trendy, affordable jewellery for women. Earrings, pendants, chains, bracelets, and jewellery sets, delivered across India.",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -32,7 +33,7 @@
       "favicon": "./src/assets/favicon.png",
       "themeColor": "#286CB0",
       "backgroundColor": "#F8FAFF",
-      "description": "Fashionable Flair \u2014 trendy, affordable jewellery for women. Earrings, pendants, chains, bracelets, and jewellery sets, delivered across India."
+      "description": "Fashionable Flair — trendy, affordable jewellery for women. Earrings, pendants, chains, bracelets, and jewellery sets, delivered across India."
     },
     "plugins": [
       [
@@ -51,7 +52,8 @@
           "android": {
             "image": "./src/assets/splash-icon-android.png",
             "resizeMode": "contain",
-            "backgroundColor": "#F8FAFF"
+            "backgroundColor": "#F8FAFF",
+            "imageWidth": 288
           }
         }
       ],

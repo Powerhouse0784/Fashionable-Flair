@@ -116,7 +116,7 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
   const topCorner = isDark ? topCornerDark : topCornerLight;
   const bottomCorner = isDark ? bottomCornerDark : bottomCornerLight;
   const heroImage = isDark ? heroDark : heroLight;
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   const { name: profileName, updateProfile } = useProfile();
 
   const [mode, setMode] = useState<Mode>('signIn');
@@ -129,6 +129,7 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [focusedField, setFocusedField] = useState<FieldKey | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -227,8 +228,31 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
     }
   };
 
-  const handleSocialPress = (label: string) => {
-    alertInfo(`${label} sign-in`, `${label} sign-in isn\u2019t set up yet \u2014 please use your email for now.`);
+  const handleSocialPress = async (key: string, label: string) => {
+    if (key !== 'google') {
+      alertInfo(`${label} sign-in`, `${label} sign-in isn\u2019t set up yet \u2014 please use your email for now.`);
+      return;
+    }
+    if (submitting || googleSubmitting) return;
+    setError(null);
+    setGoogleSubmitting(true);
+    try {
+      const { error: authError, session } = await signInWithGoogle();
+      if (authError) {
+        setError(authError);
+        return;
+      }
+      // On web, signInWithGoogle navigates the page away to Google and
+      // resolves with no session of its own \u2014 the redirect back lands on
+      // a fresh load of this same screen, where AuthContext's own
+      // onAuthStateChange (already listening) picks the session up and
+      // whatever gated this modal open reacts to it normally. On native,
+      // a null session with no error just means the user backed out of
+      // the Google screen \u2014 nothing to do either way.
+      if (session) onAuthenticated(session);
+    } finally {
+      setGoogleSubmitting(false);
+    }
   };
 
   const gradientColors: [string, string] = isDark ? ['#EBCB85', colors.gold] : [colors.primary, colors.primaryDark];
@@ -504,13 +528,20 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
           {SOCIAL_BUTTONS.map((s) => (
             <TouchableOpacity
               key={s.key}
-              style={styles.socialButton}
+              style={[styles.socialButton, googleSubmitting && { opacity: 0.7 }]}
               activeOpacity={0.8}
-              onPress={() => handleSocialPress(s.label)}
+              disabled={googleSubmitting}
+              onPress={() => handleSocialPress(s.key, s.label)}
               accessibilityLabel={`Continue with ${s.label}`}
             >
-              <Ionicons name={s.icon as any} size={19} color={s.color ?? colors.textPrimary} />
-              <Text style={styles.socialButtonText}>Continue with {s.label}</Text>
+              {googleSubmitting ? (
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+              ) : (
+                <Ionicons name={s.icon as any} size={19} color={s.color ?? colors.textPrimary} />
+              )}
+              <Text style={styles.socialButtonText}>
+                {googleSubmitting ? 'Connecting…' : `Continue with ${s.label}`}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>

@@ -1,10 +1,16 @@
 import '@/utils/suppressKnownWarnings';
 import 'react-native-url-polyfill/auto';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Platform } from 'react-native';
 import { inject as injectVercelAnalytics } from '@vercel/analytics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NavigationContainer, LinkingOptions, useNavigationContainerRef } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  LinkingOptions,
+  useNavigationContainerRef,
+  DefaultTheme,
+  DarkTheme,
+} from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -89,6 +95,31 @@ function AppNavigation() {
   useWebScrollbarStyle();
   useWebViewportLock();
 
+  // NavigationContainer defaults to React Navigation's own DefaultTheme (a
+  // plain white background) when no theme prop is given, regardless of
+  // whether the app itself is in dark mode. That default is what the
+  // native-stack navigator paints behind/around screens during a
+  // transition — on a dark theme, popping a screen could very briefly
+  // flash that white background before the destination screen's own
+  // background finished painting over it. Doesn't overlap with
+  // useWebViewportLock above: that one stops the browser document itself
+  // from drifting out of place, this one just makes sure whatever's
+  // momentarily visible during a transition is the right color.
+  const navigationTheme = useMemo(() => {
+    const base = isDark ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        background: colors.background,
+        card: colors.surface,
+        border: colors.border,
+        text: colors.textPrimary,
+        primary: colors.primary,
+      },
+    };
+  }, [isDark, colors]);
+
   // Premium-only themes and appearances only apply while Premium is active.
   // Until the status has loaded we assume "yes" so a member never sees a
   // flash of the free look on launch; the saved choice is never erased, so
@@ -136,7 +167,13 @@ function AppNavigation() {
   const shouldHideSidebar = isAdminScreen || isMeeshoRedirect;
 
   return (
-    <NavigationContainer ref={navigationRef} linking={linking} onReady={updateCurrentRoute} onStateChange={updateCurrentRoute}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navigationTheme}
+      linking={linking}
+      onReady={updateCurrentRoute}
+      onStateChange={updateCurrentRoute}
+    >
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={{ flex: 1 }}>
         <RootNavigator />
