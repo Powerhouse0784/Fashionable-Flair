@@ -13,9 +13,11 @@ import {
   useWindowDimensions,
   Image,
 } from 'react-native';
+import { Image as CornerImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { fonts } from '@/hooks/useAppFonts';
@@ -31,9 +33,14 @@ import Logo from './Logo';
 // UI chrome baked into that reference's own screenshots were cropped
 // away; only the clean floral/jewellery artwork is used here, with every
 // label, field and button in this file being real text, not an image.
-const topCornerLight = require('@/assets/auth/top_corner_light.jpg');
+// Light-theme corner art is a transparent PNG (true alpha, not a flat
+// background colour) so it blends into colors.background with zero seam,
+// since no sampled/baked-in background shade can ever exactly match the
+// theme token pixel-for-pixel. Dark-theme corner art stays JPG — on the
+// dark background its own canvas colour already reads as seamless.
+const topCornerLight = require('@/assets/auth/top_corner_light.png');
 const topCornerDark = require('@/assets/auth/top_corner_dark.jpg');
-const bottomCornerLight = require('@/assets/auth/bottom_corner_light.jpg');
+const bottomCornerLight = require('@/assets/auth/bottom_corner_light.png');
 const bottomCornerDark = require('@/assets/auth/bottom_corner_dark.jpg');
 const heroLight = require('@/assets/auth/hero_light.jpg');
 const heroDark = require('@/assets/auth/hero_dark.jpg');
@@ -62,8 +69,6 @@ const TRUST_BADGES = [
 
 const SOCIAL_BUTTONS = [
   { key: 'google', icon: 'logo-google', color: '#EA4335', label: 'Google' },
-  { key: 'apple', icon: 'logo-apple', color: null, label: 'Apple' },
-  { key: 'facebook', icon: 'logo-facebook', color: '#1877F2', label: 'Facebook' },
 ] as const;
 
 interface FieldProps {
@@ -105,6 +110,7 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
   useModalBackClose(visible, onClose);
   const { colors, isDark } = useTheme();
   const styles = makeStyles(colors);
+  const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
   const isWide = width >= 860;
   const topCorner = isDark ? topCornerDark : topCornerLight;
@@ -120,6 +126,7 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [focusedField, setFocusedField] = useState<FieldKey | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +144,7 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
     setPassword('');
     setConfirmPassword('');
     setShowPassword(false);
+    setAgreeToTerms(false);
     setError(null);
     setConfirmationSent(false);
     setResetSent(false);
@@ -183,6 +191,10 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
     }
     if (mode === 'signUp' && password !== confirmPassword) {
       setError('Passwords don\u2019t match.');
+      return;
+    }
+    if (mode === 'signUp' && !agreeToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy.');
       return;
     }
 
@@ -314,95 +326,130 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
       </>
     );
   } else {
+    // Pulled out of the JSX below (rather than written inline four times)
+    // so the wide/desktop layout can pair them up two-to-a-row — see
+    // fieldRow/fieldRowItem below — without duplicating every prop.
+    const fullNameField = !isSignIn ? (
+      <Field
+        icon="person-outline"
+        label="Full Name"
+        colors={colors}
+        focused={focusedField === 'name'}
+        inputProps={{
+          value: fullName,
+          onChangeText: setFullName,
+          placeholder: 'Enter your full name',
+          autoCapitalize: 'words',
+          autoComplete: 'name',
+          returnKeyType: 'next',
+          onFocus: () => setFocusedField('name'),
+          onBlur: () => setFocusedField(null),
+          onSubmitEditing: () => emailRef.current?.focus(),
+          maxLength: 40,
+        }}
+      />
+    ) : null;
+
+    const emailField = (
+      <Field
+        icon="mail-outline"
+        label={isSignIn ? undefined : 'Email Address'}
+        colors={colors}
+        focused={focusedField === 'email'}
+        inputRef={emailRef}
+        inputProps={{
+          value: email,
+          onChangeText: setEmail,
+          placeholder: 'you@example.com',
+          autoCapitalize: 'none',
+          keyboardType: 'email-address',
+          autoComplete: 'email',
+          returnKeyType: 'next',
+          onFocus: () => setFocusedField('email'),
+          onBlur: () => setFocusedField(null),
+          onSubmitEditing: () => passwordRef.current?.focus(),
+        }}
+      />
+    );
+
+    const passwordField = (
+      <Field
+        icon="lock-closed-outline"
+        label={isSignIn ? undefined : 'Password'}
+        colors={colors}
+        focused={focusedField === 'password'}
+        inputRef={passwordRef}
+        right={
+          <TouchableOpacity
+            onPress={() => setShowPassword((v) => !v)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+          >
+            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        }
+        inputProps={{
+          value: password,
+          onChangeText: setPassword,
+          placeholder: 'At least 6 characters',
+          secureTextEntry: !showPassword,
+          autoCapitalize: 'none',
+          autoComplete: isSignIn ? 'current-password' : 'new-password',
+          returnKeyType: isSignIn ? 'go' : 'next',
+          onFocus: () => setFocusedField('password'),
+          onBlur: () => setFocusedField(null),
+          onSubmitEditing: () => (isSignIn ? handleSubmit() : confirmRef.current?.focus()),
+        }}
+      />
+    );
+
+    const confirmField = !isSignIn ? (
+      <Field
+        icon="shield-checkmark-outline"
+        label="Confirm Password"
+        colors={colors}
+        focused={focusedField === 'confirm'}
+        inputRef={confirmRef}
+        inputProps={{
+          value: confirmPassword,
+          onChangeText: setConfirmPassword,
+          placeholder: 'Re-enter your password',
+          secureTextEntry: !showPassword,
+          autoCapitalize: 'none',
+          autoComplete: 'new-password',
+          returnKeyType: 'go',
+          onFocus: () => setFocusedField('confirm'),
+          onBlur: () => setFocusedField(null),
+          onSubmitEditing: handleSubmit,
+        }}
+      />
+    ) : null;
+
     form = (
       <>
-        {!isSignIn && (
-          <Field
-            icon="person-outline"
-            label="Full Name"
-            colors={colors}
-            focused={focusedField === 'name'}
-            inputProps={{
-              value: fullName,
-              onChangeText: setFullName,
-              placeholder: 'Enter your full name',
-              autoCapitalize: 'words',
-              autoComplete: 'name',
-              returnKeyType: 'next',
-              onFocus: () => setFocusedField('name'),
-              onBlur: () => setFocusedField(null),
-              onSubmitEditing: () => emailRef.current?.focus(),
-              maxLength: 40,
-            }}
-          />
-        )}
-        <Field
-          icon="mail-outline"
-          label={isSignIn ? undefined : 'Email Address'}
-          colors={colors}
-          focused={focusedField === 'email'}
-          inputRef={emailRef}
-          inputProps={{
-            value: email,
-            onChangeText: setEmail,
-            placeholder: 'you@example.com',
-            autoCapitalize: 'none',
-            keyboardType: 'email-address',
-            autoComplete: 'email',
-            returnKeyType: 'next',
-            onFocus: () => setFocusedField('email'),
-            onBlur: () => setFocusedField(null),
-            onSubmitEditing: () => passwordRef.current?.focus(),
-          }}
-        />
-        <Field
-          icon="lock-closed-outline"
-          label={isSignIn ? undefined : 'Password'}
-          colors={colors}
-          focused={focusedField === 'password'}
-          inputRef={passwordRef}
-          right={
-            <TouchableOpacity
-              onPress={() => setShowPassword((v) => !v)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-            >
-              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          }
-          inputProps={{
-            value: password,
-            onChangeText: setPassword,
-            placeholder: 'At least 6 characters',
-            secureTextEntry: !showPassword,
-            autoCapitalize: 'none',
-            autoComplete: isSignIn ? 'current-password' : 'new-password',
-            returnKeyType: isSignIn ? 'go' : 'next',
-            onFocus: () => setFocusedField('password'),
-            onBlur: () => setFocusedField(null),
-            onSubmitEditing: () => (isSignIn ? handleSubmit() : confirmRef.current?.focus()),
-          }}
-        />
-        {!isSignIn && (
-          <Field
-            icon="shield-checkmark-outline"
-            label="Confirm Password"
-            colors={colors}
-            focused={focusedField === 'confirm'}
-            inputRef={confirmRef}
-            inputProps={{
-              value: confirmPassword,
-              onChangeText: setConfirmPassword,
-              placeholder: 'Re-enter your password',
-              secureTextEntry: !showPassword,
-              autoCapitalize: 'none',
-              autoComplete: 'new-password',
-              returnKeyType: 'go',
-              onFocus: () => setFocusedField('confirm'),
-              onBlur: () => setFocusedField(null),
-              onSubmitEditing: handleSubmit,
-            }}
-          />
+        {/* Sign-up on a tablet/desktop-width screen pairs Full Name+Email
+            and Password+Confirm Password two-to-a-row (matches the
+            approved reference) — everywhere else (sign-in always, or any
+            narrow screen) stays single-column, since a half-width field
+            next to nothing looks like a layout bug rather than a choice. */}
+        {isWide && !isSignIn ? (
+          <>
+            <View style={styles.fieldRow}>
+              <View style={styles.fieldRowItem}>{fullNameField}</View>
+              <View style={styles.fieldRowItem}>{emailField}</View>
+            </View>
+            <View style={styles.fieldRow}>
+              <View style={styles.fieldRowItem}>{passwordField}</View>
+              <View style={styles.fieldRowItem}>{confirmField}</View>
+            </View>
+          </>
+        ) : (
+          <>
+            {fullNameField}
+            {emailField}
+            {passwordField}
+            {confirmField}
+          </>
         )}
 
         {isSignIn && (
@@ -419,12 +466,34 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
           </View>
         )}
 
+        {!isSignIn && (
+          <View style={styles.termsRow}>
+            <TouchableOpacity
+              onPress={() => setAgreeToTerms((v) => !v)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={[styles.checkbox, styles.termsCheckbox, agreeToTerms && styles.checkboxChecked]}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: agreeToTerms }}
+              accessibilityLabel="I agree to the Terms of Service and Privacy Policy"
+            >
+              {agreeToTerms && <Ionicons name="checkmark" size={12} color={colors.textInverse} />}
+            </TouchableOpacity>
+            <Text style={styles.termsRowText}>
+              I agree to the{' '}
+              <Text style={styles.termsLink} onPress={() => navigation.navigate('Terms')}>
+                Terms of Service
+              </Text>{' '}
+              and{' '}
+              <Text style={styles.termsLink} onPress={() => navigation.navigate('PrivacyPolicy')}>
+                Privacy Policy
+              </Text>
+              .
+            </Text>
+          </View>
+        )}
+
         {errorBox}
         {submitButton(isSignIn ? 'Log In' : 'Create Account')}
-
-        {!isSignIn && (
-          <Text style={styles.termsText}>By creating an account you agree to our Terms of Service and Privacy Policy.</Text>
-        )}
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
@@ -440,7 +509,8 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
               onPress={() => handleSocialPress(s.label)}
               accessibilityLabel={`Continue with ${s.label}`}
             >
-              <Ionicons name={s.icon as any} size={20} color={s.color ?? colors.textPrimary} />
+              <Ionicons name={s.icon as any} size={19} color={s.color ?? colors.textPrimary} />
+              <Text style={styles.socialButtonText}>Continue with {s.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -503,8 +573,65 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
     return (
       <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
         <View style={styles.screen}>
-          <Image source={topCorner} style={styles.wideTopCornerImg} resizeMode="cover" />
-          <Image source={bottomCorner} style={styles.wideBottomCornerImg} resizeMode="cover" />
+          {/* Full-bleed ambient background art — pinned to the real screen
+              corners (not the centred content). IMPORTANT: on this RN-Web
+              build, LinearGradient only fades correctly when the stop list
+              starts with 'transparent' and ends with a location of exactly
+              1 — a gradient written the other way round (solid colour
+              first) renders INVERTED, which is what was masking the art
+              right at the true corner (the "gap") while leaving the inner,
+              page-facing edge solid. Every gradient below follows that
+              transparent-first/location-1-last rule, with `start` placed
+              at the true screen corner (fully visible) and `end` pointing
+              into the page (faded to the exact background colour). */}
+          <View style={styles.wideTopCornerImg} pointerEvents="none">
+            <CornerImage
+              source={topCorner}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              contentPosition={{ top: 0, right: 0 }}
+            />
+            {/* visible at the right edge (true corner), fades toward the left (into the page) */}
+            <LinearGradient
+              colors={['transparent', 'transparent', colors.background]}
+              locations={[0, 0.7, 1]}
+              start={{ x: 1, y: 0 }}
+              end={{ x: 0, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+            {/* visible at the top edge (true corner), fades toward the bottom (an artificial cut) */}
+            <LinearGradient
+              colors={['transparent', 'transparent', colors.background]}
+              locations={[0, 0.78, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
+          <View style={styles.wideBottomCornerImg} pointerEvents="none">
+            <CornerImage
+              source={bottomCorner}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              contentPosition={{ bottom: 0, left: 0 }}
+            />
+            {/* visible at the left edge (true corner), fades toward the right (into the page) */}
+            <LinearGradient
+              colors={['transparent', 'transparent', colors.background]}
+              locations={[0, 0.65, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+            {/* visible at the bottom edge (true corner), fades toward the top (an artificial cut) */}
+            <LinearGradient
+              colors={['transparent', 'transparent', colors.background]}
+              locations={[0, 0.7, 1]}
+              start={{ x: 0, y: 1 }}
+              end={{ x: 0, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
 
           <SafeAreaView style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={styles.wideScrollContent} showsVerticalScrollIndicator={false}>
@@ -548,8 +675,59 @@ export default function CustomerAuthModal({ visible, reason, onClose, onAuthenti
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.screen}>
-        <Image source={topCorner} style={styles.topCornerImg} resizeMode="cover" pointerEvents="none" />
-        <Image source={bottomCorner} style={styles.bottomCornerImg} resizeMode="cover" pointerEvents="none" />
+        {/* Same gradient-faded treatment as the wide layout (see the big
+            comment there): fades the two edges facing into the page/text
+            to the exact background colour so the art blends in and never
+            sits behind text reducing its contrast, instead of a hard,
+            fully-opaque rectangle. */}
+        <View style={styles.topCornerImg} pointerEvents="none">
+          <CornerImage
+            source={topCorner}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            contentPosition={{ top: 0, right: 0 }}
+          />
+          {/* visible at the right edge (true corner), fades toward the left (into the page/header text) */}
+          <LinearGradient
+            colors={['transparent', 'transparent', colors.background]}
+            locations={[0, 0.65, 1]}
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* visible at the top edge (true corner), fades toward the bottom (an artificial cut) */}
+          <LinearGradient
+            colors={['transparent', 'transparent', colors.background]}
+            locations={[0, 0.7, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        <View style={styles.bottomCornerImg} pointerEvents="none">
+          <CornerImage
+            source={bottomCorner}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            contentPosition={{ bottom: 0, left: 0 }}
+          />
+          {/* visible at the left edge (true corner), fades toward the right (into the page) */}
+          <LinearGradient
+            colors={['transparent', 'transparent', colors.background]}
+            locations={[0, 0.6, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* visible at the bottom edge (true corner), fades toward the top (an artificial cut) */}
+          <LinearGradient
+            colors={['transparent', 'transparent', colors.background]}
+            locations={[0, 0.6, 1]}
+            start={{ x: 0, y: 1 }}
+            end={{ x: 0, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
 
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.headerBar}>
@@ -585,19 +763,19 @@ function makeStyles(colors: ColorTheme) {
       position: 'absolute',
       top: 0,
       right: 0,
-      width: 120,
-      height: 230,
-      opacity: 0.9,
+      width: 90,
+      height: 140,
       borderBottomLeftRadius: radius.lg,
+      overflow: 'hidden',
     },
     bottomCornerImg: {
       position: 'absolute',
       bottom: 0,
       left: 0,
-      width: 230,
-      height: 130,
-      opacity: 0.9,
+      width: 160,
+      height: 90,
       borderTopRightRadius: radius.lg,
+      overflow: 'hidden',
     },
 
     // ---------- Pinned header bar (narrow layout) ----------
@@ -651,17 +829,38 @@ function makeStyles(colors: ColorTheme) {
     subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs, maxWidth: 340 },
 
     // ---------- Wide / web layout ----------
-    wideTopCornerImg: { position: 'absolute', top: 0, right: 0, width: 220, height: 190, opacity: 0.55 },
-    wideBottomCornerImg: { position: 'absolute', bottom: 0, left: 0, width: 260, height: 150, opacity: 0.55 },
+    // Pinned to the full screen (not the centred content card), and sized
+    // to actually read as background art on a big monitor — a tall column
+    // down the right edge and a wide band along the bottom-left — rather
+    // than a small isolated thumbnail. These are containers (image + a
+    // gradient-fade overlay, see JSX) rather than plain <Image> styles now;
+    // opacity dims the whole thing so it stays ambient, never competing
+    // with the card's own text or imagery.
+    // No container opacity any more — that was dimming even the "fully
+    // visible" zone right at the true corner down to 40-45% strength,
+    // which read as "barely there" in dark mode and as an outright gap in
+    // light mode (pale art at 40% over an already-pale page ≈ invisible).
+    // The gradient overlays are now the only thing fading anything, so the
+    // art is at full, true strength right at the corner.
+    wideTopCornerImg: { position: 'absolute', top: 0, right: 0, width: 260, height: 696, overflow: 'hidden' },
+    wideBottomCornerImg: { position: 'absolute', bottom: 0, left: 0, width: 340, height: 186, overflow: 'hidden' },
     wideScrollContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: spacing.xl },
-    wideWrap: { width: '100%', maxWidth: 1040, alignSelf: 'center', paddingHorizontal: spacing.xl },
+    // No real cap any more (was 1280, before that 1040) — on a laptop or
+    // desktop this should fill the actual browser width, not sit in a
+    // fixed-size card with huge dead margins either side. 1900 is just a
+    // sanity ceiling so an ultra-wide/4K monitor doesn't stretch the form
+    // absurdly far; every normal laptop/desktop width is under it.
+    wideWrap: { width: '100%', maxWidth: 1900, alignSelf: 'center', paddingHorizontal: spacing.xxl },
     wideHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xl },
     wideColumns: { flexDirection: 'row', gap: spacing.xxl, alignItems: 'flex-start' },
-    wideLeftCol: { flex: 5, maxWidth: 440 },
+    // No maxWidth any more — these grow with wideWrap via their flex
+    // share, so the form and hero image actually use the screen instead
+    // of stopping at a fixed pixel width and leaving space unused.
+    wideLeftCol: { flex: 5 },
     wideRightCol: { flex: 6, alignItems: 'center' },
     heroImageWrap: {
       width: '100%',
-      aspectRatio: 1170 / 730,
+      aspectRatio: 936 / 398,
       borderRadius: radius.lg,
       overflow: 'hidden',
       borderWidth: 1,
@@ -686,6 +885,12 @@ function makeStyles(colors: ColorTheme) {
     trustLabel: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', lineHeight: 16 },
 
     formArea: { marginTop: spacing.lg },
+
+    // Wide/desktop sign-up only: Full Name+Email and Password+Confirm each
+    // share a row instead of stacking, matching the reference's two-column
+    // desktop form.
+    fieldRow: { flexDirection: 'row', gap: spacing.md },
+    fieldRowItem: { flex: 1 },
 
     fieldWrap: { marginBottom: spacing.md },
     fieldLabel: { ...typography.caption, color: colors.textSecondary, fontFamily: fonts.bodySemiBold, marginBottom: 6 },
@@ -752,18 +957,27 @@ function makeStyles(colors: ColorTheme) {
       gap: spacing.sm,
     },
     submitButtonText: { ...typography.button },
-    termsText: { ...typography.caption, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
+
+    // Sign-up's "I agree to..." checkbox — same checkbox visual as
+    // "Remember me" above, just left-aligned against wrapping text instead
+    // of a single-line label, so it needs its own top-aligned row style.
+    termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginTop: spacing.xs, marginBottom: spacing.sm },
+    termsCheckbox: { marginTop: 2 },
+    termsRowText: { flex: 1, ...typography.caption, color: colors.textSecondary, lineHeight: 17 },
+    termsLink: { color: colors.primary, fontFamily: fonts.bodySemiBold },
 
     dividerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg },
     dividerLine: { flex: 1, height: 1, backgroundColor: colors.divider },
     dividerText: { ...typography.caption, color: colors.textMuted },
-    socialRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing.md, marginTop: spacing.md },
+    socialRow: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.md },
     socialButton: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: spacing.sm,
+      width: '100%',
+      height: 48,
+      borderRadius: radius.pill,
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
@@ -771,6 +985,7 @@ function makeStyles(colors: ColorTheme) {
         ? ({ boxShadow: `0 2px 8px ${colors.shadow}` } as any)
         : { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2 }),
     },
+    socialButtonText: { ...typography.button, color: colors.textPrimary },
 
     switchModeBtn: { alignItems: 'center', marginTop: spacing.lg, paddingVertical: spacing.sm },
     switchModeText: { ...typography.bodySmall, color: colors.textSecondary },
