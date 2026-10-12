@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography, spacing, radius, ColorTheme } from '@/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useScrollVisibilityHandler } from '@/context/ScrollVisibilityContext';
-import { useIsWideScreen } from '@/hooks/useResponsive';
+import { useIsWideScreen, useContentMetrics } from '@/hooks/useResponsive';
 import { fonts } from '@/hooks/useAppFonts';
 import { goBackOrTo } from '@/utils/navigation';
 import Container from '@/components/Container';
@@ -78,6 +78,20 @@ export default function PrivacyPolicyScreen() {
   const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
   const navigation = useNavigation<any>();
   const isWide = useIsWideScreen();
+  // Native phone layout used to pin the chip bar with the ScrollView's own
+  // `stickyHeaderIndices` — the platform sticky-header feature. That turned
+  // out to be the reason the chip row would stop being scrollable/tappable
+  // once it became stuck on a real device: `stickyHeaderIndices` wraps its
+  // child in an internal sticky-header component that is a known source of
+  // broken touch/gesture handling for interactive content placed inside it
+  // (ScrollViews, TouchableOpacitys), even though the same bar plus a plain
+  // web build looked completely fine. It's replaced below with the exact
+  // same manual transform trick already used for the wide sidebar
+  // (nativeStickyTranslateY) — a plain View with a translateY style is just
+  // an ordinary transformed view as far as RN's touch system is concerned,
+  // so there's no special wrapper component to misroute touches.
+  const nativeNarrow = !isWeb && !isWide;
+  const { sidePadding } = useContentMetrics();
 
   const scrollRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -128,6 +142,10 @@ export default function PrivacyPolicyScreen() {
   const chipItemXs = useRef<number[]>(PRIVACY_SECTIONS.map(() => 0));
   const chipItemWidths = useRef<number[]>(PRIVACY_SECTIONS.map(() => 0));
   const chipViewportWidth = useRef(0);
+  // The chip bar's own natural (unstuck) position in the scroll content —
+  // captured the same way bodyContainerY is, since it's likewise a direct
+  // child of the outer ScrollView. Feeds nativeStickyTranslateY below.
+  const chipBarY = useRef(0);
 
   const absoluteY = (i: number) => bodyWrapY.current + sectionsColumnY.current + sectionYs.current[i];
 
@@ -186,11 +204,62 @@ export default function PrivacyPolicyScreen() {
     NAV_HEIGHT + spacing.lg,
     Math.max(0, bodyWrapHeight.current - 500)
   );
-  const chipTranslateY = nativeStickyTranslateY(
-    scrollOffsetY,
-    bodyWrapY.current,
-    0,
-    Math.max(0, bodyWrapHeight.current - 80)
+  // Unlike the sidebar (which lets go once the shorter column beside it
+  // runs out), the chip bar should stay stuck for the whole page — there's
+  // no "runs past the end of its column" case for a full-width top bar —
+  // so it's given an effectively unlimited translate budget.
+  const chipBarTranslateY = nativeNarrow
+    ? nativeStickyTranslateY(scrollOffsetY, chipBarY.current, 0, Number.MAX_SAFE_INTEGER)
+    : 0;
+
+  const chipBar = (
+      <View
+        style={[
+          styles.chipStickyWrap,
+          nativeNarrow && { marginHorizontal: 0, paddingHorizontal: sidePadding },
+          nativeNarrow && { transform: [{ translateY: chipBarTranslateY }] },
+        ]}
+        onLayout={(e: LayoutChangeEvent) => {
+          if (nativeNarrow) chipBarY.current = e.nativeEvent.layout.y;
+        }}
+      >
+        <ScrollView
+          ref={chipScrollRef}
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipRow}
+          contentContainerStyle={{ paddingRight: spacing.lg, gap: spacing.sm }}
+          onLayout={(e: LayoutChangeEvent) => {
+            chipViewportWidth.current = e.nativeEvent.layout.width;
+          }}
+        >
+          {PRIVACY_SECTIONS.map((s, i) => {
+            const active = i === activeIndex;
+            return (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.chip, active && styles.chipActive]}
+                onPress={() => scrollToSection(i)}
+                activeOpacity={0.8}
+                onLayout={(e: LayoutChangeEvent) => {
+                  chipItemXs.current[i] = e.nativeEvent.layout.x;
+                  chipItemWidths.current[i] = e.nativeEvent.layout.width;
+                }}
+              >
+                <View style={[styles.chipNumber, active && styles.chipNumberActive]}>
+                  <Text style={[styles.chipNumberText, active && styles.chipNumberTextActive]}>
+                    {s.number}
+                  </Text>
+                </View>
+                <Text style={[styles.chipLabel, active && styles.chipLabelActive]} numberOfLines={1}>
+                  {s.title}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
   );
 
   return (
@@ -248,6 +317,12 @@ export default function PrivacyPolicyScreen() {
           </Container>
 
           {/* ---------- Body: Contents (sidebar on wide / chips+callout on narrow) + Sections ---------- */}
+          {/* Direct child of the ScrollView (hero is the only thing above
+              it) so its onLayout.y above is its true natural position for
+              the transform-based sticky trick. Wide/web render it inside
+              the body instead — see `!nativeNarrow && chipBar`. */}
+          {nativeNarrow && chipBar}
+
           <View
             onLayout={(e: LayoutChangeEvent) => {
               bodyContainerY.current = e.nativeEvent.layout.y;
@@ -332,45 +407,7 @@ export default function PrivacyPolicyScreen() {
                 </View>
               ) : (
                 <>
-                  <View
-                    style={[styles.chipStickyWrap, !isWeb && { transform: [{ translateY: chipTranslateY }] }]}
-                  >
-                    <ScrollView
-                      ref={chipScrollRef}
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      style={styles.chipRow}
-                      contentContainerStyle={{ paddingRight: spacing.lg, gap: spacing.sm }}
-                      onLayout={(e: LayoutChangeEvent) => {
-                        chipViewportWidth.current = e.nativeEvent.layout.width;
-                      }}
-                    >
-                      {PRIVACY_SECTIONS.map((s, i) => {
-                        const active = i === activeIndex;
-                        return (
-                          <TouchableOpacity
-                            key={s.id}
-                            style={[styles.chip, active && styles.chipActive]}
-                            onPress={() => scrollToSection(i)}
-                            activeOpacity={0.8}
-                            onLayout={(e: LayoutChangeEvent) => {
-                              chipItemXs.current[i] = e.nativeEvent.layout.x;
-                              chipItemWidths.current[i] = e.nativeEvent.layout.width;
-                            }}
-                          >
-                            <View style={[styles.chipNumber, active && styles.chipNumberActive]}>
-                              <Text style={[styles.chipNumberText, active && styles.chipNumberTextActive]}>
-                                {s.number}
-                              </Text>
-                            </View>
-                            <Text style={[styles.chipLabel, active && styles.chipLabelActive]} numberOfLines={1}>
-                              {s.title}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
+                  {!nativeNarrow && chipBar}
 
                   <PriorityCallout colors={colors} isDark={isDark} style={styles.calloutSpacingNarrow} />
                 </>

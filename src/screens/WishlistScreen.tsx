@@ -17,7 +17,7 @@ import { RootStackParamList } from '@/types/navigation';
 import WishlistItemCard from '@/components/WishlistItemCard';
 import OptionSheet, { SheetOption } from '@/components/OptionSheet';
 import EmptyState from '@/components/EmptyState';
-import WishlistEmptyState from '@/components/WishlistEmptyState';
+import WishlistEmptyState, { WishlistEmptyDecor } from '@/components/WishlistEmptyState';
 import { ProductGridSkeleton } from '@/components/ProductCardSkeleton';
 import Container from '@/components/Container';
 import MobileTopBar from '@/components/MobileTopBar';
@@ -111,13 +111,21 @@ export default function WishlistScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {!isWide && <MobileTopBar />}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: showEmptyWishlist ? 0 : spacing.xxl }}
-      >
+      {/* The decor is rendered AFTER the ScrollView below, as a normal,
+          non-absolutely-positioned block — see WishlistEmptyDecor's doc
+          comment for why that's the one positioning approach that can't
+          come out differently on native vs. web. The ScrollView itself
+          gets an explicit flex:1 so it (not the decor) is what gives up
+          space to fit both of them in this wrapper's flex:1 box. */}
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: showEmptyWishlist ? 0 : spacing.xxl }}
+        >
         <Container>
           <View style={[styles.titleRow, isWide && styles.titleRowWide]}>
             <View style={styles.titleLeft}>
@@ -194,7 +202,9 @@ export default function WishlistScreen() {
             )}
           </Container>
         )}
-      </ScrollView>
+        </ScrollView>
+        {showEmptyWishlist && <WishlistEmptyDecor />}
+      </View>
 
       <OptionSheet
         visible={categorySheetOpen}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,65 +32,103 @@ const ART = {
 };
 
 /**
+ * The floral/wave backdrop for the empty wishlist — rendered by
+ * WishlistScreen as the LAST sibling after its ScrollView (not before it,
+ * not overlapping it), inside the screen's own flex column. It is no
+ * longer screen-filling or absolutely positioned at the screen level at
+ * all — it's a perfectly ordinary block with its own fixed height, placed
+ * last in normal top-to-bottom flow. "Last child in a column" is the one
+ * positioning rule that cannot come out differently between platforms:
+ * there's no ancestor height to measure, no stacking/paint-order to get
+ * right, and nothing for it to anchor past — it is wherever the flow
+ * naturally puts it, which is the bottom, full stop.
+ *
+ * This replaces two earlier attempts that both relied on some form of
+ * absolute positioning against a screen-level box, and both broke on real
+ * native devices even though each checked out in a web build:
+ *
+ * 1. First it lived inside WishlistEmptyState's own root (a child of the
+ *    ScrollView's flexGrow:1 content) with position:absolute, bottom:0.
+ *    That root's measured height wasn't stable the instant it mounted —
+ *    it settled a frame or two later once the responsive-width hooks
+ *    reported their real value — so the backdrop's "bottom" briefly
+ *    chased a shorter, stale height and landed high up, mid-content.
+ *
+ * 2. Next it became a sibling of the ScrollView, absolutely filled
+ *    against the screen's SafeAreaView. That box's bounds also covered
+ *    the header above it (absolute positioning sizes to the parent
+ *    regardless of which normal-flow sibling is drawn where), so on
+ *    native the backdrop could end up painted over the header instead of
+ *    below it — confirmed broken on a real device even after the web
+ *    build looked right, which is why this version avoids screen-level
+ *    absolute positioning entirely rather than trying to patch where it's
+ *    anchored again.
+ *
+ * The only position:absolute left is wave-over-corner INSIDE this
+ * component's own small, explicitly-sized box below — a self-contained
+ * context with nothing ambiguous to measure, unlike the screen-level boxes
+ * above.
+ */
+export function WishlistEmptyDecor() {
+  const { isDark } = useTheme();
+  const isWide = useIsWideScreen();
+  const art = isDark ? ART.dark : ART.light;
+  const waveHeight = isWide ? 150 : 100;
+  const cornerWidth = isWide ? 200 : 128;
+  const cornerHeight = cornerWidth * (324 / 456);
+  const boxHeight = Math.max(waveHeight, cornerHeight);
+
+  return (
+    <View pointerEvents="none" style={[decorStyles.decor, { height: boxHeight }]}>
+      <Image
+        source={art.wave}
+        style={[decorStyles.wave, { height: waveHeight }]}
+        contentFit="cover"
+        contentPosition={{ right: 0, bottom: 0 }}
+      />
+      <Image
+        source={art.corner}
+        style={[decorStyles.corner, { width: cornerWidth, height: cornerHeight }]}
+        contentFit="contain"
+        contentPosition={{ left: 0, bottom: 0 }}
+      />
+    </View>
+  );
+}
+
+const decorStyles = StyleSheet.create({
+  // A normal block — width:100% so the images inside (which are
+  // position:absolute against THIS box, not the screen) can still span
+  // edge to edge. No flex, no absoluteFillObject: its own `height` above
+  // is all that sizes it, nothing about its ancestors matters.
+  decor: { width: '100%' },
+  wave: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  corner: { position: 'absolute', left: 0, bottom: 0 },
+});
+
+/**
  * What the Wishlist tab shows before anything has been saved: a jewellery-box
- * illustration, a short message, a "Browse Products" button and a soft floral
- * and wave backdrop pinned to the bottom of the screen.
+ * illustration, a short message and a "Browse Products" button. The floral/
+ * wave backdrop is the separate WishlistEmptyDecor component above — see
+ * WishlistScreen, which renders it pinned to the screen itself rather than
+ * inside this scrollable content (see that component's own doc comment for
+ * why).
  *
  * It's meant to be rendered directly inside the screen's ScrollView (not
- * inside a max-width Container) so the backdrop can run edge to edge; the
- * message itself is centred and kept to a comfortable width.
+ * inside a max-width Container) so its centred content can use the full
+ * width to decide its own comfortable size.
  */
 export default function WishlistEmptyState({ onBrowse }: Props) {
   const { colors, isDark } = useTheme();
   const isWide = useIsWideScreen();
   const viewportWidth = useViewportWidth();
-  const { height: windowHeight } = useWindowDimensions();
-  // `root` needs a real, concrete height for the absolutely-positioned
-  // wave/corner backdrop (pinned to its bottom edge) to land in the right
-  // place. On web, `flex: 1` does that correctly — react-native-web's
-  // ScrollView is a plain CSS flexbox, so a lone flex:1 child genuinely
-  // fills whatever space is left in the parent ScrollView, which is why
-  // this screen was "perfect" there. RN's own ScrollView on *native*
-  // doesn't resolve that the same way: Yoga has nothing to flex *against*
-  // inside a scrollable content container, so it collapsed to `minHeight`
-  // instead of the screen's real height, bunching the backdrop near the
-  // top with a big blank gap below it — the "fine on web, broken on the
-  // app" bug. A concrete pixel height derived from the window sidesteps
-  // that native-only platform difference.
-  //
-  // That fix must stay native-only, though: trying it on web too (an
-  // earlier pass here did, briefly) swaps out the one thing that was
-  // already filling the screen correctly for a fixed fraction of the
-  // window (0.62/0.7) that deliberately doesn't fill it — which is exactly
-  // where a new gap between the backdrop and the tab bar came from.
-  const minHeight = isWide ? 560 : 470;
-  const isWeb = Platform.OS === 'web';
-  const rootHeight = Math.max(minHeight, Math.round(windowHeight * (isWide ? 0.7 : 0.62)));
-  const { styles, palette } = makeStyles(colors, isDark, isWide, isWeb ? undefined : rootHeight, minHeight);
+  const { styles, palette } = makeStyles(colors, isDark, isWide);
   const art = isDark ? ART.dark : ART.light;
 
   const heroWidth = isWide ? Math.min(460, viewportWidth * 0.5) : Math.min(360, viewportWidth * 0.92);
-  const waveHeight = isWide ? 150 : 100;
-  const cornerWidth = isWide ? 200 : 128;
 
   return (
     <View style={styles.root}>
-      {/* Backdrop — behind everything, never intercepts touches. */}
-      <View pointerEvents="none" style={styles.decor}>
-        <Image
-          source={art.wave}
-          style={[styles.wave, { height: waveHeight }]}
-          contentFit="cover"
-          contentPosition={{ right: 0, bottom: 0 }}
-        />
-        <Image
-          source={art.corner}
-          style={[styles.corner, { width: cornerWidth, height: cornerWidth * (324 / 456) }]}
-          contentFit="contain"
-          contentPosition={{ left: 0, bottom: 0 }}
-        />
-      </View>
-
       <View style={styles.content}>
         <Image
           source={art.hero}
@@ -150,7 +188,7 @@ export default function WishlistEmptyState({ onBrowse }: Props) {
   );
 }
 
-function makeStyles(colors: ColorTheme, isDark: boolean, isWide: boolean, rootHeight: number | undefined, minHeight: number) {
+function makeStyles(colors: ColorTheme, isDark: boolean, isWide: boolean) {
   // Dark theme uses the gold accent (per the design); light uses the brand
   // blue, which also means a Premium accent skin (ruby, emerald…) tints this
   // screen the same way it tints every other button in light mode.
@@ -160,20 +198,12 @@ function makeStyles(colors: ColorTheme, isDark: boolean, isWide: boolean, rootHe
   const taglineRule = isDark ? 'rgba(160,180,210,0.45)' : `${colors.primary}44`;
 
   const styles = StyleSheet.create({
-    // Centers `content` vertically — not `space-between`, which only
-    // looks centered once the wide-only tagline below is also present to
-    // balance it; on mobile, with content as the sole child, `space-
-    // between` just pins it to the top. Web keeps `flex: 1` (fills the
-    // ScrollView correctly there); native gets a concrete pixel height
-    // instead, since flex:1 doesn't resolve the same way there — see the
-    // comment above this function's call site.
-    root:
-      rootHeight !== undefined
-        ? { width: '100%', height: rootHeight, overflow: 'hidden', justifyContent: 'center' }
-        : { flex: 1, width: '100%', minHeight, overflow: 'hidden', justifyContent: 'center' },
-    decor: { ...StyleSheet.absoluteFillObject },
-    wave: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-    corner: { position: 'absolute', left: 0, bottom: 0 },
+    // flex:1 + justifyContent:center lets this centre itself in whatever
+    // space the ScrollView's flexGrow:1 content container gives it. No
+    // minHeight guess needed any more — the only reason one existed before
+    // was to push the (now-removed) decor artwork down toward the screen's
+    // bottom, which is no longer this component's job at all.
+    root: { flex: 1, width: '100%', justifyContent: 'center' },
 
     content: { alignItems: 'center', paddingTop: isWide ? spacing.md : spacing.sm, paddingHorizontal: spacing.lg },
 

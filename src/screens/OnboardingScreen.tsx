@@ -106,6 +106,29 @@ export default function OnboardingScreen({ onDone }: Props) {
   // footer (the same place they sat before the backgrounds were added).
   const [footerHeight, setFooterHeight] = useState(FOOTER_ESTIMATE + insets.bottom);
 
+  // Tallest glass card measured so far (they differ slightly per slide —
+  // title / description / chip wrapping). Used below to decide whether the
+  // card can sit in the exact middle of the screen.
+  const [cardHeight, setCardHeight] = useState(0);
+
+  // The Skip row (top) is much shorter than the footer (dots + buttons), so
+  // centring the card in the space *between* them put it visibly above the
+  // middle of the screen. Aim for the screen's true centre instead, but
+  // never let the card run under the Skip button or the footer: on a short
+  // phone the centre is clamped to the nearest position that still fits
+  // (and if the card can't fit at all, it falls back to the old
+  // between-the-two centring).
+  const topPad = insets.top + HEADER_HEIGHT;
+  const minCentre = topPad + cardHeight / 2;
+  const maxCentre = height - footerHeight - cardHeight / 2;
+  const betweenCentre = (topPad + height - footerHeight) / 2;
+  const targetCentre =
+    minCentre <= maxCentre ? Math.min(Math.max(height / 2, minCentre), maxCentre) : betweenCentre;
+  // The content box centres its child between paddingTop and paddingBottom,
+  // so add the extra padding to whichever side the card needs to move away from.
+  const contentPadTop = Math.max(topPad, 2 * targetCentre - (height - footerHeight));
+  const contentPadBottom = Math.max(footerHeight, height - (2 * targetCentre - topPad));
+
   const isLast = index === SLIDES.length - 1;
   // Not gated on `isWeb`: the web screenshots this was compared against
   // were a narrow mobile browser, the same screen size as the app itself —
@@ -211,8 +234,8 @@ export default function OnboardingScreen({ onDone }: Props) {
         style={[
           styles.content,
           {
-            paddingTop: insets.top + HEADER_HEIGHT,
-            paddingBottom: footerHeight,
+            paddingTop: contentPadTop,
+            paddingBottom: contentPadBottom,
           },
         ]}
       >
@@ -220,7 +243,13 @@ export default function OnboardingScreen({ onDone }: Props) {
           {/* Frosted glass panel: gives the plain part of the photo a designed
               surface to sit on (instead of bare gradient), and holds the
               highlight chips that add a bit more context per slide. */}
-          <View style={styles.glassCard}>
+          <View
+            style={styles.glassCard}
+            onLayout={(e) => {
+              const h = Math.ceil(e.nativeEvent.layout.height);
+              setCardHeight((prev) => (h > prev ? h : prev));
+            }}
+          >
             <View
               style={[
                 styles.logoCircle,
@@ -398,9 +427,10 @@ function makeStyles(colors: ColorTheme, isDark: boolean) {
       letterSpacing: 0.3,
     },
 
-    /* Centre block: fills the whole slide, then centres its child in the
-       space that's left after the Skip row (paddingTop) and footer
-       (paddingBottom) are subtracted. */
+    /* Centre block: fills the whole slide and centres its child between
+       its top and bottom padding. Those paddings are equal whenever the
+       card fits, which puts the card on the exact centre of the screen
+       (see contentPadTop / contentPadBottom). */
     content: {
       ...StyleSheet.absoluteFillObject,
       alignItems: 'center',
